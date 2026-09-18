@@ -29,16 +29,16 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    private static final String INVALID_BODY = "La peticion contiene campos invalidos";
-    private static final String INVALID_PARAMETERS = "La peticion contiene parametros invalidos";
-    private static final String INVALID_VALUES = "La peticion contiene valores invalidos";
-    private static final String MALFORMED_JSON = "El cuerpo de la peticion no es un JSON valido";
-    private static final String INVALID_REQUEST = "La peticion no es valida";
+    private static final String INVALID_BODY = "La petición contiene campos inválidos";
+    private static final String INVALID_PARAMETERS = "La petición contiene parámetros inválidos";
+    private static final String INVALID_VALUES = "La petición contiene valores inválidos";
+    private static final String MALFORMED_JSON = "El cuerpo de la petición no es un JSON válido";
+    private static final String INVALID_REQUEST = "La petición no es válida";
     private static final String INTEGRITY_CONFLICT =
-            "La operacion viola una restriccion de integridad de los datos";
+            "La operación viola una restricción de integridad de los datos";
     private static final String UNEXPECTED =
             "Ha ocurrido un error inesperado. Reporta el traceId al administrador.";
-    private static final String DEFAULT_FIELD_MESSAGE = "valor invalido";
+    private static final String DEFAULT_FIELD_MESSAGE = "valor inválido";
 
     @ExceptionHandler({AuthenticationException.class, AccessDeniedException.class})
     void rethrowForSecurityFilterChain(RuntimeException ex) {
@@ -157,19 +157,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         }
         return switch (resolved) {
             case NOT_FOUND -> "El recurso solicitado no existe";
-            case METHOD_NOT_ALLOWED -> "El metodo HTTP no esta permitido para este recurso";
-            case UNSUPPORTED_MEDIA_TYPE -> "El tipo de contenido de la peticion no esta soportado";
+            case METHOD_NOT_ALLOWED -> "El método HTTP no está permitido para este recurso";
+            case UNSUPPORTED_MEDIA_TYPE -> "El tipo de contenido de la petición no está soportado";
             case NOT_ACCEPTABLE -> "No se puede responder en el formato solicitado";
-            case PAYLOAD_TOO_LARGE -> "La peticion excede el tamano maximo permitido";
+            case CONTENT_TOO_LARGE -> "La petición excede el tamaño máximo permitido";
             default -> INVALID_REQUEST;
         };
     }
 
     private String typeMismatchMessage(TypeMismatchException ex) {
         if (ex instanceof MethodArgumentTypeMismatchException mismatch) {
-            return "El parametro %s no tiene un formato valido".formatted(mismatch.getName());
+            return "El parámetro %s no tiene un formato válido".formatted(mismatch.getName());
         }
-        return "Un valor de la peticion no tiene un formato valido";
+        return "Un valor de la petición no tiene un formato válido";
     }
 
     private String messageOf(FieldError error) {

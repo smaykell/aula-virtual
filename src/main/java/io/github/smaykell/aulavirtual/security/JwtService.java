@@ -22,7 +22,7 @@ public class JwtService {
     public static final String ROLES_CLAIM = "roles";
 
     private static final int MINIMUM_HS256_KEY_BYTES = 32;
-    private static final String KEY_GENERATION_HINT = "Generala con: openssl rand -base64 32";
+    private static final String KEY_GENERATION_HINT = "Genérala con: openssl rand -base64 32";
 
     private final JwtProperties properties;
     private final SecretKey signingKey;

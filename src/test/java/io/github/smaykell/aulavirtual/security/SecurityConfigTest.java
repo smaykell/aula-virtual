@@ -46,7 +46,7 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.path").value("/ping"))
                 .andExpect(jsonPath("$.traceId").isNotEmpty())
-                .andExpect(jsonPath("$.message").value("Se requiere un token de acceso valido"));
+                .andExpect(jsonPath("$.message").value("Se requiere un token de acceso válido"));
     }
 
     @Test
@@ -77,7 +77,7 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.traceId").isNotEmpty())
                 .andExpect(jsonPath("$.message")
-                        .value("No tienes permisos para realizar esta accion"));
+                        .value("No tienes permisos para realizar esta acción"));
     }
 
     @Test

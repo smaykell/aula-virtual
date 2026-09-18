@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @WebMvcTest
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class, JwtService.class,
@@ -88,7 +89,7 @@ class GlobalExceptionHandlerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("La peticion contiene campos invalidos"))
+                .andExpect(jsonPath("$.message").value("La petición contiene campos inválidos"))
                 .andExpect(jsonPath("$.errors[0].field").value("name"));
     }
 
@@ -99,7 +100,7 @@ class GlobalExceptionHandlerTest {
                         .content("{esto no es json"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
-                        .value("El cuerpo de la peticion no es un JSON valido"));
+                        .value("El cuerpo de la petición no es un JSON válido"));
     }
 
     @Test
@@ -107,6 +108,15 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(authenticated(get("/items/" + UUID.randomUUID())))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Item con id 1 no encontrado"));
+    }
+
+    @Test
+    void an_upload_over_the_limit_answers_413_with_its_own_message() throws Exception {
+        mockMvc.perform(authenticated(get("/items/too-large")))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.status").value(413))
+                .andExpect(jsonPath("$.message")
+                        .value("La petición excede el tamaño máximo permitido"));
     }
 
     @Test
@@ -131,6 +141,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/items/search")
         String search(@RequestParam String query) {
             return query;
+        }
+
+        @GetMapping("/items/too-large")
+        String tooLarge() {
+            throw new MaxUploadSizeExceededException(1024);
         }
 
         @GetMapping("/items/{id}")

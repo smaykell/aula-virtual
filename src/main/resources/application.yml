@@ -22,14 +22,16 @@ spring:
     locations: classpath:db/migration
   jackson:
     default-property-inclusion: non_null
+  web:
+    error:
+      include-message: never
+      include-stacktrace: never
+      include-binding-errors: never
 
 server:
   port: ${SERVER_PORT:8080}
   servlet:
     context-path: /api
-  error:
-    include-message: never
-    include-stacktrace: never
 
 management:
   endpoints:

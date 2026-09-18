@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-    private static final String MESSAGE = "Se requiere un token de acceso valido";
+    private static final String MESSAGE = "Se requiere un token de acceso válido";
 
     private final ApiErrorWriter errorWriter;
 

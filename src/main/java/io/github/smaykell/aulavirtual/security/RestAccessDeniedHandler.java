@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class RestAccessDeniedHandler implements AccessDeniedHandler {
 
-    private static final String MESSAGE = "No tienes permisos para realizar esta accion";
+    private static final String MESSAGE = "No tienes permisos para realizar esta acción";
 
     private final ApiErrorWriter errorWriter;
 
