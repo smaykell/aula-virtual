@@ -3,14 +3,10 @@ package io.github.smaykell.aulavirtual.common.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 
-/**
- * Cuerpo uniforme de todas las respuestas de error de la API.
- *
- * <p>El {@code traceId} tambien se escribe en el log del servidor, de modo que un
- * usuario puede reportar ese identificador y el error concreto se encuentra sin
- * exponer detalles internos en la respuesta.
- */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ApiError(
         Instant timestamp,
@@ -19,17 +15,31 @@ public record ApiError(
         String message,
         String path,
         String traceId,
-        List<ErrorCampo> errors) {
+        List<FieldIssue> errors) {
 
-    /** Error de validacion asociado a un campo concreto del cuerpo de la peticion. */
-    public record ErrorCampo(String field, String message) {
+    public record FieldIssue(String field, String message) {
     }
 
-    public static ApiError de(int status, String error, String message, String path, String traceId) {
-        return new ApiError(Instant.now(), status, error, message, path, traceId, null);
+    public static ApiError of(HttpStatusCode status, String message, String path) {
+        return build(status, message, path, null);
     }
 
-    public static ApiError deValidacion(String message, String path, String traceId, List<ErrorCampo> errores) {
-        return new ApiError(Instant.now(), 400, "Bad Request", message, path, traceId, errores);
+    public static ApiError ofValidation(String message, String path, List<FieldIssue> issues) {
+        return build(HttpStatus.BAD_REQUEST, message, path, issues);
+    }
+
+    private static ApiError build(HttpStatusCode status, String message, String path,
+            List<FieldIssue> issues) {
+        return new ApiError(Instant.now(), status.value(), reasonPhraseOf(status), message, path,
+                newTraceId(), issues);
+    }
+
+    private static String reasonPhraseOf(HttpStatusCode status) {
+        HttpStatus resolved = HttpStatus.resolve(status.value());
+        return resolved != null ? resolved.getReasonPhrase() : "Error";
+    }
+
+    private static String newTraceId() {
+        return UUID.randomUUID().toString().substring(0, 8);
     }
 }

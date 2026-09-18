@@ -1,141 +1,192 @@
 package io.github.smaykell.aulavirtual.common.exception;
 
 import io.github.smaykell.aulavirtual.common.dto.ApiError;
-import jakarta.servlet.http.HttpServletRequest;
+import io.github.smaykell.aulavirtual.common.dto.ApiError.FieldIssue;
 import jakarta.validation.ConstraintViolationException;
 import java.util.Comparator;
 import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-/**
- * Traduce cualquier excepcion que escape de un controlador a un {@link ApiError}.
- *
- * <p>Regla de fondo: el cliente recibe un mensaje que le sirve para corregir su
- * peticion; los detalles internos van al log junto al mismo {@code traceId}.
- */
 @Slf4j
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ApiError> manejarValidacionDeCuerpo(MethodArgumentNotValidException ex,
-            HttpServletRequest request) {
-        List<ApiError.ErrorCampo> errores = ex.getBindingResult().getFieldErrors().stream()
-                .map(error -> new ApiError.ErrorCampo(error.getField(), mensajeDe(error)))
-                .sorted(Comparator.comparing(ApiError.ErrorCampo::field))
-                .toList();
-        String traceId = nuevoTraceId();
-        log.debug("[{}] Validacion fallida en {}: {}", traceId, request.getRequestURI(), errores);
-        return ResponseEntity.badRequest()
-                .body(ApiError.deValidacion("La peticion contiene campos invalidos",
-                        request.getRequestURI(), traceId, errores));
+    private static final String INVALID_BODY = "La peticion contiene campos invalidos";
+    private static final String INVALID_PARAMETERS = "La peticion contiene parametros invalidos";
+    private static final String INVALID_VALUES = "La peticion contiene valores invalidos";
+    private static final String MALFORMED_JSON = "El cuerpo de la peticion no es un JSON valido";
+    private static final String INVALID_REQUEST = "La peticion no es valida";
+    private static final String INTEGRITY_CONFLICT =
+            "La operacion viola una restriccion de integridad de los datos";
+    private static final String UNEXPECTED =
+            "Ha ocurrido un error inesperado. Reporta el traceId al administrador.";
+    private static final String DEFAULT_FIELD_MESSAGE = "valor invalido";
+
+    @ExceptionHandler({AuthenticationException.class, AccessDeniedException.class})
+    void rethrowForSecurityFilterChain(RuntimeException ex) {
+        throw ex;
     }
 
-    @ExceptionHandler(HandlerMethodValidationException.class)
-    ResponseEntity<ApiError> manejarValidacionDeParametros(HandlerMethodValidationException ex,
-            HttpServletRequest request) {
-        List<ApiError.ErrorCampo> errores = ex.getParameterValidationResults().stream()
-                .flatMap(resultado -> resultado.getResolvableErrors().stream()
-                        .map(error -> new ApiError.ErrorCampo(
-                                resultado.getMethodParameter().getParameterName(),
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+
+        List<FieldIssue> issues = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> new FieldIssue(error.getField(), messageOf(error)))
+                .sorted(Comparator.comparing(FieldIssue::field))
+                .toList();
+        return validationResponse(INVALID_BODY, issues, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            HandlerMethodValidationException ex, HttpHeaders headers, HttpStatusCode status,
+            WebRequest request) {
+
+        List<FieldIssue> issues = ex.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream()
+                        .map(error -> new FieldIssue(
+                                result.getMethodParameter().getParameterName(),
                                 error.getDefaultMessage())))
                 .toList();
-        String traceId = nuevoTraceId();
-        log.debug("[{}] Parametros invalidos en {}: {}", traceId, request.getRequestURI(), errores);
-        return ResponseEntity.badRequest()
-                .body(ApiError.deValidacion("La peticion contiene parametros invalidos",
-                        request.getRequestURI(), traceId, errores));
+        return validationResponse(INVALID_PARAMETERS, issues, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+
+        return respond(HttpStatus.BAD_REQUEST, MALFORMED_JSON, request, ex);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+
+        return respond(HttpStatus.BAD_REQUEST, typeMismatchMessage(ex), request, ex);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+
+        return respond(status, clientMessageFor(status), request, ex);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    ResponseEntity<ApiError> manejarViolacionDeRestriccion(ConstraintViolationException ex,
-            HttpServletRequest request) {
-        List<ApiError.ErrorCampo> errores = ex.getConstraintViolations().stream()
-                .map(violacion -> new ApiError.ErrorCampo(
-                        violacion.getPropertyPath().toString(), violacion.getMessage()))
+    ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex,
+            WebRequest request) {
+
+        List<FieldIssue> issues = ex.getConstraintViolations().stream()
+                .map(violation -> new FieldIssue(
+                        violation.getPropertyPath().toString(), violation.getMessage()))
                 .toList();
-        String traceId = nuevoTraceId();
-        log.debug("[{}] Restriccion violada en {}: {}", traceId, request.getRequestURI(), errores);
-        return ResponseEntity.badRequest()
-                .body(ApiError.deValidacion("La peticion contiene valores invalidos",
-                        request.getRequestURI(), traceId, errores));
-    }
-
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    ResponseEntity<ApiError> manejarTipoIncorrecto(MethodArgumentTypeMismatchException ex,
-            HttpServletRequest request) {
-        String mensaje = "El parametro '%s' no tiene un formato valido".formatted(ex.getName());
-        return respuesta(HttpStatus.BAD_REQUEST, mensaje, request, null);
-    }
-
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<ApiError> manejarCuerpoIlegible(HttpMessageNotReadableException ex,
-            HttpServletRequest request) {
-        return respuesta(HttpStatus.BAD_REQUEST, "El cuerpo de la peticion no es un JSON valido",
-                request, null);
+        return validationResponse(INVALID_VALUES, issues, request);
     }
 
     @ExceptionHandler(ApiException.class)
-    ResponseEntity<ApiError> manejarApiException(ApiException ex, HttpServletRequest request) {
-        return respuesta(ex.getStatus(), ex.getMessage(), request, null);
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    ResponseEntity<ApiError> manejarAccesoDenegado(AccessDeniedException ex,
-            HttpServletRequest request) {
-        return respuesta(HttpStatus.FORBIDDEN, "No tienes permisos para realizar esta accion",
-                request, null);
+    ResponseEntity<Object> handleApiException(ApiException ex, WebRequest request) {
+        return respond(ex.getStatus(), ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    ResponseEntity<ApiError> manejarIntegridad(DataIntegrityViolationException ex,
-            HttpServletRequest request) {
-        return respuesta(HttpStatus.CONFLICT,
-                "La operacion viola una restriccion de integridad de los datos", request, ex);
+    ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException ex,
+            WebRequest request) {
+
+        return respond(HttpStatus.CONFLICT, INTEGRITY_CONFLICT, request, ex);
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ApiError> manejarInesperada(Exception ex, HttpServletRequest request) {
-        return respuesta(HttpStatus.INTERNAL_SERVER_ERROR,
-                "Ha ocurrido un error inesperado. Reporta el traceId al administrador.",
-                request, ex);
+    ResponseEntity<Object> handleUnexpected(Exception ex, WebRequest request) {
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR, UNEXPECTED, request, ex);
     }
 
-    private ResponseEntity<ApiError> respuesta(HttpStatus status, String mensaje,
-            HttpServletRequest request, Exception causa) {
-        String traceId = nuevoTraceId();
+    private ResponseEntity<Object> validationResponse(String message, List<FieldIssue> issues,
+            WebRequest request) {
+
+        ApiError error = ApiError.ofValidation(message, pathOf(request), issues);
+        log.debug("[{}] {} -> 400: {}", error.traceId(), describe(request), issues);
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    private ResponseEntity<Object> respond(HttpStatusCode status, String message,
+            WebRequest request, Exception cause) {
+
+        ApiError error = ApiError.of(status, message, pathOf(request));
+        logAt(status, error, request, cause);
+        return ResponseEntity.status(status).body(error);
+    }
+
+    private void logAt(HttpStatusCode status, ApiError error, WebRequest request, Exception cause) {
         if (status.is5xxServerError()) {
-            log.error("[{}] {} {} -> {}", traceId, request.getMethod(), request.getRequestURI(),
-                    status, causa);
-        } else if (causa != null) {
-            log.warn("[{}] {} {} -> {}: {}", traceId, request.getMethod(), request.getRequestURI(),
-                    status, causa.getMessage());
+            log.error("[{}] {} -> {}", error.traceId(), describe(request), status.value(), cause);
+        } else if (HttpStatus.CONFLICT.isSameCodeAs(status)) {
+            log.warn("[{}] {} -> {}: {}", error.traceId(), describe(request), status.value(),
+                    cause.getMessage());
         } else {
-            log.debug("[{}] {} {} -> {}: {}", traceId, request.getMethod(), request.getRequestURI(),
-                    status, mensaje);
+            log.debug("[{}] {} -> {}: {}", error.traceId(), describe(request), status.value(),
+                    error.message());
         }
-        return ResponseEntity.status(status)
-                .body(ApiError.de(status.value(), status.getReasonPhrase(), mensaje,
-                        request.getRequestURI(), traceId));
     }
 
-    private String mensajeDe(FieldError error) {
-        return error.getDefaultMessage() != null ? error.getDefaultMessage() : "valor invalido";
+    private String clientMessageFor(HttpStatusCode status) {
+        if (status.is5xxServerError()) {
+            return UNEXPECTED;
+        }
+        HttpStatus resolved = HttpStatus.resolve(status.value());
+        if (resolved == null) {
+            return INVALID_REQUEST;
+        }
+        return switch (resolved) {
+            case NOT_FOUND -> "El recurso solicitado no existe";
+            case METHOD_NOT_ALLOWED -> "El metodo HTTP no esta permitido para este recurso";
+            case UNSUPPORTED_MEDIA_TYPE -> "El tipo de contenido de la peticion no esta soportado";
+            case NOT_ACCEPTABLE -> "No se puede responder en el formato solicitado";
+            case PAYLOAD_TOO_LARGE -> "La peticion excede el tamano maximo permitido";
+            default -> INVALID_REQUEST;
+        };
     }
 
-    private String nuevoTraceId() {
-        return UUID.randomUUID().toString().substring(0, 8);
+    private String typeMismatchMessage(TypeMismatchException ex) {
+        if (ex instanceof MethodArgumentTypeMismatchException mismatch) {
+            return "El parametro %s no tiene un formato valido".formatted(mismatch.getName());
+        }
+        return "Un valor de la peticion no tiene un formato valido";
+    }
+
+    private String messageOf(FieldError error) {
+        return error.getDefaultMessage() != null ? error.getDefaultMessage()
+                : DEFAULT_FIELD_MESSAGE;
+    }
+
+    private String pathOf(WebRequest request) {
+        return request instanceof ServletWebRequest servletRequest
+                ? servletRequest.getRequest().getRequestURI()
+                : request.getDescription(false);
+    }
+
+    private String describe(WebRequest request) {
+        return request instanceof ServletWebRequest servletRequest
+                ? "%s %s".formatted(servletRequest.getHttpMethod(),
+                        servletRequest.getRequest().getRequestURI())
+                : request.getDescription(false);
     }
 }

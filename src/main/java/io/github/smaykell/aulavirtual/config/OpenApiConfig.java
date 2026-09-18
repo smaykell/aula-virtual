@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfig {
 
-    static final String ESQUEMA_BEARER = "bearerAuth";
+    static final String BEARER_SCHEME = "bearerAuth";
 
     @Bean
     OpenAPI aulaVirtualOpenApi() {
@@ -26,12 +26,12 @@ public class OpenApiConfig {
                                 Todos los endpoints requieren un token JWT en la cabecera
                                 Authorization, salvo /actuator/health y la propia documentacion.""")
                         .license(new License().name("MIT")))
-                .components(new Components().addSecuritySchemes(ESQUEMA_BEARER,
+                .components(new Components().addSecuritySchemes(BEARER_SCHEME,
                         new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
                                 .description("Token JWT emitido por el aula virtual.")))
-                .addSecurityItem(new SecurityRequirement().addList(ESQUEMA_BEARER));
+                .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME));
     }
 }

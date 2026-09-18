@@ -14,101 +14,74 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import javax.crypto.SecretKey;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-/**
- * Emision y verificacion de tokens JWT firmados con HS256.
- *
- * <p>El servicio no sabe nada de usuarios: recibe un subject y una lista de
- * authorities y produce un token. Quien decide que ese subject existe y que esas
- * authorities le corresponden es el modulo de usuarios, cuando exista.
- */
 @Service
 public class JwtService {
 
-    /** Claim donde viajan las authorities, ya con su prefijo (por ejemplo ROLE_DOCENTE). */
-    public static final String CLAIM_ROLES = "roles";
+    public static final String ROLES_CLAIM = "roles";
 
-    private static final int BYTES_MINIMOS_HS256 = 32;
+    private static final int MINIMUM_HS256_KEY_BYTES = 32;
+    private static final String KEY_GENERATION_HINT = "Generala con: openssl rand -base64 32";
 
-    private final JwtProperties propiedades;
-    private final SecretKey clave;
-    private final Clock reloj;
+    private final JwtProperties properties;
+    private final SecretKey signingKey;
+    private final Clock clock;
 
-    /**
-     * Constructor que usa el contenedor. La anotacion es necesaria: con dos
-     * constructores y ninguno marcado, Spring no puede elegir y busca uno vacio.
-     */
-    @Autowired
-    public JwtService(JwtProperties propiedades) {
-        this(propiedades, Clock.systemUTC());
+    public JwtService(JwtProperties properties, Clock clock) {
+        this.properties = properties;
+        this.clock = clock;
+        this.signingKey = signingKeyFrom(properties.secret());
     }
 
-    /** Constructor visible para los tests, que necesitan controlar el tiempo. */
-    JwtService(JwtProperties propiedades, Clock reloj) {
-        this.propiedades = propiedades;
-        this.reloj = reloj;
-        this.clave = construirClave(propiedades.secret());
-    }
-
-    /**
-     * Emite un token firmado para el subject dado.
-     *
-     * @param subject     identificador del titular del token
-     * @param authorities authorities concedidas, tal como las evaluara Spring Security
-     */
-    public String generarToken(String subject, Collection<String> authorities) {
-        Instant ahora = reloj.instant();
+    public String issueToken(String subject, Collection<String> authorities) {
+        Instant now = clock.instant();
         return Jwts.builder()
-                .issuer(propiedades.issuer())
+                .issuer(properties.issuer())
                 .subject(subject)
                 .id(UUID.randomUUID().toString())
-                .issuedAt(Date.from(ahora))
-                .expiration(Date.from(ahora.plus(propiedades.expiration())))
-                .claim(CLAIM_ROLES, List.copyOf(authorities))
-                .signWith(clave, Jwts.SIG.HS256)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(properties.expiration())))
+                .claim(ROLES_CLAIM, List.copyOf(authorities))
+                .signWith(signingKey, Jwts.SIG.HS256)
                 .compact();
     }
 
-    /**
-     * Verifica firma, emisor y vigencia del token.
-     *
-     * @throws JwtException si el token es invalido, ajeno o ha expirado
-     */
-    public Jws<Claims> validar(String token) {
+    public Jws<Claims> verify(String token) throws JwtException {
         return Jwts.parser()
-                .verifyWith(clave)
-                .requireIssuer(propiedades.issuer())
-                .clock(() -> Date.from(reloj.instant()))
+                .verifyWith(signingKey)
+                .requireIssuer(properties.issuer())
+                .clock(() -> Date.from(clock.instant()))
                 .build()
                 .parseSignedClaims(token);
     }
 
-    /** Authorities del token, o lista vacia si el claim no viene o no es una lista. */
-    public List<String> extraerAuthorities(Claims claims) {
-        Object valor = claims.get(CLAIM_ROLES);
-        if (!(valor instanceof Collection<?> coleccion)) {
+    public List<String> authoritiesOf(Claims claims) {
+        Object claim = claims.get(ROLES_CLAIM);
+        if (!(claim instanceof Collection<?> values)) {
             return List.of();
         }
-        return coleccion.stream().map(String::valueOf).toList();
+        return values.stream().map(String::valueOf).toList();
     }
 
-    private static SecretKey construirClave(String secretBase64) {
-        byte[] bytes;
+    private static SecretKey signingKeyFrom(String base64Secret) {
+        byte[] keyBytes = decode(base64Secret);
+        if (keyBytes.length < MINIMUM_HS256_KEY_BYTES) {
+            throw new IllegalStateException(
+                    "app.security.jwt.secret debe tener al menos %d bytes para HS256, tiene %d. %s"
+                            .formatted(MINIMUM_HS256_KEY_BYTES, keyBytes.length,
+                                    KEY_GENERATION_HINT));
+        }
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private static byte[] decode(String base64Secret) {
         try {
-            bytes = Decoders.BASE64.decode(secretBase64);
+            return Decoders.BASE64.decode(base64Secret);
         } catch (DecodingException ex) {
             throw new IllegalStateException(
-                    "app.security.jwt.secret debe estar codificado en Base64. "
-                            + "Genera uno con: openssl rand -base64 32", ex);
+                    "app.security.jwt.secret debe estar codificado en Base64. %s"
+                            .formatted(KEY_GENERATION_HINT), ex);
         }
-        if (bytes.length < BYTES_MINIMOS_HS256) {
-            throw new IllegalStateException(
-                    "app.security.jwt.secret debe tener al menos %d bytes para HS256, tiene %d. "
-                            .formatted(BYTES_MINIMOS_HS256, bytes.length)
-                            + "Genera uno con: openssl rand -base64 32");
-        }
-        return Keys.hmacShaKeyFor(bytes);
     }
 }

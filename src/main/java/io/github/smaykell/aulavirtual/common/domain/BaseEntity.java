@@ -8,16 +8,11 @@ import jakarta.persistence.MappedSuperclass;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
+import org.hibernate.Hibernate;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-/**
- * Base de toda entidad persistente: identificador UUID y marcas de auditoria.
- *
- * <p>El UUID lo genera Hibernate al persistir, no la base de datos, para que la
- * entidad tenga identidad antes del INSERT.
- */
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -36,31 +31,20 @@ public abstract class BaseEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public boolean esNueva() {
-        return id == null;
-    }
-
-    /**
-     * Igualdad por identificador. Dos entidades sin persistir nunca son iguales,
-     * que es lo correcto mientras no tienen identidad propia.
-     */
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
+    public boolean equals(Object other) {
+        if (this == other) {
             return true;
         }
-        if (!(obj instanceof BaseEntity otra)) {
+        if (other == null || Hibernate.getClass(this) != Hibernate.getClass(other)) {
             return false;
         }
-        return id != null && id.equals(otra.id);
+        UUID otherId = ((BaseEntity) other).getId();
+        return id != null && id.equals(otherId);
     }
 
-    /**
-     * Constante por clase: el hash no puede cambiar cuando Hibernate asigna el id
-     * a una entidad que ya esta dentro de un HashSet.
-     */
     @Override
     public int hashCode() {
-        return getClass().hashCode();
+        return Hibernate.getClass(this).hashCode();
     }
 }

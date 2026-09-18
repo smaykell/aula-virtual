@@ -6,6 +6,7 @@ spring:
         format_sql: true
   flyway:
     clean-disabled: false
+    baseline-on-migrate: true
 
 logging:
   level:
@@ -18,7 +19,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,env,configprops
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
 
 app:
   security:

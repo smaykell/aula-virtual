@@ -18,102 +18,106 @@ import org.junit.jupiter.api.Test;
 
 class JwtServiceTest {
 
-    private static final String EMISOR = "aula-virtual";
-    private static final String SECRETO = base64("clave-de-pruebas-con-mas-de-32-bytes");
-    private static final String OTRO_SECRETO = base64("otra-clave-distinta-de-mas-de-32-bytes");
+    private static final String ISSUER = "aula-virtual";
+    private static final String SECRET = base64("clave-de-pruebas-con-mas-de-32-bytes");
+    private static final String OTHER_SECRET = base64("otra-clave-distinta-de-mas-de-32-bytes");
 
-    private final JwtService jwtService = new JwtService(propiedades(SECRETO, EMISOR));
+    private final JwtService jwtService = serviceWith(SECRET, ISSUER);
 
     @Test
-    void emite_un_token_que_el_mismo_servicio_acepta() {
-        String token = jwtService.generarToken("ana@aula.test", List.of("ROLE_DOCENTE"));
+    void issues_a_token_that_it_accepts_back() {
+        String token = jwtService.issueToken("ana@aula.test", List.of("ROLE_TEACHER"));
 
-        Claims claims = jwtService.validar(token).getPayload();
+        Claims claims = jwtService.verify(token).getPayload();
 
         assertThat(claims.getSubject()).isEqualTo("ana@aula.test");
-        assertThat(claims.getIssuer()).isEqualTo(EMISOR);
+        assertThat(claims.getIssuer()).isEqualTo(ISSUER);
         assertThat(claims.getId()).isNotBlank();
         assertThat(claims.getExpiration()).isAfter(claims.getIssuedAt());
     }
 
     @Test
-    void conserva_las_authorities_en_el_token() {
-        String token = jwtService.generarToken("ana@aula.test",
-                List.of("ROLE_DOCENTE", "ROLE_COORDINADOR"));
+    void keeps_the_authorities_in_the_token() {
+        String token = jwtService.issueToken("ana@aula.test",
+                List.of("ROLE_TEACHER", "ROLE_COORDINATOR"));
 
-        Claims claims = jwtService.validar(token).getPayload();
+        Claims claims = jwtService.verify(token).getPayload();
 
-        assertThat(jwtService.extraerAuthorities(claims))
-                .containsExactly("ROLE_DOCENTE", "ROLE_COORDINADOR");
+        assertThat(jwtService.authoritiesOf(claims))
+                .containsExactly("ROLE_TEACHER", "ROLE_COORDINATOR");
     }
 
     @Test
-    void devuelve_authorities_vacias_cuando_el_token_no_trae_ninguna() {
-        String token = jwtService.generarToken("ana@aula.test", List.of());
+    void returns_no_authorities_when_the_token_carries_none() {
+        String token = jwtService.issueToken("ana@aula.test", List.of());
 
-        Claims claims = jwtService.validar(token).getPayload();
+        Claims claims = jwtService.verify(token).getPayload();
 
-        assertThat(jwtService.extraerAuthorities(claims)).isEmpty();
+        assertThat(jwtService.authoritiesOf(claims)).isEmpty();
     }
 
     @Test
-    void rechaza_un_token_expirado() {
-        Clock hace_dos_horas = Clock.fixed(Instant.now().minus(Duration.ofHours(2)), ZoneOffset.UTC);
-        JwtService servicioEnElPasado = new JwtService(propiedades(SECRETO, EMISOR), hace_dos_horas);
-        String tokenVencido = servicioEnElPasado.generarToken("ana@aula.test", List.of());
+    void rejects_an_expired_token() {
+        Clock twoHoursAgo = Clock.fixed(Instant.now().minus(Duration.ofHours(2)), ZoneOffset.UTC);
+        JwtService serviceInThePast = new JwtService(propertiesOf(SECRET, ISSUER), twoHoursAgo);
+        String expiredToken = serviceInThePast.issueToken("ana@aula.test", List.of());
 
-        assertThatThrownBy(() -> jwtService.validar(tokenVencido))
+        assertThatThrownBy(() -> jwtService.verify(expiredToken))
                 .isInstanceOf(ExpiredJwtException.class);
     }
 
     @Test
-    void rechaza_un_token_firmado_con_otra_clave() {
-        JwtService servicioAjeno = new JwtService(propiedades(OTRO_SECRETO, EMISOR));
-        String tokenAjeno = servicioAjeno.generarToken("intruso@aula.test", List.of("ROLE_ADMIN"));
+    void rejects_a_token_signed_with_another_key() {
+        JwtService foreignService = serviceWith(OTHER_SECRET, ISSUER);
+        String foreignToken = foreignService.issueToken("intruso@aula.test", List.of("ROLE_ADMIN"));
 
-        assertThatThrownBy(() -> jwtService.validar(tokenAjeno))
+        assertThatThrownBy(() -> jwtService.verify(foreignToken))
                 .isInstanceOf(SignatureException.class);
     }
 
     @Test
-    void rechaza_un_token_de_otro_emisor() {
-        JwtService otroEmisor = new JwtService(propiedades(SECRETO, "otra-aplicacion"));
-        String token = otroEmisor.generarToken("ana@aula.test", List.of());
+    void rejects_a_token_from_another_issuer() {
+        JwtService otherIssuer = serviceWith(SECRET, "otra-aplicacion");
+        String token = otherIssuer.issueToken("ana@aula.test", List.of());
 
-        assertThatThrownBy(() -> jwtService.validar(token)).isInstanceOf(JwtException.class);
+        assertThatThrownBy(() -> jwtService.verify(token)).isInstanceOf(JwtException.class);
     }
 
     @Test
-    void rechaza_un_token_manipulado() {
-        String token = jwtService.generarToken("ana@aula.test", List.of("ROLE_ESTUDIANTE"));
-        String manipulado = token.substring(0, token.length() - 4) + "AAAA";
+    void rejects_a_tampered_token() {
+        String token = jwtService.issueToken("ana@aula.test", List.of("ROLE_STUDENT"));
+        String tampered = token.substring(0, token.length() - 4) + "AAAA";
 
-        assertThatThrownBy(() -> jwtService.validar(manipulado)).isInstanceOf(JwtException.class);
+        assertThatThrownBy(() -> jwtService.verify(tampered)).isInstanceOf(JwtException.class);
     }
 
     @Test
-    void no_arranca_con_un_secreto_mas_corto_que_256_bits() {
-        JwtProperties secretoCorto = propiedades(base64("muy-corto"), EMISOR);
+    void fails_to_start_with_a_secret_shorter_than_256_bits() {
+        JwtProperties shortSecret = propertiesOf(base64("muy-corto"), ISSUER);
 
-        assertThatThrownBy(() -> new JwtService(secretoCorto))
+        assertThatThrownBy(() -> new JwtService(shortSecret, Clock.systemUTC()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("al menos 32 bytes");
     }
 
     @Test
-    void no_arranca_con_un_secreto_que_no_es_base64() {
-        JwtProperties secretoInvalido = propiedades("no-es-base64-valido-!!!", EMISOR);
+    void fails_to_start_with_a_secret_that_is_not_base64() {
+        JwtProperties invalidSecret = propertiesOf("no-es-base64-valido-!!!", ISSUER);
 
-        assertThatThrownBy(() -> new JwtService(secretoInvalido))
+        assertThatThrownBy(() -> new JwtService(invalidSecret, Clock.systemUTC()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Base64");
     }
 
-    private static JwtProperties propiedades(String secreto, String emisor) {
-        return new JwtProperties(secreto, emisor, Duration.ofHours(1));
+    private static JwtService serviceWith(String secret, String issuer) {
+        return new JwtService(propertiesOf(secret, issuer), Clock.systemUTC());
     }
 
-    private static String base64(String valor) {
-        return Base64.getEncoder().encodeToString(valor.getBytes(UTF_8));
+    private static JwtProperties propertiesOf(String secret, String issuer) {
+        return new JwtProperties(secret, issuer, Duration.ofHours(1));
+    }
+
+    private static String base64(String value) {
+        return Base64.getEncoder().encodeToString(value.getBytes(UTF_8));
     }
 }

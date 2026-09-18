@@ -4,12 +4,6 @@ import java.util.List;
 import java.util.function.Function;
 import org.springframework.data.domain.Page;
 
-/**
- * Envoltura estable de paginacion para el frontend.
- *
- * <p>Existe para no serializar directamente {@link Page}, cuyo JSON depende de
- * detalles internos de Spring Data y cambia entre versiones.
- */
 public record PageResponse<T>(
         List<T> content,
         int page,
@@ -19,7 +13,7 @@ public record PageResponse<T>(
         boolean first,
         boolean last) {
 
-    public static <T> PageResponse<T> de(Page<T> page) {
+    public static <T> PageResponse<T> of(Page<T> page) {
         return new PageResponse<>(
                 page.getContent(),
                 page.getNumber(),
@@ -30,8 +24,7 @@ public record PageResponse<T>(
                 page.isLast());
     }
 
-    /** Pagina de entidades convertida a una pagina de DTOs. */
-    public static <E, T> PageResponse<T> de(Page<E> page, Function<E, T> mapper) {
-        return de(page.map(mapper));
+    public static <E, T> PageResponse<T> of(Page<E> page, Function<E, T> mapper) {
+        return of(page.map(mapper));
     }
 }

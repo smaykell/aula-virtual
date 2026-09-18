@@ -44,7 +44,9 @@ set -a && source .env && set +a
 ./gradlew bootRun
 ```
 
-La API queda en `http://localhost:8080/api`.
+La API queda en `http://localhost:8080/api`. `bootRun` activa el perfil `dev`; no hay
+perfil por defecto, así que un `java -jar` sin `--spring.profiles.active` exige
+`JWT_SECRET`.
 
 | Recurso | URL |
 |---|---|
@@ -72,23 +74,24 @@ java -jar build/libs/aula-virtual-0.0.1-SNAPSHOT.jar --spring.profiles.active=pr
 ```
 io.github.smaykell.aulavirtual
 ├── AulaVirtualApplication.java
-├── config/            configuración transversal (OpenAPI, auditoría JPA, CORS)
+├── config/            configuración transversal (OpenAPI, auditoría JPA, CORS, Clock)
 ├── security/          JWT: propiedades, servicio, filtro y cadena de seguridad
 ├── common/
 │   ├── domain/        BaseEntity (id UUID + createdAt/updatedAt)
 │   ├── dto/           ApiError, PageResponse
+│   ├── web/           ApiErrorWriter
 │   └── exception/     ApiException, ResourceNotFoundException, handler global
-└── modulo/            módulos de dominio (vacío: aquí va tu primer módulo)
+└── modules/           módulos de dominio (vacío: aquí va tu primer módulo)
 ```
 
 La organización es por **vertical slice**: cada módulo de dominio agrupa su
 entidad, repositorio, servicio, controlador y DTOs en un solo paquete. Ver
-`modulo/package-info.java` para las convenciones.
+`CLAUDE.md` para las convenciones.
 
 ### Añadir un módulo
 
-1. Crea el paquete `modulo/<nombre>/`.
-2. Añade la migración Flyway `V<n>__crear_<nombre>.sql` en
+1. Crea el paquete `modules/<name>/` (en inglés, como el resto del código).
+2. Añade la migración Flyway `V<n>__create_<name>.sql` en
    `src/main/resources/db/migration`.
 3. La entidad extiende `BaseEntity`; los DTOs son `record` y nunca se exponen
    entidades directamente.
@@ -115,8 +118,8 @@ tiene corresponde al módulo de usuarios, que aún no está construido. Hasta
 entonces, cualquier endpoint no público responde 401.
 
 Cuando crees ese módulo, el login solo tiene que validar las credenciales y llamar
-a `jwtService.generarToken(subject, authorities)`. Las authorities viajan en el
-claim `roles` con su prefijo (`ROLE_DOCENTE`), de forma que `@PreAuthorize` y
+a `jwtService.issueToken(subject, authorities)`. Las authorities viajan en el
+claim `roles` con su prefijo (`ROLE_TEACHER`), de forma que `@PreAuthorize` y
 `hasRole(...)` funcionan sin traducción.
 
 Rutas públicas: `/actuator/health`, `/actuator/info`, `/v3/api-docs/**`,
@@ -132,16 +135,18 @@ Todos los errores comparten el mismo cuerpo:
   "status": 400,
   "error": "Bad Request",
   "message": "La peticion contiene campos invalidos",
-  "path": "/api/cursos",
+  "path": "/api/courses",
   "traceId": "a1b2c3d4",
   "errors": [
-    { "field": "nombre", "message": "no debe estar vacío" }
+    { "field": "name", "message": "no debe estar vacío" }
   ]
 }
 ```
 
 El `traceId` también se escribe en el log del servidor, así que sirve para
-localizar el error exacto sin exponer detalles internos al cliente.
+localizar el error exacto sin exponer detalles internos al cliente. Los errores del
+propio framework (404, 405, cuerpo ilegible) usan el mismo formato y conservan su
+código: nunca se convierten en 500.
 
 ## Tests
 
@@ -149,9 +154,9 @@ localizar el error exacto sin exponer detalles internos al cliente.
 ./gradlew test
 ```
 
-`JwtServiceTest` (unitario) y `SecurityConfigTest` (rodaja web con MockMvc, que
-ejercita la cadena de seguridad completa con tokens reales) corren siempre: no
-necesitan base de datos.
+`JwtServiceTest` (unitario), `SecurityConfigTest` y `GlobalExceptionHandlerTest`
+(rodajas web con MockMvc, que ejercitan la cadena de seguridad y el contrato de error
+completos con tokens reales) corren siempre: no necesitan base de datos.
 
 `AulaVirtualApplicationTests` levanta el contexto completo y necesita Postgres
 (base `aula_virtual_test`). Si no hay base accesible, **se omite en lugar de
@@ -162,6 +167,6 @@ volverá a ejecutarse de verdad.
 
 | Perfil | Uso |
 |---|---|
-| `dev` (por defecto) | SQL en el log, actuator ampliado, secreto JWT de desarrollo |
+| `dev` | SQL en el log, actuator con metrics, secreto JWT de desarrollo. Lo activa `bootRun` |
 | `test` | usado por los tests de integración |
-| `prod` | logging mínimo, `flyway.clean` deshabilitado, exige `JWT_SECRET` |
+| `prod` | logging mínimo, `flyway.clean` y `baseline-on-migrate` deshabilitados |

@@ -1,8 +1,6 @@
 spring:
   application:
     name: aula-virtual
-  profiles:
-    default: dev
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/aula_virtual}
     username: ${DB_USER:postgres}
@@ -22,9 +20,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: true
   jackson:
-    # Jackson 3 serializa fechas en ISO-8601 por defecto.
     default-property-inclusion: non_null
 
 server:
@@ -42,7 +38,7 @@ management:
         include: health,info
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: never
 
 springdoc:
   api-docs:
@@ -61,7 +57,7 @@ app:
     max-age: 3600
   security:
     jwt:
-      # Sin valor por defecto: la app no arranca sin JWT_SECRET fuera de dev.
-      secret: ${JWT_SECRET}
+      # Vacio por defecto y sin perfil por defecto: @NotBlank corta el arranque sin JWT_SECRET.
+      secret: ${JWT_SECRET:}
       issuer: ${JWT_ISSUER:aula-virtual}
       expiration: ${JWT_EXPIRATION:PT1H}
