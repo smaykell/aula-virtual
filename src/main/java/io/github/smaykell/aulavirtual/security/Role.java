@@ -6,8 +6,10 @@ import java.util.stream.Stream;
 
 public enum Role {
 
-    SUPER_ADMIN(Set.of(Permission.USERS_READ, Permission.USERS_CREATE)),
-    ADMIN(Set.of(Permission.USERS_READ, Permission.USERS_CREATE)),
+    SUPER_ADMIN(Set.of(Permission.USERS_READ, Permission.USERS_CREATE, Permission.USERS_UPDATE,
+            Permission.TEACHERS_READ, Permission.TEACHERS_CREATE, Permission.TEACHERS_UPDATE)),
+    ADMIN(Set.of(Permission.USERS_READ, Permission.USERS_CREATE, Permission.USERS_UPDATE,
+            Permission.TEACHERS_READ, Permission.TEACHERS_CREATE, Permission.TEACHERS_UPDATE)),
     TEACHER(Set.of()),
     STUDENT(Set.of());
 

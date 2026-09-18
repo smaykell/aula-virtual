@@ -1,6 +1,7 @@
 package io.github.smaykell.aulavirtual.modules.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -16,6 +17,7 @@ import io.github.smaykell.aulavirtual.security.Role;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +30,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -177,6 +180,88 @@ class UserServiceTest {
                 () -> userService.list("fantasma", null, FIRST_PAGE));
 
         assertThat(error.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void disabling_a_user_turns_its_account_off() {
+        givenActor("ana", Role.ADMIN);
+        User target = givenTarget("docente", Role.TEACHER);
+
+        UserResponse disabled = userService.disable("ana", target.getId());
+
+        assertThat(target.isActive()).isFalse();
+        assertThat(disabled.active()).isFalse();
+    }
+
+    @Test
+    void enabling_a_user_turns_its_account_back_on() {
+        givenActor("ana", Role.ADMIN);
+        User target = givenTarget("docente", Role.TEACHER);
+        target.deactivate();
+
+        assertThat(userService.enable("ana", target.getId()).active()).isTrue();
+    }
+
+    @Test
+    void an_admin_cannot_disable_another_admin() {
+        givenActor("ana", Role.ADMIN);
+        User target = givenTarget("otroadmin", Role.ADMIN);
+
+        ApiException error =
+                assertThrows(ApiException.class, () -> userService.disable("ana", target.getId()));
+
+        assertThat(error.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(target.isActive()).isTrue();
+    }
+
+    @Test
+    void nobody_disables_the_superadmin() {
+        givenActor("root", Role.SUPER_ADMIN);
+        User target = givenTarget("otroroot", Role.SUPER_ADMIN);
+
+        ApiException error =
+                assertThrows(ApiException.class, () -> userService.disable("root", target.getId()));
+
+        assertThat(error.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void disabling_a_user_that_does_not_exist_is_a_404() {
+        givenActor("ana", Role.ADMIN);
+        UUID unknown = UUID.randomUUID();
+        when(userRepository.findById(unknown)).thenReturn(Optional.empty());
+
+        ApiException error =
+                assertThrows(ApiException.class, () -> userService.disable("ana", unknown));
+
+        assertThat(error.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void an_actor_out_of_reach_of_the_role_is_rejected() {
+        givenActor("ana", Role.ADMIN);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> userService.requireManagerOf("ana", Role.ADMIN));
+
+        assertThat(error.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void the_usernames_of_a_set_of_ids_come_back_indexed_by_id() {
+        User teacher = User.create("docente", "hash", Role.TEACHER);
+        ReflectionTestUtils.setField(teacher, "id", UUID.randomUUID());
+        when(userRepository.findAllById(List.of(teacher.getId()))).thenReturn(List.of(teacher));
+
+        assertThat(userService.usernamesOf(List.of(teacher.getId())))
+                .containsExactly(entry(teacher.getId(), "docente"));
+    }
+
+    private User givenTarget(String username, Role role) {
+        User target = User.create(username, "hash", role);
+        ReflectionTestUtils.setField(target, "id", UUID.randomUUID());
+        when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        return target;
     }
 
     private void givenActor(String username, Role role) {

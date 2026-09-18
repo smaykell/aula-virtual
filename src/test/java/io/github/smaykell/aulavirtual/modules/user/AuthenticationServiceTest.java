@@ -9,6 +9,7 @@ import io.github.smaykell.aulavirtual.modules.user.dto.LoginRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.LoginResponse;
 import io.github.smaykell.aulavirtual.security.JwtProperties;
 import io.github.smaykell.aulavirtual.security.JwtService;
+import io.github.smaykell.aulavirtual.security.Permission;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.jsonwebtoken.Claims;
 import java.time.Clock;
@@ -54,7 +55,7 @@ class AuthenticationServiceTest {
         Claims claims = jwtService.verify(session.accessToken()).getPayload();
         assertThat(claims.getSubject()).isEqualTo("ana");
         assertThat(jwtService.authoritiesOf(claims))
-                .containsExactlyInAnyOrder("ROLE_ADMIN", "users:read", "users:create");
+                .containsExactlyInAnyOrderElementsOf(Role.ADMIN.grantedAuthorities());
     }
 
     @Test
@@ -66,7 +67,8 @@ class AuthenticationServiceTest {
         assertThat(session.tokenType()).isEqualTo("Bearer");
         assertThat(session.expiresIn()).isEqualTo(EXPIRATION.toSeconds());
         assertThat(session.role()).isEqualTo(Role.ADMIN);
-        assertThat(session.permissions()).containsExactlyInAnyOrder("users:read", "users:create");
+        assertThat(session.permissions()).containsExactlyInAnyOrderElementsOf(
+                Role.ADMIN.permissions().stream().map(Permission::authority).toList());
     }
 
     @Test

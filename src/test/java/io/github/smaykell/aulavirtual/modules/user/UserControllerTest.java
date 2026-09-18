@@ -148,6 +148,48 @@ class UserControllerTest {
         verify(userService, never()).create(any(), any());
     }
 
+    @Test
+    void an_admin_disables_a_user_through_the_dollar_operation() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(userService.disable("ana", id))
+                .thenReturn(new UserResponse(id, "docente", Role.TEACHER, false, Instant.EPOCH));
+
+        mockMvc.perform(post("/users/{id}/$disable", id)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false));
+    }
+
+    @Test
+    void an_admin_enables_a_user_through_the_dollar_operation() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(userService.enable("ana", id))
+                .thenReturn(new UserResponse(id, "docente", Role.TEACHER, true, Instant.EPOCH));
+
+        mockMvc.perform(post("/users/{id}/$enable", id)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true));
+    }
+
+    @Test
+    void a_teacher_cannot_disable_users() throws Exception {
+        mockMvc.perform(post("/users/{id}/$disable", UUID.randomUUID())
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER)))
+                .andExpect(status().isForbidden());
+
+        verify(userService, never()).disable(any(), any());
+    }
+
+    @Test
+    void an_id_that_is_not_a_uuid_is_a_400() throws Exception {
+        mockMvc.perform(post("/users/no-es-un-uuid/$disable")
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN)))
+                .andExpect(status().isBadRequest());
+
+        verify(userService, never()).disable(any(), any());
+    }
+
     private String creationBody(String username, String password, String role) {
         return """
                 {"username": "%s", "password": "%s", "role": "%s"}

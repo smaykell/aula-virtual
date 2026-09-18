@@ -35,7 +35,8 @@ class RoleTest {
     @Test
     void the_authorities_carry_the_role_prefixed_and_its_permissions() {
         assertThat(Role.ADMIN.grantedAuthorities())
-                .containsExactlyInAnyOrder("ROLE_ADMIN", "users:read", "users:create");
+                .containsExactlyInAnyOrder("ROLE_ADMIN", "users:read", "users:create",
+                        "users:update", "teachers:read", "teachers:create", "teachers:update");
     }
 
     @Test

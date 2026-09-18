@@ -155,6 +155,21 @@ funcionan sin traducción.
 | `POST /api/auth/login` | público | devuelve el token y los permisos de la sesión |
 | `GET /api/users` | `users:read` | listado paginado, filtro opcional `?active=` |
 | `POST /api/users` | `users:create` | crea un usuario y devuelve 201 |
+| `POST /api/users/{id}/$enable` | `users:update` | reactiva la cuenta |
+| `POST /api/users/{id}/$disable` | `users:update` | desactiva la cuenta |
+| `GET /api/teachers` | `teachers:read` | listado paginado, filtro opcional `?active=` |
+| `GET /api/teachers/{id}` | `teachers:read` | un docente |
+| `POST /api/teachers` | `teachers:create` | registra un docente con su cuenta y devuelve 201 |
+| `PUT /api/teachers/{id}` | `teachers:update` | cambia los datos de persona |
+| `POST /api/teachers/{id}/$enable` | `teachers:update` | reactiva al docente y su cuenta |
+| `POST /api/teachers/{id}/$disable` | `teachers:update` | desactiva al docente y su cuenta |
+
+Los verbos que no encajan en el CRUD van como sub-recurso con `$`
+(`POST /api/teachers/{id}/$disable`). Así el sustantivo sigue siendo el recurso y no
+hace falta inventar rutas como `/teachers/{id}/deactivation` ni meter un `PATCH` con
+un cuerpo que solo lleva un booleano. El `$` es un carácter normal en una ruta: ni
+Spring ni los navegadores lo tratan distinto, pero al leer el log se distingue de un
+golpe una operación de un identificador.
 
 Rutas públicas: `/auth/login`, `/actuator/health`, `/actuator/info`,
 `/v3/api-docs/**`, `/swagger-ui/**`. Todo lo demás exige token.
@@ -166,8 +181,8 @@ El catálogo vive en código: `security/Permission` enumera los permisos y
 
 | Rol | Permisos | Administra a |
 |---|---|---|
-| `SUPER_ADMIN` | `users:read`, `users:create` | `ADMIN`, `TEACHER`, `STUDENT` |
-| `ADMIN` | `users:read`, `users:create` | `TEACHER`, `STUDENT` |
+| `SUPER_ADMIN` | todos los de `users:` y `teachers:` | `ADMIN`, `TEACHER`, `STUDENT` |
+| `ADMIN` | todos los de `users:` y `teachers:` | `TEACHER`, `STUDENT` |
 | `TEACHER` | — | — |
 | `STUDENT` | — | — |
 
@@ -183,12 +198,33 @@ nadie.
 `Superadmin.2026`. Ese hash está versionado en el repositorio: **cambia la
 contraseña en el primer arranque de cada entorno**.
 
-### Usuarios desactivados
+### Registro de docentes
+
+`POST /api/teachers` recibe los datos de la persona (`firstName`, `lastName`,
+`birthDate`, `sex`) y las credenciales que elige el front (`username`, `password`),
+y en una sola transacción crea la cuenta con rol `TEACHER` y la ficha del docente.
+La cuenta la crea `UserService`, así que el registro hereda sin código extra sus tres
+reglas: quien registra debe administrar el rol `TEACHER`, el usuario repetido es un
+409 y la contraseña se guarda cifrada. Si la cuenta se rechaza no queda ficha a medias.
+
+`teachers.user_id` apunta a `users.id`: el módulo guarda el identificador, no la
+entidad `User`, que vive en otro módulo.
+
+### Activar y desactivar
 
 `users.active` corta el acceso en dos puntos: el login responde 403 y cada
 operación de `/api/users` vuelve a comprobarlo contra la base, de modo que un token
-emitido antes de la desactivación deja de servir en el acto. Todavía no hay endpoint
-que cambie ese campo.
+emitido antes de la desactivación deja de servir en el acto.
+
+Quién puede apagar a quién sale otra vez de `Role.manageableRoles()`: un admin no
+desactiva a otro admin y nadie desactiva al superadmin. De ahí sale gratis que nadie
+pueda desactivarse a sí mismo, porque ningún rol se administra a sí mismo.
+
+`POST /api/teachers/{id}/$disable` apaga la ficha del docente **y** su cuenta, que es
+lo que evita un docente dado de baja que sigue pudiendo entrar. El camino inverso no
+existe: `POST /api/users/{id}/$disable` apaga solo la cuenta y deja
+`teachers.active` como estaba, porque el módulo de usuarios no conoce al de docentes.
+Para dar de baja a un docente hay que usar la ruta de `/teachers`.
 
 ## Errores
 

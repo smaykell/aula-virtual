@@ -57,7 +57,11 @@ escribir código.
 
 Paquete raíz `io.github.smaykell.aulavirtual`, con tres zonas transversales (`config`,
 `security`, `common`) más `modules/`, donde va todo el dominio. Hoy existe
-`modules/user` (usuarios, login y aplicación del catálogo de roles).
+`modules/user` (usuarios, login y aplicación del catálogo de roles) y
+`modules/teacher` (registro de docentes, que pide su cuenta a `UserService`). Los datos
+de persona —nombres, apellidos, fecha de nacimiento y sexo— viven en el
+`@MappedSuperclass` `common/domain/Person`, del que hereda toda entidad que sea una
+persona.
 
 **Vertical slice.** Cada módulo de dominio es un paquete autocontenido
 (`modules/course/`: entidad, repositorio, servicio, controlador, `dto/`). Un módulo solo
@@ -120,7 +124,18 @@ docentes y estudiantes; nadie administra a un `SUPER_ADMIN`, que solo nace de la
 admins no se tocan y el listado solo muestra los roles que el solicitante administra.
 
 Los literales de `@PreAuthorize` salen de `Permission.Name`, no de cadenas sueltas: así un
-permiso mal escrito no compila.
+permiso mal escrito no compila. El catálogo de cada rol se escribe permiso a permiso y
+**nunca** con `Permission.values()`: hoy admin y superadmin coinciden, pero atajarlo
+regalaría a los admins cualquier permiso futuro que solo debería tener el superadmin.
+
+**Operaciones con `$`.** Lo que no es CRUD va como sub-recurso con `$`:
+`POST /teachers/{id}/$disable`, `$enable`. El `$` no es especial para `PathPattern` ni
+para Spring Security, pero deja el recurso en el sustantivo y hace evidente en el log
+que ese segmento es un verbo y no un id.
+
+Desactivar a un docente apaga también su cuenta (`TeacherService` llama a
+`UserService.disable`); el módulo de usuarios no hace el viaje de vuelta, porque no
+conoce al de docentes.
 
 Toda operación sobre usuarios recarga al actor desde la base (`UserService.activeActor`) en
 vez de fiarse del token: es lo que hace que desactivar a alguien surta efecto de inmediato
