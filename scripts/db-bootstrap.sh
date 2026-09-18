@@ -24,9 +24,10 @@ psql --host="$DB_HOST" --port="$DB_PORT" --username="$SUPER_USER" --dbname=postg
 
 cat <<EOF
 
-Listo. Copia estas lineas en tu .env:
+Listo: rol $APP_USER, bases $APP_DB y $TEST_DB.
+Si no son los valores por defecto, exportalos antes de arrancar:
 
-DB_URL=jdbc:postgresql://$DB_HOST:$DB_PORT/$APP_DB
-DB_USER=$APP_USER
-DB_PASSWORD=$APP_PASSWORD
+export DB_URL=jdbc:postgresql://$DB_HOST:$DB_PORT/$APP_DB
+export DB_USER=$APP_USER
+export DB_PASSWORD=$APP_PASSWORD
 EOF

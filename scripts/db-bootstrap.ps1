@@ -29,9 +29,10 @@ if ($LASTEXITCODE -ne 0) {
 
 @"
 
-Listo. Copia estas lineas en tu .env:
+Listo: rol $AppUser, bases $AppDb y $TestDb.
+Si no son los valores por defecto, exportalos antes de arrancar:
 
-DB_URL=jdbc:postgresql://${DbHost}:${Port}/${AppDb}
-DB_USER=$AppUser
-DB_PASSWORD=$AppPassword
+`$env:DB_URL = 'jdbc:postgresql://${DbHost}:${Port}/${AppDb}'
+`$env:DB_USER = '$AppUser'
+`$env:DB_PASSWORD = '$AppPassword'
 "@

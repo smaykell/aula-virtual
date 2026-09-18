@@ -33,24 +33,41 @@ Las credenciales por defecto son genéricas a propósito — usuario `aula_virtu
 contraseña `aula_virtual`, en `localhost:5432` — para que nadie tenga que inventarse
 las suyas ni acabe con las personales escritas en el repositorio. Para cambiarlas, pasa
 parámetros (`-AppUser`, `-AppPassword`) o variables de entorno (`APP_USER`,
-`APP_PASSWORD`) y refleja el cambio en `.env`.
+`APP_PASSWORD`) y exporta las mismas como `DB_USER` y `DB_PASSWORD` al arrancar.
 
 ### 2. Configurar el entorno
 
+En local se puede saltar: con las bases recién creadas, todos los valores por defecto
+sirven. No hay archivo de configuración fuera de `src/main/resources`; lo ajustable son
+variables del entorno del proceso.
+
+| Variable | Propiedad | Por defecto |
+|---|---|---|
+| `DB_URL` | `spring.datasource.url` | `jdbc:postgresql://localhost:5432/aula_virtual` |
+| `DB_USER` | `spring.datasource.username` | `aula_virtual` |
+| `DB_PASSWORD` | `spring.datasource.password` | `aula_virtual` |
+| `DB_POOL_SIZE` | `spring.datasource.hikari.maximum-pool-size` | `10` |
+| `SERVER_PORT` | `server.port` | `8080` |
+| `CORS_ALLOWED_ORIGINS` | `app.cors.allowed-origins` | los tres `localhost` habituales del frontend |
+| `JWT_SECRET` | `app.security.jwt.secret` | solo en `dev`; en cualquier otro perfil es obligatorio |
+| `JWT_ISSUER` | `app.security.jwt.issuer` | `aula-virtual` |
+| `JWT_EXPIRATION` | `app.security.jwt.expiration` | `PT8H` en `dev`, `PT1H` en el resto |
+
+Una variable definida gana al valor por defecto. **Definida y vacía no es lo mismo que
+ausente**: exportar `JWT_SECRET=` deja la propiedad en blanco, el valor de `dev` no se
+aplica y `@NotBlank` corta el arranque.
+
+Para exportarlas en una sesión:
+
 ```bash
-cp .env.example .env
+export JWT_SECRET="$(openssl rand -base64 32)"
 ```
 
-`.env.example` ya trae las credenciales que crea el script; lo único que falta es
-`JWT_SECRET` (en el perfil `dev` hay un valor por defecto). El resto tiene valores
-razonables para trabajar en local.
-
-Las variables se leen del entorno del proceso, no del archivo `.env` directamente.
-Para exportarlas en una sesión de bash:
-
-```bash
-set -a && source .env && set +a
+```powershell
+$env:JWT_SECRET = 'la-clave-en-base64'
 ```
+
+Solo valen para esa sesión: otra ventana, o el botón de arranque del IDE, no las ve.
 
 ### 3. Arrancar
 

@@ -19,8 +19,8 @@ En PowerShell (shell por defecto de este entorno) el wrapper es `.\gradlew.bat`.
 `java -jar` sin `--spring.profiles.active` no arranca si falta `JWT_SECRET`, que es lo que
 se quiere: el secreto de desarrollo nunca puede colarse en un despliegue real.
 
-Las variables de entorno se leen del proceso, no del `.env`. Para cargarlas en bash:
-`set -a && source .env && set +a`.
+No hay `.env`: la configuración ajustable son variables del entorno del proceso, todas
+con un valor por defecto para local. El catálogo está en el README.
 
 ## Convenciones de código
 
