@@ -56,7 +56,8 @@ escribir código.
 ## Arquitectura
 
 Paquete raíz `io.github.smaykell.aulavirtual`, con tres zonas transversales (`config`,
-`security`, `common`) más `modules/`, que hoy está vacío y es donde va todo el dominio.
+`security`, `common`) más `modules/`, donde va todo el dominio. Hoy existe
+`modules/user` (usuarios, login y aplicación del catálogo de roles).
 
 **Vertical slice.** Cada módulo de dominio es un paquete autocontenido
 (`modules/course/`: entidad, repositorio, servicio, controlador, `dto/`). Un módulo solo
@@ -104,13 +105,26 @@ y no el catch-all. Sin ese relanzamiento, el 403/401 lo produciría el advice y 
 El mensaje de una `ApiException` se envía tal cual al cliente: escribirlo para un usuario
 final, sin detalles internos; los detalles van al log.
 
-**Seguridad.** Cadena *stateless*, sin CSRF, sin usuarios en memoria. `JwtService` sabe
-emitir y verificar tokens HS256, pero **no existe endpoint de login**: decidir que un
-usuario existe y qué roles tiene corresponde al módulo de usuarios, que aún no está
-construido. Hasta entonces todo endpoint no público responde 401. Cuando se cree, el login
-solo debe llamar a `jwtService.issueToken(subject, authorities)`; las authorities viajan en
-el claim `roles` **con prefijo** (`ROLE_TEACHER`), de modo que `hasRole(...)` y
-`@PreAuthorize` funcionan sin traducción.
+**Seguridad.** Cadena *stateless*, sin CSRF, sin usuarios en memoria. El login vive en
+`modules/user` (`POST /auth/login`) y llama a `jwtService.issueToken(subject, authorities)`.
+Las authorities viajan en el claim `roles` y son dos cosas a la vez: el rol **con prefijo**
+(`ROLE_TEACHER`) y, junto a él, cada permiso del rol (`users:read`), de modo que
+`hasRole(...)` y `hasAuthority(...)` funcionan sin traducción.
+
+**Roles y permisos.** El catálogo vive en código, no en tablas: `security/Permission`
+enumera los permisos y `security/Role` asigna a cada rol los suyos. Un usuario tiene
+exactamente un rol (`users.role`). `Role.manageableRoles()` es la **única** fuente de quién
+administra a quién — el superadmin administra admins, docentes y estudiantes; un admin solo
+docentes y estudiantes; nadie administra a un `SUPER_ADMIN`, que solo nace de la semilla de
+`V2__create_users.sql`. De ahí salen sin código extra las dos reglas del enunciado: entre
+admins no se tocan y el listado solo muestra los roles que el solicitante administra.
+
+Los literales de `@PreAuthorize` salen de `Permission.Name`, no de cadenas sueltas: así un
+permiso mal escrito no compila.
+
+Toda operación sobre usuarios recarga al actor desde la base (`UserService.activeActor`) en
+vez de fiarse del token: es lo que hace que desactivar a alguien surta efecto de inmediato
+en lugar de esperar a que caduque su JWT.
 
 Dos detalles fáciles de romper:
 
@@ -124,10 +138,13 @@ controlen el tiempo sin un segundo constructor.
 
 ## Tests
 
-- `JwtServiceTest`, `SecurityConfigTest` y `GlobalExceptionHandlerTest` no necesitan base
-  de datos y corren siempre. Los dos últimos son rodajas `@WebMvcTest` con tokens reales:
-  como no hay escaneo de componentes, los beans de seguridad se traen con `@Import`
-  explícito — al añadir un bean a la cadena hay que añadirlo también ahí, en los dos.
+- Ningún test salvo el de contexto necesita base de datos; todos corren siempre.
+- Las rodajas `@WebMvcTest` usan tokens reales y traen los beans de seguridad con `@Import`
+  explícito — al añadir un bean a la cadena hay que añadirlo también ahí, en todas.
+- Cada rodaja declara **su** controlador: `@WebMvcTest(UserController.class)`, y las de
+  `security`/`common` apuntan a su `ProbeController` anidado. Un `@WebMvcTest` sin
+  argumentos escanea todos los `@RestController` de la aplicación y revienta el contexto en
+  cuanto otro módulo añade un controlador con dependencias que la rodaja no conoce.
 - `AulaVirtualApplicationTests` levanta el contexto completo y necesita Postgres
   (`aula_virtual_test`). Está anotado con `@EnabledIf`: si no hay base accesible **se omite
   en lugar de fallar**, para que el build funcione en una máquina recién clonada. Un

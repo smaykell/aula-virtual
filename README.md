@@ -81,7 +81,8 @@ io.github.smaykell.aulavirtual
 │   ├── dto/           ApiError, PageResponse
 │   ├── web/           ApiErrorWriter
 │   └── exception/     ApiException, ResourceNotFoundException, handler global
-└── modules/           módulos de dominio (vacío: aquí va tu primer módulo)
+└── modules/
+    └── user/          usuarios, login y catálogo de roles aplicado
 ```
 
 La organización es por **vertical slice**: cada módulo de dominio agrupa su
@@ -107,23 +108,56 @@ entidades no coinciden con las tablas.
 Las migraciones ya aplicadas **no se editan**; los cambios van en una migración
 nueva.
 
-## Autenticación
+## Autenticación y autorización
 
 La cadena de seguridad es *stateless*: cada petición se autentica con el token JWT
 de la cabecera `Authorization: Bearer <token>`.
 
-**Todavía no existe un endpoint de login.** La infraestructura sabe emitir y
-verificar tokens (`JwtService`), pero decidir que un usuario existe y qué roles
-tiene corresponde al módulo de usuarios, que aún no está construido. Hasta
-entonces, cualquier endpoint no público responde 401.
+`POST /api/auth/login` recibe `{"username", "password"}` y devuelve el token, su
+duración en segundos, el rol y los permisos de la sesión. Las authorities viajan en
+el claim `roles`: el rol con prefijo (`ROLE_ADMIN`) y, junto a él, cada permiso de
+ese rol (`users:read`). Por eso `hasRole(...)` y `hasAuthority('users:create')`
+funcionan sin traducción.
 
-Cuando crees ese módulo, el login solo tiene que validar las credenciales y llamar
-a `jwtService.issueToken(subject, authorities)`. Las authorities viajan en el
-claim `roles` con su prefijo (`ROLE_TEACHER`), de forma que `@PreAuthorize` y
-`hasRole(...)` funcionan sin traducción.
+| Endpoint | Quién | Qué |
+|---|---|---|
+| `POST /api/auth/login` | público | devuelve el token y los permisos de la sesión |
+| `GET /api/users` | `users:read` | listado paginado, filtro opcional `?active=` |
+| `POST /api/users` | `users:create` | crea un usuario y devuelve 201 |
 
-Rutas públicas: `/actuator/health`, `/actuator/info`, `/v3/api-docs/**`,
-`/swagger-ui/**`. Todo lo demás exige token.
+Rutas públicas: `/auth/login`, `/actuator/health`, `/actuator/info`,
+`/v3/api-docs/**`, `/swagger-ui/**`. Todo lo demás exige token.
+
+### Roles y permisos
+
+El catálogo vive en código: `security/Permission` enumera los permisos y
+`security/Role` asigna a cada rol los suyos. Un usuario tiene exactamente un rol.
+
+| Rol | Permisos | Administra a |
+|---|---|---|
+| `SUPER_ADMIN` | `users:read`, `users:create` | `ADMIN`, `TEACHER`, `STUDENT` |
+| `ADMIN` | `users:read`, `users:create` | `TEACHER`, `STUDENT` |
+| `TEACHER` | — | — |
+| `STUDENT` | — | — |
+
+`Role.manageableRoles()` es la única fuente de la última columna, y de ella salen
+dos reglas: un admin no puede tocar a otro admin, y nadie —tampoco el superadmin—
+crea un `SUPER_ADMIN` por API. El listado de `/api/users` devuelve solo los roles
+que el solicitante administra, así que la cuenta del superadmin no aparece para
+nadie.
+
+### El primer superadmin
+
+`V2__create_users.sql` siembra el usuario `superadmin` con la contraseña
+`Superadmin.2026`. Ese hash está versionado en el repositorio: **cambia la
+contraseña en el primer arranque de cada entorno**.
+
+### Usuarios desactivados
+
+`users.active` corta el acceso en dos puntos: el login responde 403 y cada
+operación de `/api/users` vuelve a comprobarlo contra la base, de modo que un token
+emitido antes de la desactivación deja de servir en el acto. Todavía no hay endpoint
+que cambie ese campo.
 
 ## Errores
 
@@ -154,9 +188,10 @@ código: nunca se convierten en 500.
 ./gradlew test
 ```
 
-`JwtServiceTest` (unitario), `SecurityConfigTest` y `GlobalExceptionHandlerTest`
-(rodajas web con MockMvc, que ejercitan la cadena de seguridad y el contrato de error
-completos con tokens reales) corren siempre: no necesitan base de datos.
+`JwtServiceTest`, `RoleTest`, `UserServiceTest` y `AuthenticationServiceTest`
+(unitarios) y `SecurityConfigTest`, `GlobalExceptionHandlerTest`, `UserControllerTest`
+y `AuthControllerTest` (rodajas web con MockMvc y tokens reales) corren siempre: no
+necesitan base de datos.
 
 `AulaVirtualApplicationTests` levanta el contexto completo y necesita Postgres
 (base `aula_virtual_test`). Si no hay base accesible, **se omite en lugar de

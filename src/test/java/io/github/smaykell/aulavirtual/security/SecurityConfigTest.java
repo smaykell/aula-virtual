@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@WebMvcTest
+@WebMvcTest(SecurityConfigTest.ProbeController.class)
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class, JwtService.class,
         RestAuthenticationEntryPoint.class, RestAccessDeniedHandler.class, ApiErrorWriter.class,
         ClockConfig.class, SecurityConfigTest.ProbeController.class})

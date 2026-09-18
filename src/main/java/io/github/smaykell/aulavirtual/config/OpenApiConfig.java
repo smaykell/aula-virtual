@@ -24,7 +24,8 @@ public class OpenApiConfig {
                                 API REST del aula virtual. El frontend se sirve desde otro repositorio.
 
                                 Todos los endpoints requieren un token JWT en la cabecera
-                                Authorization, salvo /actuator/health y la propia documentacion.""")
+                                Authorization, salvo /auth/login, /actuator/health y la propia
+                                documentacion. El token se obtiene en POST /auth/login.""")
                         .license(new License().name("MIT")))
                 .components(new Components().addSecuritySchemes(BEARER_SCHEME,
                         new SecurityScheme()

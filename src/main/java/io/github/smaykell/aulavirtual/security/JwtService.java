@@ -8,6 +8,7 @@ import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
@@ -45,6 +46,10 @@ public class JwtService {
                 .claim(ROLES_CLAIM, List.copyOf(authorities))
                 .signWith(signingKey, Jwts.SIG.HS256)
                 .compact();
+    }
+
+    public Duration tokenLifetime() {
+        return properties.expiration();
     }
 
     public Jws<Claims> verify(String token) throws JwtException {

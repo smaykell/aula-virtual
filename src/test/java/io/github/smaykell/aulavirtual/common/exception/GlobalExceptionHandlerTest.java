@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
-@WebMvcTest
+@WebMvcTest(GlobalExceptionHandlerTest.ProbeController.class)
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class, JwtService.class,
         RestAuthenticationEntryPoint.class, RestAccessDeniedHandler.class, ApiErrorWriter.class,
         ClockConfig.class, GlobalExceptionHandlerTest.ProbeController.class})
