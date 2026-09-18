@@ -235,19 +235,56 @@ Todos los errores comparten el mismo cuerpo:
   "timestamp": "2026-09-18T12:00:00Z",
   "status": 400,
   "error": "Bad Request",
-  "message": "La peticion contiene campos invalidos",
-  "path": "/api/courses",
+  "code": "GEN_VALIDATION_FAILED",
+  "message": "La petición contiene campos inválidos",
+  "path": "/api/teachers",
   "traceId": "a1b2c3d4",
   "errors": [
-    { "field": "name", "message": "no debe estar vacío" }
+    { "field": "firstName", "message": "los nombres son obligatorios" }
   ]
 }
 ```
 
-El `traceId` también se escribe en el log del servidor, así que sirve para
-localizar el error exacto sin exponer detalles internos al cliente. Los errores del
-propio framework (404, 405, cuerpo ilegible) usan el mismo formato y conservan su
-código: nunca se convierten en 500.
+`code` es el identificador estable del error y es lo que debe mirar el front para
+decidir qué enseña; `message` es un texto en español pensado para leerse tal cual
+si el front no tiene nada mejor que poner. El `traceId` se escribe también en el log
+del servidor, así que localiza el error exacto sin exponer detalles internos. Los
+errores del propio framework (404, 405, cuerpo ilegible) usan el mismo formato y
+conservan su código: nunca se convierten en 500.
+
+### El catálogo de errores
+
+Cada error vive en un catálogo, que es un `enum` que implementa `ErrorCode` y declara
+su status HTTP y su mensaje. Hay uno global y uno por módulo:
+
+| Catálogo | Prefijo | Dónde |
+|---|---|---|
+| `CommonError` | `GEN` | `common/exception` |
+| `UserError` | `USR` | `modules/user` |
+| `TeacherError` | `TCH` | `modules/teacher` |
+
+El código no se escribe a mano: `ErrorCode.code()` lo compone como
+`prefijo + "_" + nombre de la constante`, de modo que `UserError.USERNAME_TAKEN` es
+`USR_USERNAME_TAKEN`. No hay contador que mantener y dos errores no pueden chocar sin
+que choquen antes sus nombres dentro del mismo enum. `ErrorCatalogueTest` recorre por
+classpath todas las implementaciones de `ErrorCode` —las de hoy y las que se añadan— y
+falla si dos comparten código o si dos catálogos comparten prefijo.
+
+Lanzar un error es nombrarlo, y el status viaja con el:
+
+```java
+throw new ApiException(UserError.USERNAME_TAKEN);
+throw new ApiException(TeacherError.NOT_FOUND, teacherId);
+```
+
+El segundo argumento rellena los `%s` del mensaje del catálogo. Un módulo puede lanzar
+el código de otro cuando el error es de verdad del otro: registrar un docente con un
+usuario repetido responde `USR_USERNAME_TAKEN` aunque la ruta sea `/api/teachers`,
+porque el conflicto es de la cuenta. Por eso el front debe mirar el `code` y no la ruta.
+
+Solo dos sitios escriben un `ApiError`, y ambos parten de un `ErrorCode`:
+`GlobalExceptionHandler` para todo lo que pasa por el controlador, y `ApiErrorWriter`
+para el 401 y el 403 que Spring Security responde antes de llegar al advice.
 
 ## Tests
 

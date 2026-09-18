@@ -69,6 +69,7 @@ class UserControllerTest {
     void a_student_cannot_list_users() throws Exception {
         mockMvc.perform(get("/users").header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
                 .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("GEN_ACCESS_DENIED"))
                 .andExpect(jsonPath("$.traceId").isNotEmpty());
 
         verify(userService, never()).list(any(), any(), any());

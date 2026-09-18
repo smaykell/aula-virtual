@@ -78,6 +78,7 @@ class TeacherControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registrationBody("1990-05-20", "contrasena")))
                 .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("GEN_ACCESS_DENIED"))
                 .andExpect(jsonPath("$.traceId").isNotEmpty());
 
         verify(teacherService, never()).create(any(), any());
@@ -109,6 +110,7 @@ class TeacherControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registrationBody("2999-01-01", "contrasena")))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GEN_VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors[0].field").value("birthDate"));
 
         verify(teacherService, never()).create(any(), any());

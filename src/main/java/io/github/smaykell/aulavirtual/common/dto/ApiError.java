@@ -1,6 +1,7 @@
 package io.github.smaykell.aulavirtual.common.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.github.smaykell.aulavirtual.common.exception.ErrorCode;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -12,6 +13,7 @@ public record ApiError(
         Instant timestamp,
         int status,
         String error,
+        String code,
         String message,
         String path,
         String traceId,
@@ -20,18 +22,23 @@ public record ApiError(
     public record FieldIssue(String field, String message) {
     }
 
-    public static ApiError of(HttpStatusCode status, String message, String path) {
-        return build(status, message, path, null);
+    public static ApiError of(ErrorCode code, String path) {
+        return build(code.status(), code, code.message(), path, null);
     }
 
-    public static ApiError ofValidation(String message, String path, List<FieldIssue> issues) {
-        return build(HttpStatus.BAD_REQUEST, message, path, issues);
+    public static ApiError of(HttpStatusCode status, ErrorCode code, String message, String path) {
+        return build(status, code, message, path, null);
     }
 
-    private static ApiError build(HttpStatusCode status, String message, String path,
-            List<FieldIssue> issues) {
-        return new ApiError(Instant.now(), status.value(), reasonPhraseOf(status), message, path,
-                newTraceId(), issues);
+    public static ApiError ofValidation(ErrorCode code, String path, List<FieldIssue> issues) {
+        return build(code.status(), code, code.message(), path, issues);
+    }
+
+    private static ApiError build(HttpStatusCode status, ErrorCode code, String message,
+            String path, List<FieldIssue> issues) {
+
+        return new ApiError(Instant.now(), status.value(), reasonPhraseOf(status), code.code(),
+                message, path, newTraceId(), issues);
     }
 
     private static String reasonPhraseOf(HttpStatusCode status) {

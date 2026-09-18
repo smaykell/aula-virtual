@@ -106,6 +106,24 @@ emisores, y solo dos:
 y no el catch-all. Sin ese relanzamiento, el 403/401 lo produciría el advice y el
 `accessDeniedHandler` sería código muerto.
 
+**Catálogo de errores.** Ningún error se lanza con un status y un literal sueltos: cada
+uno es una constante de un `enum` que implementa `ErrorCode` (status + mensaje). Hay un
+catálogo global, `CommonError` (`GEN`), y uno por módulo — `UserError` (`USR`),
+`TeacherError` (`TCH`) —; un módulo nuevo trae el suyo con su propio prefijo.
+
+`ErrorCode.code()` compone el código como `prefijo + "_" + name()`, así que no hay
+números que asignar ni riesgo de repetir uno. `ErrorCatalogueTest` escanea el classpath
+buscando implementaciones de `ErrorCode` y falla si dos comparten código o si dos
+catálogos comparten prefijo: al añadir un módulo no hay que registrarlo en ningún sitio,
+pero sí darle un prefijo libre.
+
+Se lanza nombrando el error, y el status viaja con él:
+`throw new ApiException(UserError.USERNAME_TAKEN)`. Los argumentos que siguen rellenan
+los `%s` del mensaje: `new ApiException(TeacherError.NOT_FOUND, teacherId)`. Un módulo
+puede lanzar el código de otro cuando el error es del otro — registrar un docente con un
+usuario repetido responde `USR_USERNAME_TAKEN` desde `/api/teachers` —, que es justo por
+lo que el front mira el `code` y no la ruta.
+
 El mensaje de una `ApiException` se envía tal cual al cliente: escribirlo para un usuario
 final, sin detalles internos; los detalles van al log.
 

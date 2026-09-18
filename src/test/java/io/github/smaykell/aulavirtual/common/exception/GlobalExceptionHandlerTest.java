@@ -107,7 +107,8 @@ class GlobalExceptionHandlerTest {
     void a_domain_exception_keeps_its_own_status() throws Exception {
         mockMvc.perform(authenticated(get("/items/" + UUID.randomUUID())))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Item con id 1 no encontrado"));
+                .andExpect(jsonPath("$.message").value("El recurso solicitado no existe"))
+                .andExpect(jsonPath("$.code").value("GEN_RESOURCE_NOT_FOUND"));
     }
 
     @Test
@@ -150,7 +151,7 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/items/{id}")
         String byId(@PathVariable UUID id) {
-            throw new ResourceNotFoundException("Item", 1);
+            throw new ApiException(CommonError.RESOURCE_NOT_FOUND);
         }
 
         @PostMapping("/items")

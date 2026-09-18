@@ -6,23 +6,23 @@ import org.springframework.http.HttpStatus;
 @Getter
 public class ApiException extends RuntimeException {
 
-    private final HttpStatus status;
+    private final transient ErrorCode errorCode;
 
-    public ApiException(HttpStatus status, String message) {
-        super(message);
-        this.status = status;
+    public ApiException(ErrorCode errorCode, Object... args) {
+        super(errorCode.format(args));
+        this.errorCode = errorCode;
     }
 
-    public ApiException(HttpStatus status, String message, Throwable cause) {
-        super(message, cause);
-        this.status = status;
+    public ApiException(ErrorCode errorCode, Throwable cause, Object... args) {
+        super(errorCode.format(args), cause);
+        this.errorCode = errorCode;
     }
 
-    public static ApiException conflict(String message) {
-        return new ApiException(HttpStatus.CONFLICT, message);
+    public HttpStatus getStatus() {
+        return errorCode.status();
     }
 
-    public static ApiException badRequest(String message) {
-        return new ApiException(HttpStatus.BAD_REQUEST, message);
+    public String getCode() {
+        return errorCode.code();
     }
 }

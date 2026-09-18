@@ -46,7 +46,8 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.path").value("/ping"))
                 .andExpect(jsonPath("$.traceId").isNotEmpty())
-                .andExpect(jsonPath("$.message").value("Se requiere un token de acceso válido"));
+                .andExpect(jsonPath("$.message").value("Se requiere un token de acceso válido"))
+                .andExpect(jsonPath("$.code").value("GEN_UNAUTHENTICATED"));
     }
 
     @Test

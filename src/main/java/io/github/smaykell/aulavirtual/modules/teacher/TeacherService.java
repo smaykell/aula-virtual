@@ -1,7 +1,7 @@
 package io.github.smaykell.aulavirtual.modules.teacher;
 
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
-import io.github.smaykell.aulavirtual.common.exception.ResourceNotFoundException;
+import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
@@ -21,8 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class TeacherService {
-
-    private static final String RESOURCE = "Docente";
 
     private final TeacherRepository teacherRepository;
     private final UserService userService;
@@ -84,7 +82,7 @@ public class TeacherService {
 
     private Teacher existing(UUID teacherId) {
         return teacherRepository.findById(teacherId)
-                .orElseThrow(() -> new ResourceNotFoundException(RESOURCE, teacherId));
+                .orElseThrow(() -> new ApiException(TeacherError.NOT_FOUND, teacherId));
     }
 
     private TeacherResponse responseFor(Teacher teacher) {

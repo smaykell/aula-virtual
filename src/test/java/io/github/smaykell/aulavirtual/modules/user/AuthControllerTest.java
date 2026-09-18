@@ -30,7 +30,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -70,14 +69,14 @@ class AuthControllerTest {
     @Test
     void wrong_credentials_answer_401_in_the_api_error_format() throws Exception {
         when(authenticationService.login(any(LoginRequest.class)))
-                .thenThrow(new ApiException(HttpStatus.UNAUTHORIZED,
-                        "Usuario o contraseña incorrectos"));
+                .thenThrow(new ApiException(UserError.INVALID_CREDENTIALS));
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginBody("ana", "otra-cosa")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Usuario o contraseña incorrectos"))
+                .andExpect(jsonPath("$.code").value("USR_INVALID_CREDENTIALS"))
                 .andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 

@@ -115,6 +115,7 @@ class UserServiceTest {
                 new CreateUserRequest("Repetido", "contrasena", Role.STUDENT)));
 
         assertThat(error.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(error.getCode()).isEqualTo("USR_USERNAME_TAKEN");
     }
 
     @Test
@@ -235,6 +236,8 @@ class UserServiceTest {
                 assertThrows(ApiException.class, () -> userService.disable("ana", unknown));
 
         assertThat(error.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(error.getCode()).isEqualTo("USR_NOT_FOUND");
+        assertThat(error.getMessage()).isEqualTo("Usuario con id %s no encontrado".formatted(unknown));
     }
 
     @Test

@@ -7,7 +7,6 @@ import io.github.smaykell.aulavirtual.security.JwtService;
 import io.github.smaykell.aulavirtual.security.Permission;
 import io.github.smaykell.aulavirtual.security.Role;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,9 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthenticationService {
 
     private static final String TOKEN_TYPE = "Bearer";
-    private static final String INVALID_CREDENTIALS = "Usuario o contraseña incorrectos";
-    private static final String INACTIVE_ACCOUNT =
-            "Tu cuenta está desactivada. Contacta al administrador.";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -28,13 +24,13 @@ public class AuthenticationService {
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(User.normalizeUsername(request.username()))
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, INVALID_CREDENTIALS));
+                .orElseThrow(() -> new ApiException(UserError.INVALID_CREDENTIALS));
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, INVALID_CREDENTIALS);
+            throw new ApiException(UserError.INVALID_CREDENTIALS);
         }
         if (!user.isActive()) {
-            throw new ApiException(HttpStatus.FORBIDDEN, INACTIVE_ACCOUNT);
+            throw new ApiException(UserError.INACTIVE_ACCOUNT);
         }
         return sessionFor(user);
     }

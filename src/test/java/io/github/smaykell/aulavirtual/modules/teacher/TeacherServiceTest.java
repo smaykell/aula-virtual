@@ -15,6 +15,7 @@ import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
+import io.github.smaykell.aulavirtual.modules.user.UserError;
 import io.github.smaykell.aulavirtual.modules.user.UserService;
 import io.github.smaykell.aulavirtual.modules.user.dto.CreateUserRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.UserResponse;
@@ -116,7 +117,7 @@ class TeacherServiceTest {
     @Test
     void a_rejected_account_leaves_no_teacher_behind() {
         when(userService.create(eq("docente"), any(CreateUserRequest.class)))
-                .thenThrow(new ApiException(HttpStatus.FORBIDDEN, "sin permisos"));
+                .thenThrow(new ApiException(UserError.ROLE_OUT_OF_REACH));
 
         ApiException error = assertThrows(ApiException.class,
                 () -> teacherService.create("docente", requestFor("nuevo.docente")));
@@ -151,7 +152,7 @@ class TeacherServiceTest {
     void a_rejected_disable_leaves_the_teacher_active() {
         Teacher teacher = givenStoredTeacher();
         when(userService.disable("otro", teacher.getUserId()))
-                .thenThrow(new ApiException(HttpStatus.FORBIDDEN, "sin permisos"));
+                .thenThrow(new ApiException(UserError.ROLE_OUT_OF_REACH));
 
         assertThrows(ApiException.class, () -> teacherService.disable("otro", teacher.getId()));
 
@@ -176,7 +177,7 @@ class TeacherServiceTest {
 
     @Test
     void updating_a_teacher_checks_the_actor_first() {
-        doThrow(new ApiException(HttpStatus.FORBIDDEN, "sin permisos"))
+        doThrow(new ApiException(UserError.ROLE_OUT_OF_REACH))
                 .when(userService).requireManagerOf("otro", Role.TEACHER);
 
         assertThrows(ApiException.class, () -> teacherService.update("otro", UUID.randomUUID(),
@@ -194,6 +195,8 @@ class TeacherServiceTest {
                 assertThrows(ApiException.class, () -> teacherService.get("ana", unknown));
 
         assertThat(error.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(error.getCode()).isEqualTo("TCH_NOT_FOUND");
+        assertThat(error.getMessage()).isEqualTo("Docente con id %s no encontrado".formatted(unknown));
     }
 
     @Test

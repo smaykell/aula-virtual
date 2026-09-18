@@ -29,15 +29,6 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    private static final String INVALID_BODY = "La petición contiene campos inválidos";
-    private static final String INVALID_PARAMETERS = "La petición contiene parámetros inválidos";
-    private static final String INVALID_VALUES = "La petición contiene valores inválidos";
-    private static final String MALFORMED_JSON = "El cuerpo de la petición no es un JSON válido";
-    private static final String INVALID_REQUEST = "La petición no es válida";
-    private static final String INTEGRITY_CONFLICT =
-            "La operación viola una restricción de integridad de los datos";
-    private static final String UNEXPECTED =
-            "Ha ocurrido un error inesperado. Reporta el traceId al administrador.";
     private static final String DEFAULT_FIELD_MESSAGE = "valor inválido";
 
     @ExceptionHandler({AuthenticationException.class, AccessDeniedException.class})
@@ -53,7 +44,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .map(error -> new FieldIssue(error.getField(), messageOf(error)))
                 .sorted(Comparator.comparing(FieldIssue::field))
                 .toList();
-        return validationResponse(INVALID_BODY, issues, request);
+        return validationResponse(CommonError.VALIDATION_FAILED, issues, request);
     }
 
     @Override
@@ -67,28 +58,32 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                                 result.getMethodParameter().getParameterName(),
                                 error.getDefaultMessage())))
                 .toList();
-        return validationResponse(INVALID_PARAMETERS, issues, request);
+        return validationResponse(CommonError.INVALID_PARAMETERS, issues, request);
     }
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
-        return respond(HttpStatus.BAD_REQUEST, MALFORMED_JSON, request, ex);
+        return respond(CommonError.MALFORMED_JSON, request, ex);
     }
 
     @Override
     protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
-        return respond(HttpStatus.BAD_REQUEST, typeMismatchMessage(ex), request, ex);
+        if (ex instanceof MethodArgumentTypeMismatchException mismatch) {
+            return respond(CommonError.PARAMETER_TYPE_MISMATCH, request, ex, mismatch.getName());
+        }
+        return respond(CommonError.TYPE_MISMATCH, request, ex);
     }
 
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
-        return respond(status, clientMessageFor(status), request, ex);
+        CommonError error = CommonError.forStatus(status);
+        return respond(status, error, error.message(), request, ex);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -99,77 +94,59 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .map(violation -> new FieldIssue(
                         violation.getPropertyPath().toString(), violation.getMessage()))
                 .toList();
-        return validationResponse(INVALID_VALUES, issues, request);
+        return validationResponse(CommonError.INVALID_VALUES, issues, request);
     }
 
     @ExceptionHandler(ApiException.class)
     ResponseEntity<Object> handleApiException(ApiException ex, WebRequest request) {
-        return respond(ex.getStatus(), ex.getMessage(), request, ex);
+        return respond(ex.getStatus(), ex.getErrorCode(), ex.getMessage(), request, ex);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException ex,
             WebRequest request) {
 
-        return respond(HttpStatus.CONFLICT, INTEGRITY_CONFLICT, request, ex);
+        return respond(CommonError.DATA_INTEGRITY_VIOLATION, request, ex);
     }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<Object> handleUnexpected(Exception ex, WebRequest request) {
-        return respond(HttpStatus.INTERNAL_SERVER_ERROR, UNEXPECTED, request, ex);
+        return respond(CommonError.UNEXPECTED, request, ex);
     }
 
-    private ResponseEntity<Object> validationResponse(String message, List<FieldIssue> issues,
+    private ResponseEntity<Object> validationResponse(ErrorCode code, List<FieldIssue> issues,
             WebRequest request) {
 
-        ApiError error = ApiError.ofValidation(message, pathOf(request), issues);
-        log.debug("[{}] {} -> 400: {}", error.traceId(), describe(request), issues);
+        ApiError error = ApiError.ofValidation(code, pathOf(request), issues);
+        log.debug("[{}] {} -> 400 {}: {}", error.traceId(), describe(request), error.code(), issues);
         return ResponseEntity.badRequest().body(error);
     }
 
-    private ResponseEntity<Object> respond(HttpStatusCode status, String message,
+    private ResponseEntity<Object> respond(ErrorCode code, WebRequest request, Exception cause,
+            Object... args) {
+
+        return respond(code.status(), code, code.format(args), request, cause);
+    }
+
+    private ResponseEntity<Object> respond(HttpStatusCode status, ErrorCode code, String message,
             WebRequest request, Exception cause) {
 
-        ApiError error = ApiError.of(status, message, pathOf(request));
+        ApiError error = ApiError.of(status, code, message, pathOf(request));
         logAt(status, error, request, cause);
         return ResponseEntity.status(status).body(error);
     }
 
     private void logAt(HttpStatusCode status, ApiError error, WebRequest request, Exception cause) {
         if (status.is5xxServerError()) {
-            log.error("[{}] {} -> {}", error.traceId(), describe(request), status.value(), cause);
+            log.error("[{}] {} -> {} {}", error.traceId(), describe(request), status.value(),
+                    error.code(), cause);
         } else if (HttpStatus.CONFLICT.isSameCodeAs(status)) {
-            log.warn("[{}] {} -> {}: {}", error.traceId(), describe(request), status.value(),
-                    cause.getMessage());
+            log.warn("[{}] {} -> {} {}: {}", error.traceId(), describe(request), status.value(),
+                    error.code(), cause.getMessage());
         } else {
-            log.debug("[{}] {} -> {}: {}", error.traceId(), describe(request), status.value(),
-                    error.message());
+            log.debug("[{}] {} -> {} {}: {}", error.traceId(), describe(request), status.value(),
+                    error.code(), error.message());
         }
-    }
-
-    private String clientMessageFor(HttpStatusCode status) {
-        if (status.is5xxServerError()) {
-            return UNEXPECTED;
-        }
-        HttpStatus resolved = HttpStatus.resolve(status.value());
-        if (resolved == null) {
-            return INVALID_REQUEST;
-        }
-        return switch (resolved) {
-            case NOT_FOUND -> "El recurso solicitado no existe";
-            case METHOD_NOT_ALLOWED -> "El método HTTP no está permitido para este recurso";
-            case UNSUPPORTED_MEDIA_TYPE -> "El tipo de contenido de la petición no está soportado";
-            case NOT_ACCEPTABLE -> "No se puede responder en el formato solicitado";
-            case CONTENT_TOO_LARGE -> "La petición excede el tamaño máximo permitido";
-            default -> INVALID_REQUEST;
-        };
-    }
-
-    private String typeMismatchMessage(TypeMismatchException ex) {
-        if (ex instanceof MethodArgumentTypeMismatchException mismatch) {
-            return "El parámetro %s no tiene un formato válido".formatted(mismatch.getName());
-        }
-        return "Un valor de la petición no tiene un formato válido";
     }
 
     private String messageOf(FieldError error) {
