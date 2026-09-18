@@ -15,12 +15,25 @@ API sobre HTTP.
 
 ## Puesta en marcha
 
-### 1. Crear la base de datos
+### 1. Crear el usuario y las bases de datos
+
+El script crea el rol `aula_virtual` y sus dos bases: la de trabajo y la que usan los
+tests de integración. Pide la contraseña del superusuario de Postgres y es idempotente:
+si ya existen, solo reajusta la contraseña y el propietario.
+
+```powershell
+.\scripts\db-bootstrap.ps1
+```
 
 ```bash
-psql -U postgres -c "CREATE DATABASE aula_virtual;"
-psql -U postgres -c "CREATE DATABASE aula_virtual_test;"   # para los tests de integración
+./scripts/db-bootstrap.sh
 ```
+
+Las credenciales por defecto son genéricas a propósito — usuario `aula_virtual`,
+contraseña `aula_virtual`, en `localhost:5432` — para que nadie tenga que inventarse
+las suyas ni acabe con las personales escritas en el repositorio. Para cambiarlas, pasa
+parámetros (`-AppUser`, `-AppPassword`) o variables de entorno (`APP_USER`,
+`APP_PASSWORD`) y refleja el cambio en `.env`.
 
 ### 2. Configurar el entorno
 
@@ -28,8 +41,9 @@ psql -U postgres -c "CREATE DATABASE aula_virtual_test;"   # para los tests de i
 cp .env.example .env
 ```
 
-Ajusta al menos `DB_USER` y `DB_PASSWORD`. En el perfil `dev` el resto tiene valores
-por defecto razonables para trabajar en local.
+`.env.example` ya trae las credenciales que crea el script; lo único que falta es
+`JWT_SECRET` (en el perfil `dev` hay un valor por defecto). El resto tiene valores
+razonables para trabajar en local.
 
 Las variables se leen del entorno del proceso, no del archivo `.env` directamente.
 Para exportarlas en una sesión de bash:
@@ -195,8 +209,8 @@ necesitan base de datos.
 
 `AulaVirtualApplicationTests` levanta el contexto completo y necesita Postgres
 (base `aula_virtual_test`). Si no hay base accesible, **se omite en lugar de
-fallar**, para que el build funcione en una máquina recién clonada. Crea la base y
-volverá a ejecutarse de verdad.
+fallar**, para que el build funcione en una máquina recién clonada. Ejecuta
+`scripts/db-bootstrap.sh` (o `.ps1`) y volverá a ejecutarse de verdad.
 
 ## Perfiles
 

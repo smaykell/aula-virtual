@@ -23,8 +23,8 @@ class AulaVirtualApplicationTests {
     static boolean databaseIsReachable() {
         String url = environmentOrDefault("DB_URL",
                 "jdbc:postgresql://localhost:5432/aula_virtual_test");
-        String user = environmentOrDefault("DB_USER", "postgres");
-        String password = environmentOrDefault("DB_PASSWORD", "postgres");
+        String user = environmentOrDefault("DB_USER", "aula_virtual");
+        String password = environmentOrDefault("DB_PASSWORD", "aula_virtual");
 
         DriverManager.setLoginTimeout(LOGIN_TIMEOUT_SECONDS);
         try (Connection connection = DriverManager.getConnection(url, user, password)) {
