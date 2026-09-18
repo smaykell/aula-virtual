@@ -1,8 +1,9 @@
 package io.github.smaykell.aulavirtual.modules.user;
 
-import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.modules.user.dto.LoginRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.LoginResponse;
+import io.github.smaykell.aulavirtual.modules.user.exception.InactiveAccountException;
+import io.github.smaykell.aulavirtual.modules.user.exception.InvalidCredentialsException;
 import io.github.smaykell.aulavirtual.security.JwtService;
 import io.github.smaykell.aulavirtual.security.Permission;
 import io.github.smaykell.aulavirtual.security.Role;
@@ -24,13 +25,13 @@ public class AuthenticationService {
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(User.normalizeUsername(request.username()))
-                .orElseThrow(() -> new ApiException(UserError.INVALID_CREDENTIALS));
+                .orElseThrow(InvalidCredentialsException::new);
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new ApiException(UserError.INVALID_CREDENTIALS);
+            throw new InvalidCredentialsException();
         }
         if (!user.isActive()) {
-            throw new ApiException(UserError.INACTIVE_ACCOUNT);
+            throw new InactiveAccountException();
         }
         return sessionFor(user);
     }

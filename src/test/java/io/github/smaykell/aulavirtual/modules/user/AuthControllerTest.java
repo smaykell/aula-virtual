@@ -9,11 +9,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.common.web.ApiErrorWriter;
 import io.github.smaykell.aulavirtual.config.ClockConfig;
 import io.github.smaykell.aulavirtual.config.CorsProperties;
 import io.github.smaykell.aulavirtual.modules.user.dto.LoginRequest;
+import io.github.smaykell.aulavirtual.modules.user.exception.InvalidCredentialsException;
 import io.github.smaykell.aulavirtual.modules.user.dto.LoginResponse;
 import io.github.smaykell.aulavirtual.security.JwtAuthenticationFilter;
 import io.github.smaykell.aulavirtual.security.JwtProperties;
@@ -69,7 +69,7 @@ class AuthControllerTest {
     @Test
     void wrong_credentials_answer_401_in_the_api_error_format() throws Exception {
         when(authenticationService.login(any(LoginRequest.class)))
-                .thenThrow(new ApiException(UserError.INVALID_CREDENTIALS));
+                .thenThrow(new InvalidCredentialsException());
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

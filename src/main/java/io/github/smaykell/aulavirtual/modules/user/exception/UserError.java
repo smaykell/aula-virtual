@@ -1,4 +1,4 @@
-package io.github.smaykell.aulavirtual.modules.user;
+package io.github.smaykell.aulavirtual.modules.user.exception;
 
 import io.github.smaykell.aulavirtual.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;

@@ -254,14 +254,24 @@ conservan su código: nunca se convierten en 500.
 
 ### El catálogo de errores
 
-Cada error vive en un catálogo, que es un `enum` que implementa `ErrorCode` y declara
-su status HTTP y su mensaje. Hay uno global y uno por módulo:
+Cada error es una clase de excepción con nombre que extiende `ApiException` y trae su
+código ya puesto. `ApiException` es abstracta, así que no hay forma de lanzar un error
+anónimo: hay que darle nombre y, con el nombre, viene el código y el status.
+
+```java
+throw new UsernameTakenException();
+throw new TeacherNotFoundException(teacherId);
+```
+
+Las excepciones viven en el paquete `exception/` de su módulo, al lado de `dto/`. Detrás
+de cada una hay una constante de un `enum` que implementa `ErrorCode` y declara su status
+HTTP y su mensaje; ese enum es el catálogo. Hay uno global y uno por módulo:
 
 | Catálogo | Prefijo | Dónde |
 |---|---|---|
 | `CommonError` | `GEN` | `common/exception` |
-| `UserError` | `USR` | `modules/user` |
-| `TeacherError` | `TCH` | `modules/teacher` |
+| `UserError` | `USR` | `modules/user/exception` |
+| `TeacherError` | `TCH` | `modules/teacher/exception` |
 
 El código no se escribe a mano: `ErrorCode.code()` lo compone como
 `prefijo + "_" + nombre de la constante`, de modo que `UserError.USERNAME_TAKEN` es
@@ -270,17 +280,15 @@ que choquen antes sus nombres dentro del mismo enum. `ErrorCatalogueTest` recorr
 classpath todas las implementaciones de `ErrorCode` —las de hoy y las que se añadan— y
 falla si dos comparten código o si dos catálogos comparten prefijo.
 
-Lanzar un error es nombrarlo, y el status viaja con el:
+Son dos piezas por error a propósito: el enum es la lista legible de todo lo que un
+módulo puede responder, y lo que hace verificable que ningún código se repita; la clase es
+lo que se lanza, y es la que hace que el `throw` se lea sin ir a buscar nada.
 
-```java
-throw new ApiException(UserError.USERNAME_TAKEN);
-throw new ApiException(TeacherError.NOT_FOUND, teacherId);
-```
-
-El segundo argumento rellena los `%s` del mensaje del catálogo. Un módulo puede lanzar
-el código de otro cuando el error es de verdad del otro: registrar un docente con un
-usuario repetido responde `USR_USERNAME_TAKEN` aunque la ruta sea `/api/teachers`,
-porque el conflicto es de la cuenta. Por eso el front debe mirar el `code` y no la ruta.
+Los argumentos del constructor rellenan los `%s` del mensaje del catálogo, como el id en
+`TeacherNotFoundException`. Un módulo puede lanzar la excepción de otro cuando el error es
+de verdad del otro: registrar un docente con un usuario repetido responde
+`USR_USERNAME_TAKEN` aunque la ruta sea `/api/teachers`, porque el conflicto es de la
+cuenta. Por eso el front debe mirar el `code` y no la ruta.
 
 Solo dos sitios escriben un `ApiError`, y ambos parten de un `ErrorCode`:
 `GlobalExceptionHandler` para todo lo que pasa por el controlador, y `ApiErrorWriter`

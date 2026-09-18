@@ -106,21 +106,33 @@ emisores, y solo dos:
 y no el catch-all. Sin ese relanzamiento, el 403/401 lo produciría el advice y el
 `accessDeniedHandler` sería código muerto.
 
-**Catálogo de errores.** Ningún error se lanza con un status y un literal sueltos: cada
-uno es una constante de un `enum` que implementa `ErrorCode` (status + mensaje). Hay un
-catálogo global, `CommonError` (`GEN`), y uno por módulo — `UserError` (`USR`),
-`TeacherError` (`TCH`) —; un módulo nuevo trae el suyo con su propio prefijo.
+**Catálogo de errores.** Cada error es **una clase de excepción con nombre** que extiende
+`ApiException` y trae su código ya puesto:
 
-`ErrorCode.code()` compone el código como `prefijo + "_" + name()`, así que no hay
-números que asignar ni riesgo de repetir uno. `ErrorCatalogueTest` escanea el classpath
-buscando implementaciones de `ErrorCode` y falla si dos comparten código o si dos
-catálogos comparten prefijo: al añadir un módulo no hay que registrarlo en ningún sitio,
-pero sí darle un prefijo libre.
+```java
+throw new UsernameTakenException();
+throw new TeacherNotFoundException(teacherId);
+```
 
-Se lanza nombrando el error, y el status viaja con él:
-`throw new ApiException(UserError.USERNAME_TAKEN)`. Los argumentos que siguen rellenan
-los `%s` del mensaje: `new ApiException(TeacherError.NOT_FOUND, teacherId)`. Un módulo
-puede lanzar el código de otro cuando el error es del otro — registrar un docente con un
+`ApiException` es **abstracta** a propósito: no se puede lanzar un error anónimo con un
+status y un literal sueltos, hay que darle nombre. Las excepciones viven en el paquete
+`exception/` de su módulo, al lado de `dto/`.
+
+Detrás de cada una hay una constante de un `enum` que implementa `ErrorCode` y declara su
+status HTTP y su mensaje. Hay un catálogo global, `CommonError` (`GEN`), y uno por módulo
+— `UserError` (`USR`), `TeacherError` (`TCH`) —; un módulo nuevo trae el suyo con su
+propio prefijo. Son dos piezas por error a propósito: el enum es la lista legible de todo
+lo que un módulo puede responder y lo que hace verificable la unicidad; la clase es lo que
+se lanza y lo que hace que el `throw` se lea solo.
+
+`ErrorCode.code()` compone el código como `prefijo + "_" + name()`, así que no hay números
+que asignar ni riesgo de repetir uno. `ErrorCatalogueTest` escanea el classpath buscando
+implementaciones de `ErrorCode` y falla si dos comparten código o si dos catálogos
+comparten prefijo: al añadir un módulo no hay que registrarlo en ningún sitio, pero sí
+darle un prefijo libre.
+
+Los argumentos del constructor rellenan los `%s` del mensaje del catálogo. Un módulo puede
+lanzar la excepción de otro cuando el error es del otro — registrar un docente con un
 usuario repetido responde `USR_USERNAME_TAKEN` desde `/api/teachers` —, que es justo por
 lo que el front mira el `code` y no la ruta.
 

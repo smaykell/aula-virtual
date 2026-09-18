@@ -3,8 +3,8 @@ package io.github.smaykell.aulavirtual.common.exception;
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.smaykell.aulavirtual.modules.teacher.TeacherError;
-import io.github.smaykell.aulavirtual.modules.user.UserError;
+import io.github.smaykell.aulavirtual.modules.teacher.exception.TeacherError;
+import io.github.smaykell.aulavirtual.modules.user.exception.UserError;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -25,6 +25,11 @@ class ErrorCatalogueTest {
     void the_scan_finds_the_catalogue_of_every_module() {
         assertThat(CATALOGUES)
                 .containsExactlyInAnyOrder(CommonError.class, UserError.class, TeacherError.class);
+    }
+
+    @Test
+    void the_base_exception_cannot_be_thrown_without_a_name() {
+        assertThat(ApiException.class).isAbstract();
     }
 
     @Test

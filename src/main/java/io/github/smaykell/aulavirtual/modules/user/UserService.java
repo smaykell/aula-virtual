@@ -1,9 +1,13 @@
 package io.github.smaykell.aulavirtual.modules.user;
 
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
-import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.modules.user.dto.CreateUserRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.UserResponse;
+import io.github.smaykell.aulavirtual.modules.user.exception.InactiveActorException;
+import io.github.smaykell.aulavirtual.modules.user.exception.RoleOutOfReachException;
+import io.github.smaykell.aulavirtual.modules.user.exception.UnknownActorException;
+import io.github.smaykell.aulavirtual.modules.user.exception.UserNotFoundException;
+import io.github.smaykell.aulavirtual.modules.user.exception.UsernameTakenException;
 import io.github.smaykell.aulavirtual.security.Role;
 import java.util.Collection;
 import java.util.Map;
@@ -37,12 +41,12 @@ public class UserService {
     public UserResponse create(String actorUsername, CreateUserRequest request) {
         User actor = activeActor(actorUsername);
         if (!actor.getRole().canManage(request.role())) {
-            throw new ApiException(UserError.ROLE_OUT_OF_REACH);
+            throw new RoleOutOfReachException();
         }
 
         String username = User.normalizeUsername(request.username());
         if (userRepository.existsByUsername(username)) {
-            throw new ApiException(UserError.USERNAME_TAKEN);
+            throw new UsernameTakenException();
         }
 
         User created = userRepository.save(
@@ -67,7 +71,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public void requireManagerOf(String actorUsername, Role role) {
         if (!activeActor(actorUsername).getRole().canManage(role)) {
-            throw new ApiException(UserError.ROLE_OUT_OF_REACH);
+            throw new RoleOutOfReachException();
         }
     }
 
@@ -80,18 +84,18 @@ public class UserService {
     private User manageableTarget(String actorUsername, UUID userId) {
         User actor = activeActor(actorUsername);
         User target = userRepository.findById(userId)
-                .orElseThrow(() -> new ApiException(UserError.NOT_FOUND, userId));
+                .orElseThrow(() -> new UserNotFoundException(userId));
         if (!actor.getRole().canManage(target.getRole())) {
-            throw new ApiException(UserError.ROLE_OUT_OF_REACH);
+            throw new RoleOutOfReachException();
         }
         return target;
     }
 
     private User activeActor(String username) {
         User actor = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ApiException(UserError.UNKNOWN_ACTOR));
+                .orElseThrow(UnknownActorException::new);
         if (!actor.isActive()) {
-            throw new ApiException(UserError.INACTIVE_ACTOR);
+            throw new InactiveActorException();
         }
         return actor;
     }

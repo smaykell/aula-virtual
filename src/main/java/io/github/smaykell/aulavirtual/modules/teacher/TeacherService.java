@@ -1,7 +1,7 @@
 package io.github.smaykell.aulavirtual.modules.teacher;
 
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
-import io.github.smaykell.aulavirtual.common.exception.ApiException;
+import io.github.smaykell.aulavirtual.modules.teacher.exception.TeacherNotFoundException;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
@@ -82,7 +82,7 @@ public class TeacherService {
 
     private Teacher existing(UUID teacherId) {
         return teacherRepository.findById(teacherId)
-                .orElseThrow(() -> new ApiException(TeacherError.NOT_FOUND, teacherId));
+                .orElseThrow(() -> new TeacherNotFoundException(teacherId));
     }
 
     private TeacherResponse responseFor(Teacher teacher) {

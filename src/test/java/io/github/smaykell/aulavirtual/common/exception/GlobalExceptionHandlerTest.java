@@ -151,7 +151,7 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/items/{id}")
         String byId(@PathVariable UUID id) {
-            throw new ApiException(CommonError.RESOURCE_NOT_FOUND);
+            throw new ProbeNotFoundException();
         }
 
         @PostMapping("/items")
@@ -165,6 +165,13 @@ class GlobalExceptionHandlerTest {
         }
 
         record NewItem(@NotBlank String name) {
+        }
+
+        static class ProbeNotFoundException extends ApiException {
+
+            ProbeNotFoundException() {
+                super(CommonError.RESOURCE_NOT_FOUND);
+            }
         }
     }
 }
