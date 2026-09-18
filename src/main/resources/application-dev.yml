@@ -1,0 +1,28 @@
+spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    clean-disabled: false
+
+logging:
+  level:
+    io.github.smaykell.aulavirtual: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.springframework.security: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env,configprops
+
+app:
+  security:
+    jwt:
+      # SOLO PARA DESARROLLO LOCAL. Nunca uses este valor en un entorno real.
+      secret: ${JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWNhbWJpYW1lLWVuLXByb2R1Y2Npb24tMjU2LWJpdHM=}
+      expiration: ${JWT_EXPIRATION:PT8H}

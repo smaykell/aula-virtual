@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/aula_virtual_test}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    show-sql: false
+  flyway:
+    clean-disabled: false
+
+logging:
+  level:
+    root: WARN
+    io.github.smaykell.aulavirtual: INFO
+
+app:
+  security:
+    jwt:
+      # Secreto fijo para que los tests sean reproducibles. No sale de src/test.
+      secret: c2VjcmV0by1kZS1wcnVlYmFzLWNvbi1tYXMtZGUtMzItYnl0ZXM=
+      issuer: aula-virtual
+      expiration: PT1H

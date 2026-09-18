@@ -1,0 +1,17 @@
+-- V1__init.sql
+--
+-- Linea base del esquema del aula virtual.
+--
+-- El esquema se construye por modulo: cada modulo nuevo bajo
+-- io.github.smaykell.aulavirtual.modulo aporta su propia migracion
+-- (V2__crear_usuarios.sql, V3__crear_cursos.sql, ...).
+--
+-- No se habilita la extension pgcrypto: Postgres 13+ ya expone
+-- gen_random_uuid() en el core, y los UUID de las entidades los genera
+-- Hibernate del lado de la aplicacion.
+--
+-- Convenciones para las siguientes migraciones:
+--   * nombres de tabla y columna en snake_case y plural para tablas
+--   * clave primaria: id UUID PRIMARY KEY
+--   * auditoria: created_at / updated_at TIMESTAMPTZ NOT NULL
+--   * nunca editar una migracion ya aplicada; crear una nueva
