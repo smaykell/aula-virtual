@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.smaykell.aulavirtual.modules.administrator.exception.AdministratorError;
 import io.github.smaykell.aulavirtual.modules.course.exception.CourseError;
 import io.github.smaykell.aulavirtual.modules.person.exception.PersonError;
+import io.github.smaykell.aulavirtual.modules.student.exception.StudentError;
 import io.github.smaykell.aulavirtual.modules.teacher.exception.TeacherError;
 import io.github.smaykell.aulavirtual.modules.user.exception.UserError;
 import java.util.Arrays;
@@ -28,7 +29,8 @@ class ErrorCatalogueTest {
     void the_scan_finds_the_catalogue_of_every_module() {
         assertThat(CATALOGUES)
                 .containsExactlyInAnyOrder(CommonError.class, PersonError.class, UserError.class,
-                        TeacherError.class, AdministratorError.class, CourseError.class);
+                        TeacherError.class, AdministratorError.class, CourseError.class,
+                        StudentError.class);
     }
 
     @Test

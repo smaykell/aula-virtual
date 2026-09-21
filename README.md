@@ -118,7 +118,8 @@ io.github.smaykell.aulavirtual
     ├── user/          la cuenta: login, credenciales y /me
     ├── teacher/       el perfil de docente
     ├── administrator/ el perfil de administrador
-    └── course/        el curso, sus unidades y el material de cada unidad
+    ├── student/       el perfil de estudiante
+    └── course/        el curso, sus unidades, su material y sus matrículas
 ```
 
 Una **persona** (`persons`) puede tener varios **perfiles** —docente, estudiante,
@@ -185,6 +186,13 @@ funcionan sin traducción.
 | `POST /api/teachers/{id}/$enable` | `teachers:update` | reactiva el perfil de docente |
 | `POST /api/teachers/{id}/$disable` | `teachers:update` | desactiva el perfil de docente |
 | `POST /api/teachers/{id}/$changePassword` | `teachers:update` | cambia la contraseña de su cuenta y devuelve 204 |
+| `GET /api/students` | `students:read` | listado paginado, filtro opcional `?active=` |
+| `GET /api/students/{id}` | `students:read` | un estudiante |
+| `POST /api/students` | `students:create` | registra un estudiante y devuelve 201 |
+| `PUT /api/students/{id}` | `students:update` | cambia sus datos de persona |
+| `POST /api/students/{id}/$enable` | `students:update` | reactiva el perfil |
+| `POST /api/students/{id}/$disable` | `students:update` | desactiva el perfil |
+| `POST /api/students/{id}/$changePassword` | `students:update` | cambia su contraseña y devuelve 204 |
 | `GET /api/courses` | `courses:read` | listado paginado, filtros opcionales `?teacherId=` y `?status=` |
 | `GET /api/courses/{id}` | `courses:read` | un curso |
 | `POST /api/courses` | `courses:create` | crea un curso y devuelve 201 |
@@ -200,6 +208,12 @@ funcionan sin traducción.
 | `POST /api/units/{id}/materials` | `courses:update` | publica material en la unidad y devuelve 201 |
 | `PUT /api/materials/{id}` | `courses:update` | reemplaza el material |
 | `DELETE /api/materials/{id}` | `courses:update` | borra el material y devuelve 204 |
+| `POST /api/courses/$join` | `enrollments:create` | el estudiante se inscribe con el código y devuelve 201 |
+| `GET /api/me/enrollments` | autenticado | mis matrículas y el estado de cada una |
+| `GET /api/courses/{id}/enrollments` | `enrollments:read` | el aula del curso, filtro opcional `?status=` |
+| `POST /api/enrollments/{id}/$accept` | `enrollments:update` | acepta una solicitud pendiente |
+| `POST /api/enrollments/{id}/$reject` | `enrollments:update` | rechaza una solicitud pendiente |
+| `POST /api/enrollments/{id}/$withdraw` | `enrollments:update` | retira del curso a un estudiante matriculado |
 
 Los verbos que no encajan en el CRUD van como sub-recurso con `$`
 (`POST /api/teachers/{id}/$disable`). Así el sustantivo sigue siendo el recurso y no
@@ -219,10 +233,10 @@ activo, y sus permisos son la unión de los de esos roles.
 
 | Rol | Permisos | Administra a |
 |---|---|---|
-| `SUPER_ADMIN` | `administrators:`, `teachers:` y `courses:` | `ADMIN`, `TEACHER`, `STUDENT` |
-| `ADMIN` | `teachers:` y `courses:` | `TEACHER`, `STUDENT` |
-| `TEACHER` | `courses:` | — |
-| `STUDENT` | — | — |
+| `SUPER_ADMIN` | `administrators:`, `teachers:`, `students:`, `courses:`, `enrollments:read` y `enrollments:update` | `ADMIN`, `TEACHER`, `STUDENT` |
+| `ADMIN` | `teachers:`, `students:`, `courses:`, `enrollments:read` y `enrollments:update` | `TEACHER`, `STUDENT` |
+| `TEACHER` | `courses:`, `enrollments:read` y `enrollments:update` | — |
+| `STUDENT` | `courses:read` y `enrollments:create` | — |
 
 `Role.manageableRoles()` es la única fuente de la última columna, y de ella salen
 dos reglas: un admin no puede tocar a otro admin, y nadie —tampoco el superadmin—
@@ -351,10 +365,52 @@ cambiar de dominio no obliga a tocar ninguna fila. Las dos formas terminan en el
 sitio: quien pega el código a mano y quien abre el enlace acaban mandando el mismo
 código.
 
-Lo que falta es el otro extremo: **el alta en sí llega con el módulo `student`**, que es
-quien tendrá una persona a la que matricular. Entonces se añaden la tabla `enrollments`
-y la operación que canjea el código; hasta ese día el curso ya sabe repartir su
-invitación, pero nadie puede aceptarla.
+La invitación solo se le enseña al **staff** del curso —su docente titular y los
+administradores—: un estudiante que lee su curso recibe la misma ficha sin el bloque
+`invitation`, para que repartir el acceso siga siendo decisión del docente.
+
+### Estudiantes y matrícula
+
+La cuenta del estudiante la abre un administrador (`POST /api/students`), igual que la
+del docente: misma persona, mismo documento como clave natural, mismo perfil con su
+propio `active`. Quien ya existe como docente y se matricula como estudiante reutiliza
+su persona y su cuenta.
+
+**Inscribirse es cosa del estudiante**; a quién deja entrar lo decide el curso. Cada
+curso lleva una `enrollmentPolicy`, que el docente elige al crearlo y puede cambiar
+después:
+
+| `enrollmentPolicy` | Qué pasa al usar el código |
+|---|---|
+| `AUTOMATIC` | la matrícula nace `ACTIVE`: el estudiante entra en el acto |
+| `ON_REQUEST` | la matrícula nace `PENDING` y espera a que el docente la resuelva |
+
+`POST /api/courses/$join` recibe `{"code"}` —el mismo código que lleva dentro el enlace
+de invitación, así que da igual si lo tecleó o si abrió el enlace— y devuelve la
+matrícula con su estado. El docente ve las solicitudes en
+`GET /api/courses/{id}/enrollments?status=PENDING` y las resuelve con `$accept` o
+`$reject`; `$withdraw` saca del curso a alguien ya matriculado.
+
+Los cuatro estados son `PENDING`, `ACTIVE`, `REJECTED` y `WITHDRAWN`, y solo hay **una
+fila por (curso, estudiante)**: a quien fue rechazado o se retiró y vuelve a pedir
+entrar se le reutiliza la fila en vez de acumularle historial. Volver a pedirlo estando
+dentro responde `CRS_ALREADY_ENROLLED`, y hacerlo con una solicitud viva,
+`CRS_ENROLLMENT_PENDING`. Un curso archivado no admite matrículas nuevas ni permite
+resolver las que tenga pendientes.
+
+**Lo que ve un estudiante.** Su matrícula activa es lo que le abre el curso:
+
+- `GET /api/courses` le devuelve los cursos en los que está `ACTIVE` —no los pendientes—,
+  sin el bloque `invitation`;
+- `GET /api/courses/{id}/units` le devuelve las unidades con **solo el material
+  publicado**: aquí es donde por fin cuentan `visible` y `publishedAt`, que hasta ahora
+  se guardaban sin filtrar nada. El docente sigue viendo todo, incluido lo programado
+  para más adelante;
+- `GET /api/me/enrollments` le devuelve sus matrículas con su estado, que es donde ve si
+  su solicitud sigue pendiente o fue rechazada.
+
+Todo lo demás del curso le está cerrado: escribir sigue siendo del titular y de quien
+administra docentes.
 
 ## Errores
 
@@ -404,6 +460,7 @@ HTTP y su mensaje; ese enum es el catálogo. Hay uno global y uno por módulo:
 | `UserError` | `USR` | `modules/user/exception` |
 | `TeacherError` | `TCH` | `modules/teacher/exception` |
 | `AdministratorError` | `ADM` | `modules/administrator/exception` |
+| `StudentError` | `STD` | `modules/student/exception` |
 | `CourseError` | `CRS` | `modules/course/exception` |
 
 El código no se escribe a mano: `ErrorCode.code()` lo compone como

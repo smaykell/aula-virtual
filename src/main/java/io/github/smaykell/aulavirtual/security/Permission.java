@@ -10,7 +10,13 @@ public enum Permission {
     TEACHERS_UPDATE(Name.TEACHERS_UPDATE),
     COURSES_READ(Name.COURSES_READ),
     COURSES_CREATE(Name.COURSES_CREATE),
-    COURSES_UPDATE(Name.COURSES_UPDATE);
+    COURSES_UPDATE(Name.COURSES_UPDATE),
+    STUDENTS_READ(Name.STUDENTS_READ),
+    STUDENTS_CREATE(Name.STUDENTS_CREATE),
+    STUDENTS_UPDATE(Name.STUDENTS_UPDATE),
+    ENROLLMENTS_READ(Name.ENROLLMENTS_READ),
+    ENROLLMENTS_CREATE(Name.ENROLLMENTS_CREATE),
+    ENROLLMENTS_UPDATE(Name.ENROLLMENTS_UPDATE);
 
     private final String authority;
 
@@ -33,6 +39,12 @@ public enum Permission {
         public static final String COURSES_READ = "courses:read";
         public static final String COURSES_CREATE = "courses:create";
         public static final String COURSES_UPDATE = "courses:update";
+        public static final String STUDENTS_READ = "students:read";
+        public static final String STUDENTS_CREATE = "students:create";
+        public static final String STUDENTS_UPDATE = "students:update";
+        public static final String ENROLLMENTS_READ = "enrollments:read";
+        public static final String ENROLLMENTS_CREATE = "enrollments:create";
+        public static final String ENROLLMENTS_UPDATE = "enrollments:update";
 
         private Name() {
         }

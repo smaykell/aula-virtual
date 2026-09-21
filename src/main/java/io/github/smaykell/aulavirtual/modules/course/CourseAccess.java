@@ -3,7 +3,9 @@ package io.github.smaykell.aulavirtual.modules.course;
 import io.github.smaykell.aulavirtual.modules.course.exception.ArchivedCourseException;
 import io.github.smaykell.aulavirtual.modules.course.exception.CourseNotFoundException;
 import io.github.smaykell.aulavirtual.modules.course.exception.CourseOutOfReachException;
+import io.github.smaykell.aulavirtual.modules.course.exception.StudentRequiredException;
 import io.github.smaykell.aulavirtual.modules.course.exception.TeacherRequiredException;
+import io.github.smaykell.aulavirtual.modules.student.StudentService;
 import io.github.smaykell.aulavirtual.modules.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.modules.user.UserService;
 import io.github.smaykell.aulavirtual.security.Actor;
@@ -17,18 +19,41 @@ import org.springframework.stereotype.Component;
 class CourseAccess {
 
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final UserService userService;
     private final TeacherService teacherService;
+    private final StudentService studentService;
 
-    Course readable(String actorUsername, UUID courseId) {
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new CourseNotFoundException(courseId));
-        requireScopeOver(userService.actor(actorUsername), course.getTeacherId());
+    record Reader(Course course, boolean staff) {
+    }
+
+    record Scope(UUID teacherId, UUID studentId) {
+
+        boolean staff() {
+            return studentId == null;
+        }
+    }
+
+    Reader readable(String actorUsername, UUID courseId) {
+        Course course = existing(courseId);
+        Actor actor = userService.actor(actorUsername);
+        if (staffOver(actor, course.getTeacherId())) {
+            return new Reader(course, true);
+        }
+        if (enrolledIn(actor, course)) {
+            return new Reader(course, false);
+        }
+        throw new CourseOutOfReachException();
+    }
+
+    Course managed(String actorUsername, UUID courseId) {
+        Course course = existing(courseId);
+        requireStaffOver(userService.actor(actorUsername), course.getTeacherId());
         return course;
     }
 
     Course writable(String actorUsername, UUID courseId) {
-        Course course = readable(actorUsername, courseId);
+        Course course = managed(actorUsername, courseId);
         if (course.isArchived()) {
             throw new ArchivedCourseException();
         }
@@ -37,41 +62,72 @@ class CourseAccess {
 
     UUID resolveTitular(String actorUsername, UUID requestedTeacherId) {
         Actor actor = userService.actor(actorUsername);
-        UUID teacherId = requestedTeacherId == null ? ownProfileOf(actor) : requestedTeacherId;
-        requireScopeOver(actor, teacherId);
+        UUID teacherId = requestedTeacherId == null ? ownTeacherProfile(actor)
+                : requestedTeacherId;
+        requireStaffOver(actor, teacherId);
         teacherService.requireActive(teacherId);
         return teacherId;
     }
 
     void requireTitular(String actorUsername, UUID teacherId) {
-        requireScopeOver(userService.actor(actorUsername), teacherId);
+        requireStaffOver(userService.actor(actorUsername), teacherId);
         teacherService.requireActive(teacherId);
     }
 
-    UUID teacherFilterFor(String actorUsername, UUID requestedTeacherId) {
+    Scope listingScope(String actorUsername, UUID requestedTeacherId) {
         Actor actor = userService.actor(actorUsername);
         if (actor.canManage(Role.TEACHER)) {
-            return requestedTeacherId;
+            return new Scope(requestedTeacherId, null);
         }
-        UUID own = ownProfileOf(actor);
-        if (requestedTeacherId != null && !requestedTeacherId.equals(own)) {
-            throw new CourseOutOfReachException();
+        UUID ownTeacher = teacherService.activeProfileIdOf(actor.personId()).orElse(null);
+        if (ownTeacher != null) {
+            requireSameTeacher(requestedTeacherId, ownTeacher);
+            return new Scope(ownTeacher, null);
         }
-        return own;
+        return new Scope(null, ownStudentProfile(actor));
     }
 
-    private void requireScopeOver(Actor actor, UUID teacherId) {
-        if (actor.canManage(Role.TEACHER)) {
-            return;
-        }
-        if (teacherService.activeProfileIdOf(actor.personId())
-                .filter(teacherId::equals).isEmpty()) {
+    UUID requireStudent(String actorUsername) {
+        return ownStudentProfile(userService.actor(actorUsername));
+    }
+
+    private boolean staffOver(Actor actor, UUID teacherId) {
+        return actor.canManage(Role.TEACHER)
+                || teacherService.activeProfileIdOf(actor.personId())
+                        .filter(teacherId::equals).isPresent();
+    }
+
+    private void requireStaffOver(Actor actor, UUID teacherId) {
+        if (!staffOver(actor, teacherId)) {
             throw new CourseOutOfReachException();
         }
     }
 
-    private UUID ownProfileOf(Actor actor) {
+    private boolean enrolledIn(Actor actor, Course course) {
+        return studentService.activeProfileIdOf(actor.personId())
+                .filter(studentId -> enrollmentRepository.existsByCourseIdAndStudentIdAndStatus(
+                        course.getId(), studentId, EnrollmentStatus.ACTIVE))
+                .isPresent();
+    }
+
+    private Course existing(UUID courseId) {
+        return courseRepository.findById(courseId)
+                .orElseThrow(() -> new CourseNotFoundException(courseId));
+    }
+
+    private UUID ownTeacherProfile(Actor actor) {
         return teacherService.activeProfileIdOf(actor.personId())
                 .orElseThrow(TeacherRequiredException::new);
+    }
+
+    private UUID ownStudentProfile(Actor actor) {
+        return studentService.activeProfileIdOf(actor.personId())
+                .orElseThrow(StudentRequiredException::new);
+    }
+
+    private static void requireSameTeacher(UUID requestedTeacherId, UUID ownTeacherId) {
+        if (requestedTeacherId != null && !requestedTeacherId.equals(ownTeacherId)) {
+            throw new CourseOutOfReachException();
+        }
     }
 }

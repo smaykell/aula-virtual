@@ -3,6 +3,7 @@ package io.github.smaykell.aulavirtual.modules.course;
 import io.github.smaykell.aulavirtual.modules.course.dto.CreateCourseRequest;
 import io.github.smaykell.aulavirtual.modules.course.dto.InvitationResponse;
 import io.github.smaykell.aulavirtual.modules.course.dto.MaterialData;
+import io.github.smaykell.aulavirtual.modules.student.dto.StudentSummary;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherSummary;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,13 +21,22 @@ final class CourseFixtures {
     }
 
     static Course course(UUID teacherId) {
-        Course course = Course.create(createRequest(teacherId), teacherId, INVITATION_CODE);
+        return course(teacherId, EnrollmentPolicy.ON_REQUEST);
+    }
+
+    static Course course(UUID teacherId, EnrollmentPolicy policy) {
+        Course course = Course.create(createRequest(teacherId, policy), teacherId,
+                INVITATION_CODE);
         return withId(course, UUID.randomUUID());
     }
 
     static CreateCourseRequest createRequest(UUID teacherId) {
+        return createRequest(teacherId, EnrollmentPolicy.ON_REQUEST);
+    }
+
+    static CreateCourseRequest createRequest(UUID teacherId, EnrollmentPolicy policy) {
         return new CreateCourseRequest("Algebra Lineal", "Curso del primer ciclo", teacherId,
-                START, END);
+                policy, START, END);
     }
 
     static Unit unit(UUID courseId, String title, int position) {
@@ -41,6 +51,10 @@ final class CourseFixtures {
         return new MaterialData(title, type, "courses/algebra/tema-1.pdf", null, null, true);
     }
 
+    static MaterialData hidden(String title, MaterialType type) {
+        return new MaterialData(title, type, "courses/algebra/borrador.pdf", null, null, false);
+    }
+
     static MaterialData link(String title) {
         return new MaterialData(title, MaterialType.LINK, null, "https://example.org/clase",
                 null, true);
@@ -48,6 +62,17 @@ final class CourseFixtures {
 
     static InvitationResponse invitation() {
         return new InvitationResponse(INVITATION_CODE, INVITATION_URL);
+    }
+
+    static Enrollment enrollment(UUID courseId, UUID studentId, EnrollmentPolicy policy,
+            Instant moment) {
+
+        return withId(Enrollment.request(courseId, studentId, policy, moment),
+                UUID.randomUUID());
+    }
+
+    static StudentSummary student(UUID studentId) {
+        return new StudentSummary(studentId, "Ana Maria", "Quispe Rojas", true);
     }
 
     static TeacherSummary teacher(UUID teacherId) {

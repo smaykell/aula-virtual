@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
+import io.github.smaykell.aulavirtual.modules.student.StudentService;
 import io.github.smaykell.aulavirtual.modules.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.modules.teacher.exception.InactiveTeacherException;
 import io.github.smaykell.aulavirtual.modules.user.UserService;
@@ -26,11 +27,16 @@ class CourseAccessTest {
 
     private static final UUID ADMIN_PERSON = UUID.randomUUID();
     private static final UUID TEACHER_PERSON = UUID.randomUUID();
+    private static final UUID STUDENT_PERSON = UUID.randomUUID();
     private static final UUID TITULAR = UUID.randomUUID();
     private static final UUID OTHER_TEACHER = UUID.randomUUID();
+    private static final UUID STUDENT = UUID.randomUUID();
 
     @Mock
     private CourseRepository courseRepository;
+
+    @Mock
+    private EnrollmentRepository enrollmentRepository;
 
     @Mock
     private UserService userService;
@@ -38,36 +44,81 @@ class CourseAccessTest {
     @Mock
     private TeacherService teacherService;
 
+    @Mock
+    private StudentService studentService;
+
     private CourseAccess courseAccess;
 
     @BeforeEach
     void setUp() {
-        courseAccess = new CourseAccess(courseRepository, userService, teacherService);
+        courseAccess = new CourseAccess(courseRepository, enrollmentRepository, userService,
+                teacherService, studentService);
     }
 
     @Test
-    void whoever_manages_teachers_reaches_any_course() {
+    void whoever_manages_teachers_reaches_any_course_as_staff() {
         givenTheAdmin("ana");
         Course course = givenTheCourse(TITULAR);
 
-        assertThat(courseAccess.readable("ana", course.getId())).isSameAs(course);
+        CourseAccess.Reader reader = courseAccess.readable("ana", course.getId());
+
+        assertThat(reader.course()).isSameAs(course);
+        assertThat(reader.staff()).isTrue();
     }
 
     @Test
-    void the_titular_teacher_reaches_its_own_course() {
+    void the_titular_teacher_reaches_its_own_course_as_staff() {
         givenTheTeacher("juan", TITULAR);
         Course course = givenTheCourse(TITULAR);
 
-        assertThat(courseAccess.readable("juan", course.getId())).isSameAs(course);
+        assertThat(courseAccess.readable("juan", course.getId()).staff()).isTrue();
     }
 
     @Test
     void another_teacher_does_not_reach_the_course() {
         givenTheTeacher("otro", OTHER_TEACHER);
         Course course = givenTheCourse(TITULAR);
+        when(studentService.activeProfileIdOf(TEACHER_PERSON)).thenReturn(Optional.empty());
 
         ApiException error = assertThrows(ApiException.class,
                 () -> courseAccess.readable("otro", course.getId()));
+
+        assertThat(error.getCode()).isEqualTo("CRS_OUT_OF_REACH");
+    }
+
+    @Test
+    void an_enrolled_student_reads_the_course_but_never_as_staff() {
+        Course course = givenTheCourse(TITULAR);
+        givenTheStudent("ana.estudiante");
+        givenItsStudentProfile();
+        givenTheEnrollment(course, EnrollmentStatus.ACTIVE);
+
+        CourseAccess.Reader reader = courseAccess.readable("ana.estudiante", course.getId());
+
+        assertThat(reader.course()).isSameAs(course);
+        assertThat(reader.staff()).isFalse();
+    }
+
+    @Test
+    void a_student_whose_enrollment_is_not_active_does_not_reach_the_course() {
+        Course course = givenTheCourse(TITULAR);
+        givenTheStudent("ana.estudiante");
+        givenItsStudentProfile();
+        givenTheEnrollment(course, EnrollmentStatus.PENDING);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> courseAccess.readable("ana.estudiante", course.getId()));
+
+        assertThat(error.getCode()).isEqualTo("CRS_OUT_OF_REACH");
+    }
+
+    @Test
+    void an_enrolled_student_still_cannot_write_the_course() {
+        Course course = givenTheCourse(TITULAR);
+        givenTheStudent("ana.estudiante");
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> courseAccess.writable("ana.estudiante", course.getId()));
 
         assertThat(error.getCode()).isEqualTo("CRS_OUT_OF_REACH");
     }
@@ -89,7 +140,7 @@ class CourseAccessTest {
         Course course = givenTheCourse(TITULAR);
         course.archive();
 
-        assertThat(courseAccess.readable("ana", course.getId())).isSameAs(course);
+        assertThat(courseAccess.readable("ana", course.getId()).course()).isSameAs(course);
 
         ApiException error = assertThrows(ApiException.class,
                 () -> courseAccess.writable("ana", course.getId()));
@@ -141,15 +192,16 @@ class CourseAccessTest {
     void the_listing_of_an_admin_keeps_the_filter_it_asked_for() {
         givenTheAdmin("ana");
 
-        assertThat(courseAccess.teacherFilterFor("ana", null)).isNull();
-        assertThat(courseAccess.teacherFilterFor("ana", TITULAR)).isEqualTo(TITULAR);
+        assertThat(courseAccess.listingScope("ana", null).teacherId()).isNull();
+        assertThat(courseAccess.listingScope("ana", TITULAR).teacherId()).isEqualTo(TITULAR);
+        assertThat(courseAccess.listingScope("ana", null).staff()).isTrue();
     }
 
     @Test
     void the_listing_of_a_teacher_is_forced_to_its_own_courses() {
         givenTheTeacher("juan", TITULAR);
 
-        assertThat(courseAccess.teacherFilterFor("juan", null)).isEqualTo(TITULAR);
+        assertThat(courseAccess.listingScope("juan", null).teacherId()).isEqualTo(TITULAR);
     }
 
     @Test
@@ -157,9 +209,32 @@ class CourseAccessTest {
         givenTheTeacher("juan", TITULAR);
 
         ApiException error = assertThrows(ApiException.class,
-                () -> courseAccess.teacherFilterFor("juan", OTHER_TEACHER));
+                () -> courseAccess.listingScope("juan", OTHER_TEACHER));
 
         assertThat(error.getCode()).isEqualTo("CRS_OUT_OF_REACH");
+    }
+
+    @Test
+    void the_listing_of_a_student_is_the_one_of_its_enrollments() {
+        givenTheStudent("ana.estudiante");
+        givenItsStudentProfile();
+
+        CourseAccess.Scope scope = courseAccess.listingScope("ana.estudiante", null);
+
+        assertThat(scope.studentId()).isEqualTo(STUDENT);
+        assertThat(scope.teacherId()).isNull();
+        assertThat(scope.staff()).isFalse();
+    }
+
+    @Test
+    void whoever_is_neither_teacher_nor_student_cannot_enroll() {
+        givenTheAdmin("ana");
+        when(studentService.activeProfileIdOf(ADMIN_PERSON)).thenReturn(Optional.empty());
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> courseAccess.requireStudent("ana"));
+
+        assertThat(error.getCode()).isEqualTo("CRS_STUDENT_REQUIRED");
     }
 
     private void givenTheAdmin(String username) {
@@ -171,6 +246,21 @@ class CourseAccessTest {
         when(userService.actor(username))
                 .thenReturn(new Actor(TEACHER_PERSON, username, Set.of(Role.TEACHER)));
         when(teacherService.activeProfileIdOf(TEACHER_PERSON)).thenReturn(Optional.of(teacherId));
+    }
+
+    private void givenTheStudent(String username) {
+        when(userService.actor(username))
+                .thenReturn(new Actor(STUDENT_PERSON, username, Set.of(Role.STUDENT)));
+        when(teacherService.activeProfileIdOf(STUDENT_PERSON)).thenReturn(Optional.empty());
+    }
+
+    private void givenItsStudentProfile() {
+        when(studentService.activeProfileIdOf(STUDENT_PERSON)).thenReturn(Optional.of(STUDENT));
+    }
+
+    private void givenTheEnrollment(Course course, EnrollmentStatus status) {
+        when(enrollmentRepository.existsByCourseIdAndStudentIdAndStatus(course.getId(), STUDENT,
+                EnrollmentStatus.ACTIVE)).thenReturn(status == EnrollmentStatus.ACTIVE);
     }
 
     private Course givenTheCourse(UUID teacherId) {

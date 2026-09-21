@@ -1,4 +1,4 @@
-package io.github.smaykell.aulavirtual.modules.teacher;
+package io.github.smaykell.aulavirtual.modules.student;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -15,10 +15,10 @@ import io.github.smaykell.aulavirtual.modules.person.PersonService;
 import io.github.smaykell.aulavirtual.modules.person.Sex;
 import io.github.smaykell.aulavirtual.modules.person.dto.PersonData;
 import io.github.smaykell.aulavirtual.modules.person.dto.PersonResponse;
-import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
-import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
-import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherSummary;
-import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
+import io.github.smaykell.aulavirtual.modules.student.dto.CreateStudentRequest;
+import io.github.smaykell.aulavirtual.modules.student.dto.StudentResponse;
+import io.github.smaykell.aulavirtual.modules.student.dto.StudentSummary;
+import io.github.smaykell.aulavirtual.modules.student.dto.UpdateStudentRequest;
 import io.github.smaykell.aulavirtual.modules.user.UserService;
 import io.github.smaykell.aulavirtual.modules.user.dto.ChangePasswordRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.Credentials;
@@ -40,14 +40,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
-class TeacherServiceTest {
+class StudentServiceTest {
 
     private static final UUID PERSON = UUID.randomUUID();
     private static final LocalDate BIRTH_DATE = LocalDate.of(1990, 5, 20);
     private static final Pageable FIRST_PAGE = PageRequest.of(0, 20);
 
     @Mock
-    private TeacherRepository teacherRepository;
+    private StudentRepository studentRepository;
 
     @Mock
     private PersonService personService;
@@ -55,129 +55,129 @@ class TeacherServiceTest {
     @Mock
     private UserService userService;
 
-    private TeacherService teacherService;
+    private StudentService studentService;
 
     @BeforeEach
     void setUp() {
-        teacherService = new TeacherService(teacherRepository, personService, userService);
+        studentService = new StudentService(studentRepository, personService, userService);
     }
 
     @Test
-    void registering_a_teacher_resolves_the_person_and_opens_its_account() {
+    void registering_a_student_resolves_the_person_and_opens_its_account() {
         givenThePersonResolvesTo(PERSON);
-        when(teacherRepository.existsByPersonId(PERSON)).thenReturn(false);
-        givenTheTeacherIsStored();
+        when(studentRepository.existsByPersonId(PERSON)).thenReturn(false);
+        givenTheStudentIsStored();
         givenTheProfileOf(PERSON, "nuevo.docente");
 
-        TeacherResponse teacher = teacherService.create("ana", requestFor("nuevo.docente"));
+        StudentResponse student = studentService.create("ana", requestFor("nuevo.docente"));
 
-        assertThat(teacher.username()).isEqualTo("nuevo.docente");
-        assertThat(teacher.person().firstName()).isEqualTo("Juan Carlos");
-        assertThat(teacher.active()).isTrue();
+        assertThat(student.username()).isEqualTo("nuevo.docente");
+        assertThat(student.person().firstName()).isEqualTo("Juan Carlos");
+        assertThat(student.active()).isTrue();
         verify(userService).ensureAccount(eq(PERSON), any(Credentials.class));
     }
 
     @Test
-    void a_person_already_registered_as_a_teacher_is_not_registered_twice() {
+    void a_person_already_registered_as_a_student_is_not_registered_twice() {
         givenThePersonResolvesTo(PERSON);
-        when(teacherRepository.existsByPersonId(PERSON)).thenReturn(true);
+        when(studentRepository.existsByPersonId(PERSON)).thenReturn(true);
 
         ApiException error = assertThrows(ApiException.class,
-                () -> teacherService.create("ana", requestFor("nuevo.docente")));
+                () -> studentService.create("ana", requestFor("nuevo.docente")));
 
-        assertThat(error.getCode()).isEqualTo("TCH_ALREADY_REGISTERED");
-        verify(teacherRepository, never()).save(any(Teacher.class));
+        assertThat(error.getCode()).isEqualTo("STD_ALREADY_REGISTERED");
+        verify(studentRepository, never()).save(any(Student.class));
         verify(userService, never()).ensureAccount(any(), any());
     }
 
     @Test
     void a_person_that_already_has_an_account_is_registered_without_credentials() {
         givenThePersonResolvesTo(PERSON);
-        when(teacherRepository.existsByPersonId(PERSON)).thenReturn(false);
-        givenTheTeacherIsStored();
+        when(studentRepository.existsByPersonId(PERSON)).thenReturn(false);
+        givenTheStudentIsStored();
         givenTheProfileOf(PERSON, "ana.estudiante");
 
-        TeacherResponse teacher = teacherService.create("ana",
-                new CreateTeacherRequest(personData(), null));
+        StudentResponse student = studentService.create("ana",
+                new CreateStudentRequest(personData(), null));
 
-        assertThat(teacher.username()).isEqualTo("ana.estudiante");
+        assertThat(student.username()).isEqualTo("ana.estudiante");
         verify(userService).ensureAccount(PERSON, null);
     }
 
     @Test
-    void whoever_does_not_manage_teachers_cannot_register_one() {
-        doesNotManageTeachers("docente");
+    void whoever_does_not_manage_students_cannot_register_one() {
+        doesNotManageStudents("docente");
 
         assertThrows(RoleOutOfReachException.class,
-                () -> teacherService.create("docente", requestFor("nuevo.docente")));
+                () -> studentService.create("docente", requestFor("nuevo.docente")));
 
         verify(personService, never()).resolveOrCreate(any());
     }
 
     @Test
-    void disabling_a_teacher_only_turns_off_its_teaching_profile() {
-        Teacher teacher = givenTheTeacher(UUID.randomUUID(), true);
+    void disabling_a_student_only_turns_off_its_teaching_profile() {
+        Student student = givenTheStudent(UUID.randomUUID(), true);
         givenTheProfileOf(PERSON, "ana.docente");
 
-        TeacherResponse disabled = teacherService.disable("ana", teacher.getId());
+        StudentResponse disabled = studentService.disable("ana", student.getId());
 
         assertThat(disabled.active()).isFalse();
-        assertThat(teacher.isActive()).isFalse();
+        assertThat(student.isActive()).isFalse();
     }
 
     @Test
-    void enabling_a_teacher_turns_its_teaching_profile_back_on() {
-        Teacher teacher = givenTheTeacher(UUID.randomUUID(), false);
+    void enabling_a_student_turns_its_teaching_profile_back_on() {
+        Student student = givenTheStudent(UUID.randomUUID(), false);
         givenTheProfileOf(PERSON, "ana.docente");
 
-        assertThat(teacherService.enable("ana", teacher.getId()).active()).isTrue();
+        assertThat(studentService.enable("ana", student.getId()).active()).isTrue();
     }
 
     @Test
-    void an_unknown_teacher_is_not_found() {
-        UUID teacherId = UUID.randomUUID();
-        when(teacherRepository.findById(teacherId)).thenReturn(Optional.empty());
+    void an_unknown_student_is_not_found() {
+        UUID studentId = UUID.randomUUID();
+        when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
 
         ApiException error = assertThrows(ApiException.class,
-                () -> teacherService.disable("ana", teacherId));
+                () -> studentService.disable("ana", studentId));
 
-        assertThat(error.getCode()).isEqualTo("TCH_NOT_FOUND");
+        assertThat(error.getCode()).isEqualTo("STD_NOT_FOUND");
     }
 
     @Test
-    void updating_a_teacher_updates_the_person_shared_with_its_other_profiles() {
-        Teacher teacher = givenTheTeacher(UUID.randomUUID(), true);
+    void updating_a_student_updates_the_person_shared_with_its_other_profiles() {
+        Student student = givenTheStudent(UUID.randomUUID(), true);
         when(personService.update(PERSON, personData())).thenReturn(personResponse());
         when(userService.usernameOf(PERSON)).thenReturn("ana.docente");
 
-        TeacherResponse updated = teacherService.update("ana", teacher.getId(),
-                new UpdateTeacherRequest(personData()));
+        StudentResponse updated = studentService.update("ana", student.getId(),
+                new UpdateStudentRequest(personData()));
 
         assertThat(updated.person().lastName()).isEqualTo("Perez Gomez");
         verify(personService).update(PERSON, personData());
     }
 
     @Test
-    void changing_the_password_of_a_teacher_changes_the_one_of_its_person() {
-        Teacher teacher = givenTheTeacher(UUID.randomUUID(), true);
+    void changing_the_password_of_a_student_changes_the_one_of_its_person() {
+        Student student = givenTheStudent(UUID.randomUUID(), true);
 
-        teacherService.changePassword("ana", teacher.getId(),
+        studentService.changePassword("ana", student.getId(),
                 new ChangePasswordRequest("contrasena-nueva"));
 
         verify(userService).changePasswordOf(PERSON, "contrasena-nueva");
     }
 
     @Test
-    void the_listing_joins_each_teacher_with_its_person_and_its_username() {
-        Teacher teacher = Teacher.create(PERSON);
-        ReflectionTestUtils.setField(teacher, "id", UUID.randomUUID());
-        when(teacherRepository.findAll(FIRST_PAGE))
-                .thenReturn(new PageImpl<>(List.of(teacher), FIRST_PAGE, 1));
+    void the_listing_joins_each_student_with_its_person_and_its_username() {
+        Student student = Student.create(PERSON);
+        ReflectionTestUtils.setField(student, "id", UUID.randomUUID());
+        when(studentRepository.findAll(FIRST_PAGE))
+                .thenReturn(new PageImpl<>(List.of(student), FIRST_PAGE, 1));
         when(personService.byIds(List.of(PERSON))).thenReturn(Map.of(PERSON, personResponse()));
         when(userService.usernamesByPersonId(List.of(PERSON)))
                 .thenReturn(Map.of(PERSON, "ana.docente"));
 
-        PageResponse<TeacherResponse> page = teacherService.list("ana", null, FIRST_PAGE);
+        PageResponse<StudentResponse> page = studentService.list("ana", null, FIRST_PAGE);
 
         assertThat(page.content()).singleElement().satisfies(found -> {
             assertThat(found.username()).isEqualTo("ana.docente");
@@ -186,25 +186,25 @@ class TeacherServiceTest {
     }
 
     @Test
-    void a_teacher_given_up_is_no_longer_active_for_the_rest_of_the_modules() {
-        Teacher teacher = givenTheTeacher(UUID.randomUUID(), false);
-        when(teacherRepository.findByPersonId(PERSON)).thenReturn(Optional.of(teacher));
+    void a_student_given_up_is_no_longer_active_for_the_rest_of_the_modules() {
+        Student student = givenTheStudent(UUID.randomUUID(), false);
+        when(studentRepository.findByPersonId(PERSON)).thenReturn(Optional.of(student));
 
         ApiException error = assertThrows(ApiException.class,
-                () -> teacherService.requireActive(teacher.getId()));
+                () -> studentService.requireActive(student.getId()));
 
-        assertThat(error.getCode()).isEqualTo("TCH_INACTIVE");
-        assertThat(teacherService.activeProfileIdOf(PERSON)).isEmpty();
+        assertThat(error.getCode()).isEqualTo("STD_INACTIVE");
+        assertThat(studentService.activeProfileIdOf(PERSON)).isEmpty();
     }
 
     @Test
-    void the_summary_of_a_teacher_carries_its_name_and_nothing_else() {
-        Teacher teacher = givenTheTeacher(UUID.randomUUID(), true);
+    void the_summary_of_a_student_carries_its_name_and_nothing_else() {
+        Student student = givenTheStudent(UUID.randomUUID(), true);
         when(personService.get(PERSON)).thenReturn(personResponse());
 
-        TeacherSummary summary = teacherService.summaryOf(teacher.getId());
+        StudentSummary summary = studentService.summaryOf(student.getId());
 
-        assertThat(summary.id()).isEqualTo(teacher.getId());
+        assertThat(summary.id()).isEqualTo(student.getId());
         assertThat(summary.firstName()).isEqualTo("Juan Carlos");
         assertThat(summary.active()).isTrue();
     }
@@ -213,22 +213,22 @@ class TeacherServiceTest {
         when(personService.resolveOrCreate(personData())).thenReturn(personId);
     }
 
-    private void givenTheTeacherIsStored() {
-        when(teacherRepository.save(any(Teacher.class))).thenAnswer(call -> {
-            Teacher teacher = call.getArgument(0);
-            ReflectionTestUtils.setField(teacher, "id", UUID.randomUUID());
-            return teacher;
+    private void givenTheStudentIsStored() {
+        when(studentRepository.save(any(Student.class))).thenAnswer(call -> {
+            Student student = call.getArgument(0);
+            ReflectionTestUtils.setField(student, "id", UUID.randomUUID());
+            return student;
         });
     }
 
-    private Teacher givenTheTeacher(UUID teacherId, boolean active) {
-        Teacher teacher = Teacher.create(PERSON);
-        ReflectionTestUtils.setField(teacher, "id", teacherId);
+    private Student givenTheStudent(UUID studentId, boolean active) {
+        Student student = Student.create(PERSON);
+        ReflectionTestUtils.setField(student, "id", studentId);
         if (!active) {
-            teacher.deactivate();
+            student.deactivate();
         }
-        when(teacherRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
-        return teacher;
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+        return student;
     }
 
     private void givenTheProfileOf(UUID personId, String username) {
@@ -236,13 +236,13 @@ class TeacherServiceTest {
         when(userService.usernameOf(personId)).thenReturn(username);
     }
 
-    private void doesNotManageTeachers(String actorUsername) {
-        when(userService.requireManagerOf(actorUsername, Role.TEACHER))
+    private void doesNotManageStudents(String actorUsername) {
+        when(userService.requireManagerOf(actorUsername, Role.STUDENT))
                 .thenThrow(new RoleOutOfReachException());
     }
 
-    private static CreateTeacherRequest requestFor(String username) {
-        return new CreateTeacherRequest(personData(),
+    private static CreateStudentRequest requestFor(String username) {
+        return new CreateStudentRequest(personData(),
                 new Credentials(username, "contrasena"));
     }
 

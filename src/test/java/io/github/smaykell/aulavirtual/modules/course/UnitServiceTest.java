@@ -11,7 +11,9 @@ import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.modules.course.dto.ReorderUnitsRequest;
 import io.github.smaykell.aulavirtual.modules.course.dto.UnitData;
 import io.github.smaykell.aulavirtual.modules.course.dto.UnitResponse;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +28,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class UnitServiceTest {
 
     private static final UUID TITULAR = UUID.randomUUID();
+    private static final Instant NOW = Instant.parse("2026-03-10T09:00:00Z");
 
     @Mock
     private UnitRepository unitRepository;
@@ -42,7 +45,8 @@ class UnitServiceTest {
 
     @BeforeEach
     void setUp() {
-        unitService = new UnitService(unitRepository, materialRepository, courseAccess);
+        unitService = new UnitService(unitRepository, materialRepository, courseAccess,
+                Clock.fixed(NOW, ZoneOffset.UTC));
         course = CourseFixtures.course(TITULAR);
     }
 
@@ -70,19 +74,62 @@ class UnitServiceTest {
     void the_listing_hands_each_unit_its_material() {
         Unit first = CourseFixtures.unit(course.getId(), "Semana 1", 1);
         Unit second = CourseFixtures.unit(course.getId(), "Semana 2", 2);
-        when(courseAccess.readable("juan", course.getId())).thenReturn(course);
+        when(courseAccess.readable("juan", course.getId()))
+                .thenReturn(new CourseAccess.Reader(course, true));
         when(unitRepository.findByCourseIdOrderByPosition(course.getId()))
                 .thenReturn(List.of(first, second));
         when(materialRepository.findByUnitIdInOrderByPublishedAt(
                 List.of(first.getId(), second.getId())))
                 .thenReturn(List.of(CourseFixtures.material(first.getId(),
-                        CourseFixtures.file("Tema 1", MaterialType.PDF), Instant.EPOCH)));
+                        CourseFixtures.file("Tema 1", MaterialType.PDF), NOW)));
 
         List<UnitResponse> units = unitService.list("juan", course.getId());
 
         assertThat(units.get(0).materials()).singleElement()
                 .satisfies(material -> assertThat(material.title()).isEqualTo("Tema 1"));
         assertThat(units.get(1).materials()).isEmpty();
+    }
+
+    @Test
+    void a_student_only_sees_the_material_already_published() {
+        Unit unit = CourseFixtures.unit(course.getId(), "Semana 1", 1);
+        when(courseAccess.readable("ana.estudiante", course.getId()))
+                .thenReturn(new CourseAccess.Reader(course, false));
+        when(unitRepository.findByCourseIdOrderByPosition(course.getId()))
+                .thenReturn(List.of(unit));
+        when(materialRepository.findByUnitIdInOrderByPublishedAt(List.of(unit.getId())))
+                .thenReturn(List.of(
+                        CourseFixtures.material(unit.getId(),
+                                CourseFixtures.file("Publicado", MaterialType.PDF),
+                                NOW.minusSeconds(60)),
+                        CourseFixtures.material(unit.getId(),
+                                CourseFixtures.file("Programado", MaterialType.PDF),
+                                NOW.plusSeconds(60)),
+                        CourseFixtures.material(unit.getId(),
+                                CourseFixtures.hidden("Borrador", MaterialType.PDF),
+                                NOW.minusSeconds(60))));
+
+        List<UnitResponse> units = unitService.list("ana.estudiante", course.getId());
+
+        assertThat(units).singleElement().satisfies(found ->
+                assertThat(found.materials()).singleElement().satisfies(material ->
+                        assertThat(material.title()).isEqualTo("Publicado")));
+    }
+
+    @Test
+    void the_teacher_sees_the_material_that_the_student_still_cannot_see() {
+        Unit unit = CourseFixtures.unit(course.getId(), "Semana 1", 1);
+        when(courseAccess.readable("juan", course.getId()))
+                .thenReturn(new CourseAccess.Reader(course, true));
+        when(unitRepository.findByCourseIdOrderByPosition(course.getId()))
+                .thenReturn(List.of(unit));
+        when(materialRepository.findByUnitIdInOrderByPublishedAt(List.of(unit.getId())))
+                .thenReturn(List.of(
+                        CourseFixtures.material(unit.getId(),
+                                CourseFixtures.hidden("Borrador", MaterialType.PDF),
+                                NOW.plusSeconds(60))));
+
+        assertThat(unitService.list("juan", course.getId()).get(0).materials()).hasSize(1);
     }
 
     @Test

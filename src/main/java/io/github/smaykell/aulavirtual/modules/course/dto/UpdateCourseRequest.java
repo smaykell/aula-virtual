@@ -1,5 +1,6 @@
 package io.github.smaykell.aulavirtual.modules.course.dto;
 
+import io.github.smaykell.aulavirtual.modules.course.EnrollmentPolicy;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,6 +18,9 @@ public record UpdateCourseRequest(
 
         @NotNull(message = CourseConstraints.TEACHER_REQUIRED)
         UUID teacherId,
+
+        @NotNull(message = CourseConstraints.POLICY_REQUIRED)
+        EnrollmentPolicy enrollmentPolicy,
 
         @NotNull(message = CourseConstraints.START_DATE_REQUIRED)
         LocalDate startDate,

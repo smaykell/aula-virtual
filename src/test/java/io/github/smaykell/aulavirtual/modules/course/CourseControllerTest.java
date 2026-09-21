@@ -72,12 +72,26 @@ class CourseControllerTest {
     }
 
     @Test
-    void a_student_cannot_list_courses() throws Exception {
+    void a_student_lists_courses_and_the_service_decides_which_ones() throws Exception {
+        when(courseService.list(eq("ana"), eq(null), eq(null), any()))
+                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true, true));
+
         mockMvc.perform(get("/courses").header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
+                .andExpect(status().isOk());
+
+        verify(courseService).list(eq("ana"), eq(null), eq(null), any());
+    }
+
+    @Test
+    void a_student_cannot_create_a_course() throws Exception {
+        mockMvc.perform(post("/courses")
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(courseBody()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("GEN_ACCESS_DENIED"));
 
-        verify(courseService, never()).list(any(), any(), any(), any());
+        verify(courseService, never()).create(any(), any());
     }
 
     @Test
@@ -102,7 +116,8 @@ class CourseControllerTest {
         mockMvc.perform(post("/courses")
                         .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"startDate\": \"2026-03-01\", \"endDate\": \"2026-07-15\"}"))
+                        .content("{\"enrollmentPolicy\": \"ON_REQUEST\","
+                                + " \"startDate\": \"2026-03-01\", \"endDate\": \"2026-07-15\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("GEN_VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors[0].field").value("name"));
@@ -158,12 +173,14 @@ class CourseControllerTest {
         return new CourseResponse(UUID.randomUUID(), "Algebra Lineal", "Curso del primer ciclo",
                 new TeacherSummary(UUID.randomUUID(), "Juan Carlos", "Perez Gomez", true),
                 new InvitationResponse("ABCD2345", "https://aula.example/join/ABCD2345"),
-                status, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 7, 15), Instant.EPOCH);
+                status, EnrollmentPolicy.ON_REQUEST, LocalDate.of(2026, 3, 1),
+                LocalDate.of(2026, 7, 15), Instant.EPOCH);
     }
 
     private String courseBody() {
         return """
                 {"name": "Algebra Lineal", "description": "Curso del primer ciclo",
+                 "enrollmentPolicy": "ON_REQUEST",
                  "startDate": "2026-03-01", "endDate": "2026-07-15"}
                 """;
     }

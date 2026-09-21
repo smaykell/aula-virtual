@@ -17,6 +17,9 @@ public final class CourseConstraints {
     public static final String VISIBILITY_REQUIRED = "la visibilidad es obligatoria";
     public static final String STORAGE_KEY_TOO_LONG = "no puede superar los 255 caracteres";
     public static final String EXTERNAL_URL_TOO_LONG = "no puede superar los 2048 caracteres";
+    public static final String POLICY_REQUIRED =
+            "hay que decidir si el curso acepta las inscripciones o las revisa";
+    public static final String INVITATION_CODE_REQUIRED = "el código de invitación es obligatorio";
     public static final String UNITS_REQUIRED = "el orden de las unidades es obligatorio";
 
     private CourseConstraints() {

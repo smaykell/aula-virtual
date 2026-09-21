@@ -2,6 +2,7 @@ package io.github.smaykell.aulavirtual.modules.course.dto;
 
 import io.github.smaykell.aulavirtual.modules.course.Course;
 import io.github.smaykell.aulavirtual.modules.course.CourseStatus;
+import io.github.smaykell.aulavirtual.modules.course.EnrollmentPolicy;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherSummary;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -14,6 +15,7 @@ public record CourseResponse(
         TeacherSummary teacher,
         InvitationResponse invitation,
         CourseStatus status,
+        EnrollmentPolicy enrollmentPolicy,
         LocalDate startDate,
         LocalDate endDate,
         Instant createdAt) {
@@ -22,7 +24,11 @@ public record CourseResponse(
             InvitationResponse invitation) {
 
         return new CourseResponse(course.getId(), course.getName(), course.getDescription(),
-                teacher, invitation, course.getStatus(), course.getStartDate(),
-                course.getEndDate(), course.getCreatedAt());
+                teacher, invitation, course.getStatus(), course.getEnrollmentPolicy(),
+                course.getStartDate(), course.getEndDate(), course.getCreatedAt());
+    }
+
+    public static CourseResponse withoutInvitation(Course course, TeacherSummary teacher) {
+        return from(course, teacher, null);
     }
 }

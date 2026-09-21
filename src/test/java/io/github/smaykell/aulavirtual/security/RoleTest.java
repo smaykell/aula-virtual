@@ -38,28 +38,31 @@ class RoleTest {
     void the_authorities_carry_the_role_prefixed_and_its_permissions() {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.ADMIN)))
                 .containsExactlyInAnyOrder("ROLE_ADMIN", "teachers:read", "teachers:create",
-                        "teachers:update", "courses:read", "courses:create", "courses:update");
+                        "teachers:update", "students:read", "students:create", "students:update",
+                        "courses:read", "courses:create", "courses:update", "enrollments:read",
+                        "enrollments:update");
     }
 
     @Test
     void a_teacher_only_carries_the_permissions_of_its_own_courses() {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.TEACHER)))
                 .containsExactlyInAnyOrder("ROLE_TEACHER", "courses:read", "courses:create",
-                        "courses:update");
+                        "courses:update", "enrollments:read", "enrollments:update");
     }
 
     @Test
-    void a_role_without_permissions_only_carries_its_own_authority() {
+    void a_student_only_carries_what_it_reads_and_its_own_enrollment() {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.STUDENT)))
-                .containsExactly("ROLE_STUDENT");
+                .containsExactlyInAnyOrder("ROLE_STUDENT", "courses:read", "enrollments:create");
     }
 
     @Test
     void several_roles_carry_the_union_of_their_authorities() {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.ADMIN, Role.TEACHER)))
                 .containsExactlyInAnyOrder("ROLE_ADMIN", "ROLE_TEACHER", "teachers:read",
-                        "teachers:create", "teachers:update", "courses:read", "courses:create",
-                        "courses:update");
+                        "teachers:create", "teachers:update", "students:read", "students:create",
+                        "students:update", "courses:read", "courses:create", "courses:update",
+                        "enrollments:read", "enrollments:update");
     }
 
     @Test

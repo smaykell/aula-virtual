@@ -1,5 +1,6 @@
 package io.github.smaykell.aulavirtual.modules.course;
 
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,26 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
             """)
     Page<Course> search(@Param("teacherId") UUID teacherId,
             @Param("status") CourseStatus status, Pageable pageable);
+
+    @Query(value = """
+            select c from Course c
+            join Enrollment e on e.courseId = c.id
+            where e.studentId = :studentId
+              and e.status = :enrollmentStatus
+              and (:status is null or c.status = :status)
+            """,
+            countQuery = """
+            select count(c) from Course c
+            join Enrollment e on e.courseId = c.id
+            where e.studentId = :studentId
+              and e.status = :enrollmentStatus
+              and (:status is null or c.status = :status)
+            """)
+    Page<Course> searchEnrolled(@Param("studentId") UUID studentId,
+            @Param("enrollmentStatus") EnrollmentStatus enrollmentStatus,
+            @Param("status") CourseStatus status, Pageable pageable);
+
+    Optional<Course> findByInvitationCode(String invitationCode);
 
     boolean existsByInvitationCode(String invitationCode);
 }

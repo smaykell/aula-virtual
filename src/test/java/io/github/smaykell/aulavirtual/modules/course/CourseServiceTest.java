@@ -76,7 +76,7 @@ class CourseServiceTest {
 
         ApiException error = assertThrows(ApiException.class, () -> courseService.create("ana",
                 new CreateCourseRequest("Algebra Lineal", null, TITULAR,
-                        CourseFixtures.END, CourseFixtures.START)));
+                        EnrollmentPolicy.ON_REQUEST, CourseFixtures.END, CourseFixtures.START)));
 
         assertThat(error.getCode()).isEqualTo("CRS_INVALID_DATES");
         verify(courseRepository, never()).save(any(Course.class));
@@ -90,10 +90,12 @@ class CourseServiceTest {
 
         CourseResponse updated = courseService.update("ana", course.getId(),
                 new UpdateCourseRequest("Algebra Lineal II", "Segundo ciclo", newTitular,
-                        CourseFixtures.START, LocalDate.of(2026, 8, 1)));
+                        EnrollmentPolicy.AUTOMATIC, CourseFixtures.START,
+                        LocalDate.of(2026, 8, 1)));
 
         verify(courseAccess).requireTitular("ana", newTitular);
         assertThat(updated.name()).isEqualTo("Algebra Lineal II");
+        assertThat(course.acceptsEnrollmentsWithoutApproval()).isTrue();
         assertThat(course.getTeacherId()).isEqualTo(newTitular);
         assertThat(course.getEndDate()).isEqualTo(LocalDate.of(2026, 8, 1));
     }
@@ -101,7 +103,7 @@ class CourseServiceTest {
     @Test
     void archiving_a_course_keeps_it_readable_and_activating_it_brings_it_back() {
         Course course = CourseFixtures.course(TITULAR);
-        when(courseAccess.readable("ana", course.getId())).thenReturn(course);
+        when(courseAccess.managed("ana", course.getId())).thenReturn(course);
         givenTheSummaryOf(TITULAR);
 
         assertThat(courseService.archive("ana", course.getId()).status())
@@ -113,7 +115,8 @@ class CourseServiceTest {
     @Test
     void the_listing_goes_through_the_filter_of_the_actor_and_joins_its_teacher() {
         Course course = CourseFixtures.course(TITULAR);
-        when(courseAccess.teacherFilterFor("juan", null)).thenReturn(TITULAR);
+        when(courseAccess.listingScope("juan", null))
+                .thenReturn(new CourseAccess.Scope(TITULAR, null));
         when(courseRepository.search(TITULAR, CourseStatus.ACTIVE, FIRST_PAGE))
                 .thenReturn(new PageImpl<>(List.of(course), FIRST_PAGE, 1));
         when(teacherService.summariesOf(List.of(TITULAR)))

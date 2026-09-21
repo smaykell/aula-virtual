@@ -71,12 +71,25 @@ class UnitControllerTest {
     }
 
     @Test
-    void a_student_cannot_read_the_units_of_a_course() throws Exception {
+    void a_student_reads_the_units_and_the_service_decides_what_it_sees() throws Exception {
+        when(unitService.list("ana", COURSE)).thenReturn(List.of(aUnit()));
+
         mockMvc.perform(get("/courses/{courseId}/units", COURSE)
                         .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
+                .andExpect(status().isOk());
+
+        verify(unitService).list("ana", COURSE);
+    }
+
+    @Test
+    void a_student_cannot_add_units() throws Exception {
+        mockMvc.perform(post("/courses/{courseId}/units", COURSE)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\": \"Semana 1\"}"))
                 .andExpect(status().isForbidden());
 
-        verify(unitService, never()).list(any(), any());
+        verify(unitService, never()).create(any(), any(), any());
     }
 
     @Test

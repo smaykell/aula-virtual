@@ -10,14 +10,19 @@ public enum Role {
 
     SUPER_ADMIN(Set.of(Permission.ADMINISTRATORS_READ, Permission.ADMINISTRATORS_CREATE,
             Permission.ADMINISTRATORS_UPDATE, Permission.TEACHERS_READ, Permission.TEACHERS_CREATE,
-            Permission.TEACHERS_UPDATE, Permission.COURSES_READ, Permission.COURSES_CREATE,
-            Permission.COURSES_UPDATE)),
+            Permission.TEACHERS_UPDATE, Permission.STUDENTS_READ, Permission.STUDENTS_CREATE,
+            Permission.STUDENTS_UPDATE, Permission.COURSES_READ, Permission.COURSES_CREATE,
+            Permission.COURSES_UPDATE, Permission.ENROLLMENTS_READ,
+            Permission.ENROLLMENTS_UPDATE)),
     ADMIN(Set.of(Permission.TEACHERS_READ, Permission.TEACHERS_CREATE,
-            Permission.TEACHERS_UPDATE, Permission.COURSES_READ, Permission.COURSES_CREATE,
-            Permission.COURSES_UPDATE)),
+            Permission.TEACHERS_UPDATE, Permission.STUDENTS_READ, Permission.STUDENTS_CREATE,
+            Permission.STUDENTS_UPDATE, Permission.COURSES_READ, Permission.COURSES_CREATE,
+            Permission.COURSES_UPDATE, Permission.ENROLLMENTS_READ,
+            Permission.ENROLLMENTS_UPDATE)),
     TEACHER(Set.of(Permission.COURSES_READ, Permission.COURSES_CREATE,
-            Permission.COURSES_UPDATE)),
-    STUDENT(Set.of());
+            Permission.COURSES_UPDATE, Permission.ENROLLMENTS_READ,
+            Permission.ENROLLMENTS_UPDATE)),
+    STUDENT(Set.of(Permission.COURSES_READ, Permission.ENROLLMENTS_CREATE));
 
     private static final String AUTHORITY_PREFIX = "ROLE_";
 

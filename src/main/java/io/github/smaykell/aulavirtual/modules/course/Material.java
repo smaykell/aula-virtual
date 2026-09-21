@@ -50,6 +50,10 @@ public class Material extends BaseEntity {
         return new Material(unitId, data, publishedAt);
     }
 
+    public boolean isPublishedAt(Instant moment) {
+        return visible && !publishedAt.isAfter(moment);
+    }
+
     public final void update(MaterialData data, Instant publishedAt) {
         this.title = data.title().trim();
         this.type = data.type();

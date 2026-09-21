@@ -37,6 +37,10 @@ public class Course extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private CourseStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "enrollment_policy", nullable = false, length = 20)
+    private EnrollmentPolicy enrollmentPolicy;
+
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
@@ -49,6 +53,7 @@ public class Course extends BaseEntity {
         this.teacherId = teacherId;
         this.invitationCode = invitationCode;
         this.status = CourseStatus.ACTIVE;
+        this.enrollmentPolicy = request.enrollmentPolicy();
         this.startDate = request.startDate();
         this.endDate = request.endDate();
     }
@@ -63,6 +68,7 @@ public class Course extends BaseEntity {
         this.name = request.name().trim();
         this.description = trimmed(request.description());
         this.teacherId = request.teacherId();
+        this.enrollmentPolicy = request.enrollmentPolicy();
         this.startDate = request.startDate();
         this.endDate = request.endDate();
     }
@@ -73,6 +79,10 @@ public class Course extends BaseEntity {
 
     public void activate() {
         this.status = CourseStatus.ACTIVE;
+    }
+
+    public boolean acceptsEnrollmentsWithoutApproval() {
+        return enrollmentPolicy == EnrollmentPolicy.AUTOMATIC;
     }
 
     public boolean isArchived() {

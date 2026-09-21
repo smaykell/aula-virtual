@@ -234,15 +234,30 @@ transacción.
 
 El material no sube archivos todavía: guarda `storageKey` (la key del objeto, nunca
 una URL) o `externalUrl` si es un enlace, y el tipo decide cuál de los dos es
-obligatorio. `publishedAt` y `visible` se guardan pero aún no filtran nada: quien los
-leerá es el estudiante, y ese módulo no existe.
+obligatorio. `publishedAt` y `visible` sí filtran: `UnitService` elige el predicado una
+vez por lectura —el staff lo ve todo, el estudiante solo lo publicado—, en vez de
+repartir `if` por el mapeo.
 
 La invitación se reparte de dos formas y solo se guarda una: el `invitation_code` del
 curso es el dato, y `Invitations` compone además la URL al responder, colgando el
 código de `app.courses.invitation-base-url` (apunta al **frontend**). Por eso cambiar de
-dominio no toca la base. Falta el otro extremo —canjear la invitación—, que llega con
-`student` y su tabla de matrículas: hoy el curso sabe repartirla y nadie puede
-aceptarla.
+dominio no toca la base. Solo se le devuelve al staff: repartir el acceso es decisión
+del docente, no del alumno que ya entró.
+
+**Matrícula.** Vive en el mismo módulo porque necesita `CourseAccess`, que es
+package-private a propósito, y porque la política es un campo del curso:
+`enrollmentPolicy` decide si una inscripción nace `ACTIVE` (`AUTOMATIC`) o `PENDING`
+(`ON_REQUEST`), y esa traducción vive en un solo sitio, `EnrollmentPolicy.initialStatus()`.
+
+Hay **una fila por (curso, estudiante)**: quien fue rechazado o se retiró y vuelve a
+pedir entrar reutiliza la suya (`Enrollment.restart`), para que el histórico no se
+multiplique ni haya que aflojar la unicidad.
+
+`CourseAccess` pasó de responder «sí/no» a responder **quién eres**: `readable` devuelve
+un `Reader(course, staff)` porque leer un curso ya no es una sola cosa —el estudiante
+matriculado entra, pero ve menos—, mientras que `managed` y `writable` siguen siendo
+solo para el titular y quien administra docentes. `listingScope` hace lo propio con los
+listados: filtro por docente para el staff, por matrícula activa para el estudiante.
 
 ## Tests
 
