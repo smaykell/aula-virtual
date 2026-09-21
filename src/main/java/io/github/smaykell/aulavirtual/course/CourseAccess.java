@@ -1,5 +1,7 @@
 package io.github.smaykell.aulavirtual.course;
 
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentRepository;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
 import io.github.smaykell.aulavirtual.course.exception.ArchivedCourseException;
 import io.github.smaykell.aulavirtual.course.exception.CourseNotFoundException;
 import io.github.smaykell.aulavirtual.course.exception.CourseOutOfReachException;
@@ -16,24 +18,24 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-class CourseAccess {
+public class CourseAccess {
 
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserService userService;
     private final TeacherService teacherService;
 
-    record Reader(Course course, boolean staff, UUID studentId) {
+    public record Reader(Course course, boolean staff, UUID studentId) {
     }
 
-    record Scope(UUID teacherId, UUID studentId) {
+    public record Scope(UUID teacherId, UUID studentId) {
 
-        boolean staff() {
+        public boolean staff() {
             return studentId == null;
         }
     }
 
-    Reader readable(String actorUsername, UUID courseId) {
+    public Reader readable(String actorUsername, UUID courseId) {
         Course course = existing(courseId);
         Actor actor = userService.actor(actorUsername);
         if (staffOver(actor, course.getTeacherId())) {
@@ -43,13 +45,13 @@ class CourseAccess {
                 .orElseThrow(CourseOutOfReachException::new));
     }
 
-    Course managed(String actorUsername, UUID courseId) {
+    public Course managed(String actorUsername, UUID courseId) {
         Course course = existing(courseId);
         requireStaffOver(userService.actor(actorUsername), course.getTeacherId());
         return course;
     }
 
-    Course writable(String actorUsername, UUID courseId) {
+    public Course writable(String actorUsername, UUID courseId) {
         Course course = managed(actorUsername, courseId);
         if (course.isArchived()) {
             throw new ArchivedCourseException();
@@ -57,7 +59,7 @@ class CourseAccess {
         return course;
     }
 
-    UUID resolveTitular(String actorUsername, UUID requestedTeacherId) {
+    public UUID resolveTitular(String actorUsername, UUID requestedTeacherId) {
         Actor actor = userService.actor(actorUsername);
         UUID teacherId = requestedTeacherId == null ? ownTeacherProfile(actor)
                 : requestedTeacherId;
@@ -66,12 +68,12 @@ class CourseAccess {
         return teacherId;
     }
 
-    void requireTitular(String actorUsername, UUID teacherId) {
+    public void requireTitular(String actorUsername, UUID teacherId) {
         requireStaffOver(userService.actor(actorUsername), teacherId);
         teacherService.requireActive(teacherId);
     }
 
-    Scope listingScope(String actorUsername, UUID requestedTeacherId) {
+    public Scope listingScope(String actorUsername, UUID requestedTeacherId) {
         Actor actor = userService.actor(actorUsername);
         if (actor.canManage(Role.TEACHER)) {
             return new Scope(requestedTeacherId, null);
@@ -84,7 +86,7 @@ class CourseAccess {
         return new Scope(null, ownStudentProfile(actor));
     }
 
-    UUID requireStudent(String actorUsername) {
+    public UUID requireStudent(String actorUsername) {
         return ownStudentProfile(userService.actor(actorUsername));
     }
 

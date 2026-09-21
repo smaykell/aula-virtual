@@ -5,6 +5,7 @@ import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.dto.CourseResponse;
 import io.github.smaykell.aulavirtual.course.dto.CreateCourseRequest;
 import io.github.smaykell.aulavirtual.course.dto.UpdateCourseRequest;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
 import io.github.smaykell.aulavirtual.course.exception.InvalidCourseDatesException;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.teacher.dto.TeacherSummary;

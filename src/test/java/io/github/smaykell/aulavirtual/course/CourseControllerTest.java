@@ -19,6 +19,7 @@ import io.github.smaykell.aulavirtual.course.dto.CourseResponse;
 import io.github.smaykell.aulavirtual.course.dto.CreateCourseRequest;
 import io.github.smaykell.aulavirtual.course.dto.InvitationResponse;
 import io.github.smaykell.aulavirtual.course.dto.UpdateCourseRequest;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentPolicy;
 import io.github.smaykell.aulavirtual.security.JwtAuthenticationFilter;
 import io.github.smaykell.aulavirtual.security.JwtProperties;
 import io.github.smaykell.aulavirtual.security.JwtService;

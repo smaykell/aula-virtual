@@ -3,6 +3,7 @@ package io.github.smaykell.aulavirtual.course;
 import io.github.smaykell.aulavirtual.common.domain.BaseEntity;
 import io.github.smaykell.aulavirtual.course.dto.CreateCourseRequest;
 import io.github.smaykell.aulavirtual.course.dto.UpdateCourseRequest;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentPolicy;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

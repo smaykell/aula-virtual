@@ -12,6 +12,7 @@ import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.course.dto.CourseResponse;
 import io.github.smaykell.aulavirtual.course.dto.CreateCourseRequest;
 import io.github.smaykell.aulavirtual.course.dto.UpdateCourseRequest;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentPolicy;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import java.time.LocalDate;
 import java.util.List;

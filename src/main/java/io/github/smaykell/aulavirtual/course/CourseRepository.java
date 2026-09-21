@@ -1,5 +1,6 @@
 package io.github.smaykell.aulavirtual.course;
 
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;

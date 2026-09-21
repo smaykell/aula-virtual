@@ -224,11 +224,16 @@ Dos detalles fáciles de romper:
 `JwtService` recibe el `Clock` por constructor (bean de `ClockConfig`) para que los tests
 controlen el tiempo sin un segundo constructor.
 
-**Cursos.** `course` es un agregado, no tres módulos: el curso, sus unidades (`Unit`, la
-«semana» o tema — «módulo» ya significa otra cosa en este repo) y el material de cada
-unidad comparten paquete, catálogo (`CRS`) y permisos
-(`courses:read`, `courses:create`, `courses:update`; el de escritura cubre también
-unidades y material).
+**Cursos.** `course` es **un módulo con tres agregados dentro**, no tres módulos: el
+curso en la raíz del paquete, las unidades y su material en `unit/` (`Unit` es la
+«semana» o tema — «módulo» ya significa otra cosa en este repo) y la matrícula en
+`enrollment/`. Comparten catálogo (`CRS`) y permisos (`courses:read`, `courses:create`,
+`courses:update`; el de escritura cubre también unidades y material).
+
+**El catálogo de errores no se parte** aunque el paquete sí: los 18 viven juntos en
+`course/exception/`, porque el enum es la lista legible de todo lo que el módulo puede
+responder y repartirla en tres carpetas la haría ilegible. Los DTOs sí bajan con su
+agregado; `dto/CourseConstraints` se queda arriba porque lo validan los tres.
 
 Quien decide el acceso es **el docente titular**, no el rol: `CourseAccess` es la
 única pieza que lo resuelve y todos los servicios del módulo pasan por ella.
@@ -255,8 +260,17 @@ código de `app.courses.invitation-base-url` (apunta al **frontend**). Por eso c
 dominio no toca la base. Solo se le devuelve al staff: repartir el acceso es decisión
 del docente, no del alumno que ya entró.
 
-**Matrícula.** Vive en el mismo módulo porque necesita `CourseAccess`, que es
-package-private a propósito, y porque la política es un campo del curso:
+**`CourseAccess` es `public` y eso es una excepción, no la regla.** Lo es solo porque la
+comparten los tres sub-paquetes de `course`, y Java no tiene visibilidad «de módulo».
+Quien la sostiene ahora es `CourseAccessBoundaryTest`, que lee las fuentes de `src/main`
+y falla si algún fichero **fuera** de `course` la nombra — el mismo truco que
+`ErrorCatalogueTest`, un invariante garantizado por un test en vez de por el compilador.
+Ese test trae además dos comprobaciones contra sí mismo (que la clase sigue donde cree y
+que el escaneo llega a las fuentes), porque un test que busca en ficheros pasa igual de
+verde si deja de mirar donde debe. **Desde fuera del módulo se habla con `CourseService`
+o `UnitService`**, nunca con `CourseAccess`.
+
+**Matrícula.** Vive en el mismo módulo porque la política es un campo del curso:
 `enrollmentPolicy` decide si una inscripción nace `ACTIVE` (`AUTOMATIC`) o `PENDING`
 (`ON_REQUEST`), y esa traducción vive en un solo sitio, `EnrollmentPolicy.initialStatus()`.
 

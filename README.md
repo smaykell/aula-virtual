@@ -326,6 +326,10 @@ El curso es un agregado: sus **unidades** (las semanas o temas en que se divide)
 `course/`, con un único catálogo de errores (`CRS`) y un único permiso de
 escritura, `courses:update`, que cubre también unidades y material.
 
+Dentro, el módulo se ordena por agregado: el curso en la raíz, las unidades y su
+material en `unit/`, la matrícula en `enrollment/`. El catálogo de errores no se parte
+—`course/exception/` los tiene todos— porque es una sola lista.
+
 Quién puede tocar un curso lo decide **el docente titular**, no el rol suelto
 (`CourseAccess`):
 

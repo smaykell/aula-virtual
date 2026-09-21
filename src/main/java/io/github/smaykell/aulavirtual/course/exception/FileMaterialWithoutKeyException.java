@@ -1,7 +1,7 @@
 package io.github.smaykell.aulavirtual.course.exception;
 
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
-import io.github.smaykell.aulavirtual.course.MaterialType;
+import io.github.smaykell.aulavirtual.course.unit.MaterialType;
 
 public class FileMaterialWithoutKeyException extends ApiException {
 

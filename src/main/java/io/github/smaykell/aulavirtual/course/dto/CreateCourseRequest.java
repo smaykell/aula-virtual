@@ -1,6 +1,6 @@
 package io.github.smaykell.aulavirtual.course.dto;
 
-import io.github.smaykell.aulavirtual.course.EnrollmentPolicy;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentPolicy;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

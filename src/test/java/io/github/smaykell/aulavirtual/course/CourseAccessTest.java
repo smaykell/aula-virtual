@@ -7,6 +7,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentRepository;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
 import io.github.smaykell.aulavirtual.security.Actor;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;

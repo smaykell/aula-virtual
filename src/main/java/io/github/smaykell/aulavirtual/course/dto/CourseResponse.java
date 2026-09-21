@@ -2,7 +2,7 @@ package io.github.smaykell.aulavirtual.course.dto;
 
 import io.github.smaykell.aulavirtual.course.Course;
 import io.github.smaykell.aulavirtual.course.CourseStatus;
-import io.github.smaykell.aulavirtual.course.EnrollmentPolicy;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentPolicy;
 import io.github.smaykell.aulavirtual.teacher.dto.TeacherSummary;
 import java.time.Instant;
 import java.time.LocalDate;
