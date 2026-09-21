@@ -16,6 +16,7 @@ import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.user.UserService;
+import io.github.smaykell.aulavirtual.modules.user.dto.ChangePasswordRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.CreateUserRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.UserResponse;
 import io.github.smaykell.aulavirtual.modules.user.exception.RoleOutOfReachException;
@@ -157,6 +158,28 @@ class TeacherServiceTest {
         assertThrows(ApiException.class, () -> teacherService.disable("otro", teacher.getId()));
 
         assertThat(teacher.isActive()).isTrue();
+    }
+
+    @Test
+    void changing_the_password_of_a_teacher_reaches_its_account() {
+        Teacher teacher = givenStoredTeacher();
+        ChangePasswordRequest request = new ChangePasswordRequest("contrasena");
+
+        teacherService.changePassword("ana", teacher.getId(), request);
+
+        verify(userService).changePassword("ana", teacher.getUserId(), request);
+    }
+
+    @Test
+    void changing_the_password_of_a_teacher_that_does_not_exist_is_a_404() {
+        UUID unknown = UUID.randomUUID();
+        when(teacherRepository.findById(unknown)).thenReturn(Optional.empty());
+
+        ApiException error = assertThrows(ApiException.class, () -> teacherService
+                .changePassword("ana", unknown, new ChangePasswordRequest("contrasena")));
+
+        assertThat(error.getCode()).isEqualTo("TCH_NOT_FOUND");
+        verify(userService, never()).changePassword(any(), any(), any());
     }
 
     @Test

@@ -4,6 +4,7 @@ import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
+import io.github.smaykell.aulavirtual.modules.user.dto.ChangePasswordRequest;
 import io.github.smaykell.aulavirtual.security.Permission;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -72,5 +73,14 @@ public class TeacherController {
     @PreAuthorize("hasAuthority('" + Permission.Name.TEACHERS_UPDATE + "')")
     public TeacherResponse disable(Authentication authentication, @PathVariable UUID id) {
         return teacherService.disable(authentication.getName(), id);
+    }
+
+    @PostMapping("/{id}/$changePassword")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('" + Permission.Name.TEACHERS_UPDATE + "')")
+    public void changePassword(Authentication authentication, @PathVariable UUID id,
+            @Valid @RequestBody ChangePasswordRequest request) {
+
+        teacherService.changePassword(authentication.getName(), id, request);
     }
 }

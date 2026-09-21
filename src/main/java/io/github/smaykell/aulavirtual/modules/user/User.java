@@ -42,6 +42,10 @@ public class User extends BaseEntity {
         return new User(normalizeUsername(username), passwordHash, role);
     }
 
+    public void changePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     public void activate() {
         this.active = true;
     }

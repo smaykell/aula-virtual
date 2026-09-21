@@ -163,6 +163,7 @@ funcionan sin traducción.
 | `PUT /api/teachers/{id}` | `teachers:update` | cambia los datos de persona |
 | `POST /api/teachers/{id}/$enable` | `teachers:update` | reactiva al docente y su cuenta |
 | `POST /api/teachers/{id}/$disable` | `teachers:update` | desactiva al docente y su cuenta |
+| `POST /api/teachers/{id}/$changePassword` | `teachers:update` | cambia la contraseña de su cuenta y devuelve 204 |
 
 Los verbos que no encajan en el CRUD van como sub-recurso con `$`
 (`POST /api/teachers/{id}/$disable`). Así el sustantivo sigue siendo el recurso y no
@@ -225,6 +226,14 @@ lo que evita un docente dado de baja que sigue pudiendo entrar. El camino invers
 existe: `POST /api/users/{id}/$disable` apaga solo la cuenta y deja
 `teachers.active` como estaba, porque el módulo de usuarios no conoce al de docentes.
 Para dar de baja a un docente hay que usar la ruta de `/teachers`.
+
+### Cambiar la contraseña de un docente
+
+`POST /api/teachers/{id}/$changePassword` recibe `{"password"}` y la guarda cifrada en
+la cuenta del docente; responde 204 porque ningún dato visible del docente cambia. No
+pide la contraseña actual: la cambia quien administra al docente, no él mismo. Las
+reglas vuelven a salir de `Role.manageableRoles()`, así que un admin no puede cambiar
+la contraseña de otro admin ni la del superadmin.
 
 ## Errores
 

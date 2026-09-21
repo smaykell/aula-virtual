@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
+import io.github.smaykell.aulavirtual.modules.user.dto.ChangePasswordRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.CreateUserRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.UserResponse;
 import io.github.smaykell.aulavirtual.security.Role;
@@ -238,6 +239,41 @@ class UserServiceTest {
         assertThat(error.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(error.getCode()).isEqualTo("USR_NOT_FOUND");
         assertThat(error.getMessage()).isEqualTo("Usuario con id %s no encontrado".formatted(unknown));
+    }
+
+    @Test
+    void changing_the_password_stores_it_encoded() {
+        givenActor("ana", Role.ADMIN);
+        User target = givenTarget("docente", Role.TEACHER);
+
+        userService.changePassword("ana", target.getId(),
+                new ChangePasswordRequest("contrasena"));
+
+        assertThat(target.getPasswordHash()).isEqualTo("anesartnoc");
+    }
+
+    @Test
+    void an_admin_cannot_change_the_password_of_another_admin() {
+        givenActor("ana", Role.ADMIN);
+        User target = givenTarget("otroadmin", Role.ADMIN);
+
+        ApiException error = assertThrows(ApiException.class, () -> userService
+                .changePassword("ana", target.getId(), new ChangePasswordRequest("contrasena")));
+
+        assertThat(error.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(target.getPasswordHash()).isEqualTo("hash");
+    }
+
+    @Test
+    void changing_the_password_of_a_user_that_does_not_exist_is_a_404() {
+        givenActor("ana", Role.ADMIN);
+        UUID unknown = UUID.randomUUID();
+        when(userRepository.findById(unknown)).thenReturn(Optional.empty());
+
+        ApiException error = assertThrows(ApiException.class, () -> userService
+                .changePassword("ana", unknown, new ChangePasswordRequest("contrasena")));
+
+        assertThat(error.getCode()).isEqualTo("USR_NOT_FOUND");
     }
 
     @Test

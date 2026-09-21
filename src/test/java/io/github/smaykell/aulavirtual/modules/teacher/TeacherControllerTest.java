@@ -19,6 +19,7 @@ import io.github.smaykell.aulavirtual.config.CorsProperties;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
+import io.github.smaykell.aulavirtual.modules.user.dto.ChangePasswordRequest;
 import io.github.smaykell.aulavirtual.security.JwtAuthenticationFilter;
 import io.github.smaykell.aulavirtual.security.JwtProperties;
 import io.github.smaykell.aulavirtual.security.JwtService;
@@ -233,6 +234,43 @@ class TeacherControllerTest {
     }
 
     @Test
+    void an_admin_changes_the_password_of_a_teacher() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(post("/teachers/{id}/$changePassword", id)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordBody("contrasena")))
+                .andExpect(status().isNoContent());
+
+        verify(teacherService).changePassword(eq("ana"), eq(id),
+                any(ChangePasswordRequest.class));
+    }
+
+    @Test
+    void a_short_new_password_is_rejected_before_reaching_the_service() throws Exception {
+        mockMvc.perform(post("/teachers/{id}/$changePassword", UUID.randomUUID())
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordBody("corta")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("password"));
+
+        verify(teacherService, never()).changePassword(any(), any(), any());
+    }
+
+    @Test
+    void a_teacher_cannot_change_the_password_of_teachers() throws Exception {
+        mockMvc.perform(post("/teachers/{id}/$changePassword", UUID.randomUUID())
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(passwordBody("contrasena")))
+                .andExpect(status().isForbidden());
+
+        verify(teacherService, never()).changePassword(any(), any(), any());
+    }
+
+    @Test
     void a_student_cannot_list_teachers() throws Exception {
         mockMvc.perform(get("/teachers").header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
                 .andExpect(status().isForbidden());
@@ -244,6 +282,12 @@ class TeacherControllerTest {
         return new TeacherResponse(UUID.randomUUID(), UUID.randomUUID(), "nuevo.docente",
                 "Juan Carlos", "Perez Gomez", LocalDate.of(1990, 5, 20), Sex.MALE, active,
                 Instant.EPOCH);
+    }
+
+    private String passwordBody(String password) {
+        return """
+                {"password": "%s"}
+                """.formatted(password);
     }
 
     private String updateBody(String birthDate) {

@@ -6,6 +6,7 @@ import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.user.UserService;
+import io.github.smaykell.aulavirtual.modules.user.dto.ChangePasswordRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.CreateUserRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.UserResponse;
 import io.github.smaykell.aulavirtual.security.Role;
@@ -78,6 +79,13 @@ public class TeacherService {
         UserResponse account = userService.disable(actorUsername, teacher.getUserId());
         teacher.deactivate();
         return TeacherResponse.from(teacher, account.username());
+    }
+
+    @Transactional
+    public void changePassword(String actorUsername, UUID teacherId,
+            ChangePasswordRequest request) {
+
+        userService.changePassword(actorUsername, existing(teacherId).getUserId(), request);
     }
 
     private Teacher existing(UUID teacherId) {

@@ -1,6 +1,7 @@
 package io.github.smaykell.aulavirtual.modules.user;
 
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
+import io.github.smaykell.aulavirtual.modules.user.dto.ChangePasswordRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.CreateUserRequest;
 import io.github.smaykell.aulavirtual.modules.user.dto.UserResponse;
 import io.github.smaykell.aulavirtual.modules.user.exception.InactiveActorException;
@@ -66,6 +67,12 @@ public class UserService {
         User target = manageableTarget(actorUsername, userId);
         target.deactivate();
         return UserResponse.from(target);
+    }
+
+    @Transactional
+    public void changePassword(String actorUsername, UUID userId, ChangePasswordRequest request) {
+        manageableTarget(actorUsername, userId)
+                .changePassword(passwordEncoder.encode(request.password()));
     }
 
     @Transactional(readOnly = true)
