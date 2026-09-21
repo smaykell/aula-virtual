@@ -222,6 +222,17 @@ cambiarlos y cambiar mi contraseña dando la actual. No pasa por `manageableRole
 porque nadie se administra a sí mismo — y es lo único que permite al superadmin, a quien
 nadie administra, corregir sus propios datos.
 
+**`/me/*` es lo único que no lleva `@PreAuthorize`**, y es deliberado: `SecurityConfig`
+ya exige token para todo, y el resto de la condición la pone el servicio. Vale también
+para `/me/enrollments`, que vive en `course/enrollment/MyEnrollmentController` y es
+solo para estudiantes: quien no lo sea recibe `CRS_STUDENT_REQUIRED` desde
+`courseAccess.requireStudent`. Anotarlo con `hasRole('STUDENT')` empeoraría las dos
+cosas — partiría la regla entre la anotación y el servicio, y cambiaría un código de
+error que el front sabe leer por un 403 genérico. No hay ningún permiso que encaje:
+`enrollments:read` es de admin y docente, justo de quien **no** usa este endpoint.
+Así que al auditar la superficie de la API, los `@PreAuthorize` la describen entera
+**salvo `/me/*`**.
+
 Dos detalles fáciles de romper:
 
 - Las rutas de `SecurityConfig.PUBLIC_PATHS` se escriben **sin** el context-path `/api`;
