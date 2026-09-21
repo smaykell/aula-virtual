@@ -84,6 +84,14 @@ desde el alta de un perfil, dentro de la misma transacción.
 depende de `common` y `config`; si dos módulos necesitan hablarse lo hacen a través del
 *service* del otro, nunca de su repositorio ni de sus entidades.
 
+**Esa regla ya no es solo prosa**: `ModuleBoundariesTest` lee las fuentes de `src/main` y
+falla si un módulo importa el repositorio o la entidad de otro. Va acompañado de tres
+comprobaciones contra sí mismo —que el escaneo encuentra los 12 repositorios, las 12
+entidades y que no confunde `BaseEntity` con una— porque un test que busca en ficheros
+pasa igual de verde si deja de mirar donde debe. No arregla nada hoy: impide retroceder
+mañana. Los sub-paquetes de un módulo son el mismo módulo, así que `course/enrollment`
+puede usar `CourseRepository`.
+
 **El esquema lo manda Flyway.** `spring.jpa.hibernate.ddl-auto=validate`, así que una
 entidad nueva sin su migración correspondiente hace fallar el arranque (y el test de
 contexto). Cada módulo aporta su `V<n>__create_<name>.sql` en
