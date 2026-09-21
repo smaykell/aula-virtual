@@ -119,7 +119,8 @@ io.github.smaykell.aulavirtual
     ├── teacher/       el perfil de docente
     ├── administrator/ el perfil de administrador
     ├── student/       el perfil de estudiante
-    └── course/        el curso, sus unidades, su material y sus matrículas
+    ├── course/        el curso, sus unidades, su material y sus matrículas
+    └── assignment/    las tareas, sus entregas y las calificaciones
 ```
 
 Una **persona** (`persons`) puede tener varios **perfiles** —docente, estudiante,
@@ -214,6 +215,15 @@ funcionan sin traducción.
 | `POST /api/enrollments/{id}/$accept` | `enrollments:update` | acepta una solicitud pendiente |
 | `POST /api/enrollments/{id}/$reject` | `enrollments:update` | rechaza una solicitud pendiente |
 | `POST /api/enrollments/{id}/$withdraw` | `enrollments:update` | retira del curso a un estudiante matriculado |
+| `GET /api/units/{id}/assignments` | `assignments:read` | las tareas de la unidad, por fecha límite |
+| `POST /api/units/{id}/assignments` | `assignments:create` | publica una tarea y devuelve 201 |
+| `GET /api/assignments/{id}` | `assignments:read` | una tarea |
+| `PUT /api/assignments/{id}` | `assignments:update` | cambia la tarea |
+| `DELETE /api/assignments/{id}` | `assignments:update` | borra la tarea y devuelve 204 |
+| `POST /api/assignments/{id}/$submit` | `submissions:create` | el estudiante entrega, o reemplaza su entrega |
+| `GET /api/assignments/{id}/submissions` | `assignments:read` | las entregas: todas para el docente, la suya para el estudiante |
+| `POST /api/submissions/{id}/$grade` | `assignments:update` | califica la entrega con nota y retroalimentación |
+| `GET /api/courses/{id}/grades` | `assignments:read` | el consolidado de notas del curso |
 
 Los verbos que no encajan en el CRUD van como sub-recurso con `$`
 (`POST /api/teachers/{id}/$disable`). Así el sustantivo sigue siendo el recurso y no
@@ -233,10 +243,10 @@ activo, y sus permisos son la unión de los de esos roles.
 
 | Rol | Permisos | Administra a |
 |---|---|---|
-| `SUPER_ADMIN` | `administrators:`, `teachers:`, `students:`, `courses:`, `enrollments:read` y `enrollments:update` | `ADMIN`, `TEACHER`, `STUDENT` |
-| `ADMIN` | `teachers:`, `students:`, `courses:`, `enrollments:read` y `enrollments:update` | `TEACHER`, `STUDENT` |
-| `TEACHER` | `courses:`, `enrollments:read` y `enrollments:update` | — |
-| `STUDENT` | `courses:read` y `enrollments:create` | — |
+| `SUPER_ADMIN` | `administrators:`, `teachers:`, `students:`, `courses:`, `enrollments:read`, `enrollments:update` y `assignments:` | `ADMIN`, `TEACHER`, `STUDENT` |
+| `ADMIN` | `teachers:`, `students:`, `courses:`, `enrollments:read`, `enrollments:update` y `assignments:` | `TEACHER`, `STUDENT` |
+| `TEACHER` | `courses:`, `enrollments:read`, `enrollments:update` y `assignments:` | — |
+| `STUDENT` | `courses:read`, `enrollments:create`, `assignments:read` y `submissions:create` | — |
 
 `Role.manageableRoles()` es la única fuente de la última columna, y de ella salen
 dos reglas: un admin no puede tocar a otro admin, y nadie —tampoco el superadmin—
@@ -412,6 +422,44 @@ resolver las que tenga pendientes.
 Todo lo demás del curso le está cerrado: escribir sigue siendo del titular y de quien
 administra docentes.
 
+### Tareas, entregas y calificaciones
+
+Las tareas son el **primer módulo que no vive dentro de `course`**: `modules/assignment`
+tiene su propio catálogo (`ASG`) y le pregunta al de cursos lo que necesita saber, que es
+poco y está en tres métodos —`UnitService.courseOf`, `CourseService.memberOf` y
+`CourseService.requireWritable`—. `memberOf` es el que sostiene todo: responde **quién
+eres en este curso** (staff o estudiante, y cuál), y de ahí sale sin repetir reglas que el
+docente vea todas las entregas y el estudiante solo la suya.
+
+La tarea cuelga de una unidad y lleva fecha límite, puntaje máximo y si admite entregas
+tardías. Entregar es `POST /api/assignments/{id}/$submit` con un archivo, un texto o los
+dos, y el estado sale solo de la fecha:
+
+| Situación | Estado de la entrega |
+|---|---|
+| dentro de plazo | `SUBMITTED` |
+| fuera de plazo y la tarea admite tardías | `LATE` |
+| fuera de plazo y no las admite | se rechaza con `ASG_DEADLINE_PASSED` |
+
+Hay **una entrega por (tarea, estudiante)**: volver a entregar reemplaza la que había, no
+acumula intentos —hasta que se califica, que es cuando se cierra
+(`ASG_ALREADY_GRADED`)—. Una entrega sin archivo y sin texto no vale
+(`ASG_EMPTY_SUBMISSION`).
+
+`POST /api/submissions/{id}/$grade` recibe `{"score", "feedback"}`; una nota fuera del
+rango de la tarea responde `ASG_SCORE_OUT_OF_RANGE` con el máximo en el mensaje.
+
+**La calificación es una tabla aparte**, y no por gusto: guarda `sourceType`/`sourceId` en
+vez de apuntar a la entrega, de modo que el examen —que llega en la siguiente iteración—
+se enchufa reusando `GradeService.record(...)` sin tocar el esquema. `courseId` va
+desnormalizado en la fila porque es el filtro del consolidado: `GET /api/courses/{id}/grades`
+devuelve todo el curso al docente y solo sus notas al estudiante, con una consulta y sin
+importar de dónde salió cada nota. `gradedBy` queda en null cuando la corrección sea
+automática.
+
+Como el material, los archivos de tarea y de entrega viajan hoy como `storageKey`: la API
+todavía no sube ni sirve bytes.
+
 ## Errores
 
 Todos los errores comparten el mismo cuerpo:
@@ -462,6 +510,7 @@ HTTP y su mensaje; ese enum es el catálogo. Hay uno global y uno por módulo:
 | `AdministratorError` | `ADM` | `modules/administrator/exception` |
 | `StudentError` | `STD` | `modules/student/exception` |
 | `CourseError` | `CRS` | `modules/course/exception` |
+| `AssignmentError` | `ASG` | `modules/assignment/exception` |
 
 El código no se escribe a mano: `ErrorCode.code()` lo compone como
 `prefijo + "_" + nombre de la constante`, de modo que `UserError.USERNAME_TAKEN` es

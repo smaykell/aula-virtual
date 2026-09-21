@@ -1,0 +1,53 @@
+package io.github.smaykell.aulavirtual.modules.assignment;
+
+import io.github.smaykell.aulavirtual.modules.assignment.dto.GradeResponse;
+import io.github.smaykell.aulavirtual.modules.course.CourseService;
+import io.github.smaykell.aulavirtual.modules.course.dto.CourseMember;
+import io.github.smaykell.aulavirtual.modules.user.UserService;
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class GradeService {
+
+    private final GradeRepository gradeRepository;
+    private final CourseService courseService;
+    private final UserService userService;
+    private final Clock clock;
+
+    @Transactional(readOnly = true)
+    public List<GradeResponse> ofCourse(String actorUsername, UUID courseId) {
+        CourseMember member = courseService.memberOf(actorUsername, courseId);
+        List<Grade> grades = member.staff()
+                ? gradeRepository.findByCourseIdOrderByGradedAtDesc(courseId)
+                : gradeRepository.findByCourseIdAndStudentIdOrderByGradedAtDesc(courseId,
+                        member.studentId());
+
+        return grades.stream().map(GradeResponse::from).toList();
+    }
+
+    Grade record(String actorUsername, GradeSource sourceType, UUID sourceId, UUID studentId,
+            UUID courseId, BigDecimal score, String feedback) {
+
+        Grade grade = gradeRepository.findBySourceTypeAndSourceId(sourceType, sourceId)
+                .orElseGet(() -> gradeRepository.save(
+                        Grade.of(sourceType, sourceId, studentId, courseId)));
+        grade.record(score, feedback, userService.actor(actorUsername).personId(),
+                clock.instant());
+        return grade;
+    }
+
+    Map<UUID, GradeResponse> bySource(GradeSource sourceType, Collection<UUID> sourceIds) {
+        return gradeRepository.findBySourceTypeAndSourceIdIn(sourceType, sourceIds).stream()
+                .collect(Collectors.toMap(Grade::getSourceId, GradeResponse::from));
+    }
+}

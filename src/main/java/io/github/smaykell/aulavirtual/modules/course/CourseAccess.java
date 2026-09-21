@@ -10,6 +10,7 @@ import io.github.smaykell.aulavirtual.modules.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.modules.user.UserService;
 import io.github.smaykell.aulavirtual.security.Actor;
 import io.github.smaykell.aulavirtual.security.Role;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -24,7 +25,7 @@ class CourseAccess {
     private final TeacherService teacherService;
     private final StudentService studentService;
 
-    record Reader(Course course, boolean staff) {
+    record Reader(Course course, boolean staff, UUID studentId) {
     }
 
     record Scope(UUID teacherId, UUID studentId) {
@@ -38,12 +39,10 @@ class CourseAccess {
         Course course = existing(courseId);
         Actor actor = userService.actor(actorUsername);
         if (staffOver(actor, course.getTeacherId())) {
-            return new Reader(course, true);
+            return new Reader(course, true, null);
         }
-        if (enrolledIn(actor, course)) {
-            return new Reader(course, false);
-        }
-        throw new CourseOutOfReachException();
+        return new Reader(course, false, enrolledStudentIn(actor, course)
+                .orElseThrow(CourseOutOfReachException::new));
     }
 
     Course managed(String actorUsername, UUID courseId) {
@@ -103,11 +102,10 @@ class CourseAccess {
         }
     }
 
-    private boolean enrolledIn(Actor actor, Course course) {
+    private Optional<UUID> enrolledStudentIn(Actor actor, Course course) {
         return studentService.activeProfileIdOf(actor.personId())
                 .filter(studentId -> enrollmentRepository.existsByCourseIdAndStudentIdAndStatus(
-                        course.getId(), studentId, EnrollmentStatus.ACTIVE))
-                .isPresent();
+                        course.getId(), studentId, EnrollmentStatus.ACTIVE));
     }
 
     private Course existing(UUID courseId) {

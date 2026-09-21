@@ -1,6 +1,7 @@
 package io.github.smaykell.aulavirtual.modules.course;
 
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
+import io.github.smaykell.aulavirtual.modules.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.modules.course.dto.CourseResponse;
 import io.github.smaykell.aulavirtual.modules.course.dto.CreateCourseRequest;
 import io.github.smaykell.aulavirtual.modules.course.dto.UpdateCourseRequest;
@@ -85,6 +86,17 @@ public class CourseService {
         Course course = courseAccess.managed(actorUsername, courseId);
         course.activate();
         return responseFor(course);
+    }
+
+    @Transactional(readOnly = true)
+    public CourseMember memberOf(String actorUsername, UUID courseId) {
+        CourseAccess.Reader reader = courseAccess.readable(actorUsername, courseId);
+        return new CourseMember(courseId, reader.staff(), reader.studentId());
+    }
+
+    @Transactional(readOnly = true)
+    public void requireWritable(String actorUsername, UUID courseId) {
+        courseAccess.writable(actorUsername, courseId);
     }
 
     private Page<Course> coursesIn(CourseAccess.Scope scope, CourseStatus status,

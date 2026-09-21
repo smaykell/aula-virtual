@@ -259,6 +259,23 @@ matriculado entra, pero ve menos—, mientras que `managed` y `writable` siguen 
 solo para el titular y quien administra docentes. `listingScope` hace lo propio con los
 listados: filtro por docente para el staff, por matrícula activa para el estudiante.
 
+**Tareas y calificaciones.** `modules/assignment` es el primero que **no** vive dentro de
+`course`: tarea, entrega y calificación tienen su propio catálogo (`ASG`) y hablan con el
+módulo de cursos por servicio, que es la regla de slices. El contrato es de tres métodos y
+conviene que no crezca: `UnitService.courseOf`, `CourseService.requireWritable` y
+`CourseService.memberOf`, que devuelve un `CourseMember(courseId, staff, studentId)` —
+**quién eres en este curso**—. Ese record es lo que evita repetir la regla de alcance en
+cada servicio nuevo: si el módulo de exámenes necesita lo mismo, pide `memberOf` y ya.
+
+Una entrega por (tarea, estudiante): reentregar reemplaza la fila, no acumula intentos, y
+se cierra al calificar. El estado (`SUBMITTED`/`LATE`) lo decide la fecha contra
+`dueAt`, no el cliente.
+
+`Grade` es polimórfica a propósito (`sourceType`/`sourceId`) y con `courseId`
+desnormalizado: es lo que permite que el consolidado del curso salga de una consulta y que
+el examen se enchufe reusando `GradeService.record(...)` sin migración nueva. `gradedBy`
+nulo significa corrección automática.
+
 ## Tests
 
 - Ningún test salvo el de contexto necesita base de datos; todos corren siempre.

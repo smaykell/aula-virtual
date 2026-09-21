@@ -40,20 +40,23 @@ class RoleTest {
                 .containsExactlyInAnyOrder("ROLE_ADMIN", "teachers:read", "teachers:create",
                         "teachers:update", "students:read", "students:create", "students:update",
                         "courses:read", "courses:create", "courses:update", "enrollments:read",
-                        "enrollments:update");
+                        "enrollments:update", "assignments:read", "assignments:create",
+                        "assignments:update");
     }
 
     @Test
     void a_teacher_only_carries_the_permissions_of_its_own_courses() {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.TEACHER)))
                 .containsExactlyInAnyOrder("ROLE_TEACHER", "courses:read", "courses:create",
-                        "courses:update", "enrollments:read", "enrollments:update");
+                        "courses:update", "enrollments:read", "enrollments:update",
+                        "assignments:read", "assignments:create", "assignments:update");
     }
 
     @Test
     void a_student_only_carries_what_it_reads_and_its_own_enrollment() {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.STUDENT)))
-                .containsExactlyInAnyOrder("ROLE_STUDENT", "courses:read", "enrollments:create");
+                .containsExactlyInAnyOrder("ROLE_STUDENT", "courses:read", "enrollments:create",
+                        "assignments:read", "submissions:create");
     }
 
     @Test
@@ -62,7 +65,8 @@ class RoleTest {
                 .containsExactlyInAnyOrder("ROLE_ADMIN", "ROLE_TEACHER", "teachers:read",
                         "teachers:create", "teachers:update", "students:read", "students:create",
                         "students:update", "courses:read", "courses:create", "courses:update",
-                        "enrollments:read", "enrollments:update");
+                        "enrollments:read", "enrollments:update", "assignments:read",
+                        "assignments:create", "assignments:update");
     }
 
     @Test

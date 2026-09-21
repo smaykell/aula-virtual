@@ -75,7 +75,7 @@ class UnitServiceTest {
         Unit first = CourseFixtures.unit(course.getId(), "Semana 1", 1);
         Unit second = CourseFixtures.unit(course.getId(), "Semana 2", 2);
         when(courseAccess.readable("juan", course.getId()))
-                .thenReturn(new CourseAccess.Reader(course, true));
+                .thenReturn(new CourseAccess.Reader(course, true, null));
         when(unitRepository.findByCourseIdOrderByPosition(course.getId()))
                 .thenReturn(List.of(first, second));
         when(materialRepository.findByUnitIdInOrderByPublishedAt(
@@ -94,7 +94,7 @@ class UnitServiceTest {
     void a_student_only_sees_the_material_already_published() {
         Unit unit = CourseFixtures.unit(course.getId(), "Semana 1", 1);
         when(courseAccess.readable("ana.estudiante", course.getId()))
-                .thenReturn(new CourseAccess.Reader(course, false));
+                .thenReturn(new CourseAccess.Reader(course, false, UUID.randomUUID()));
         when(unitRepository.findByCourseIdOrderByPosition(course.getId()))
                 .thenReturn(List.of(unit));
         when(materialRepository.findByUnitIdInOrderByPublishedAt(List.of(unit.getId())))
@@ -120,7 +120,7 @@ class UnitServiceTest {
     void the_teacher_sees_the_material_that_the_student_still_cannot_see() {
         Unit unit = CourseFixtures.unit(course.getId(), "Semana 1", 1);
         when(courseAccess.readable("juan", course.getId()))
-                .thenReturn(new CourseAccess.Reader(course, true));
+                .thenReturn(new CourseAccess.Reader(course, true, null));
         when(unitRepository.findByCourseIdOrderByPosition(course.getId()))
                 .thenReturn(List.of(unit));
         when(materialRepository.findByUnitIdInOrderByPublishedAt(List.of(unit.getId())))

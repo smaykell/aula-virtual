@@ -91,6 +91,11 @@ public class UnitService {
         unitRepository.delete(unit);
     }
 
+    @Transactional(readOnly = true)
+    public UUID courseOf(UUID unitId) {
+        return existing(unitId).getCourseId();
+    }
+
     Unit writable(String actorUsername, UUID unitId) {
         Unit unit = existing(unitId);
         courseAccess.writable(actorUsername, unit.getCourseId());
