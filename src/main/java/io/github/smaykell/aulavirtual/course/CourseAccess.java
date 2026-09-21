@@ -7,7 +7,6 @@ import io.github.smaykell.aulavirtual.course.exception.StudentRequiredException;
 import io.github.smaykell.aulavirtual.course.exception.TeacherRequiredException;
 import io.github.smaykell.aulavirtual.security.Actor;
 import io.github.smaykell.aulavirtual.security.Role;
-import io.github.smaykell.aulavirtual.student.StudentService;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.user.UserService;
 import java.util.Optional;
@@ -23,7 +22,6 @@ class CourseAccess {
     private final EnrollmentRepository enrollmentRepository;
     private final UserService userService;
     private final TeacherService teacherService;
-    private final StudentService studentService;
 
     record Reader(Course course, boolean staff, UUID studentId) {
     }
@@ -78,7 +76,7 @@ class CourseAccess {
         if (actor.canManage(Role.TEACHER)) {
             return new Scope(requestedTeacherId, null);
         }
-        UUID ownTeacher = teacherService.activeProfileIdOf(actor.personId()).orElse(null);
+        UUID ownTeacher = actor.profileId(Role.TEACHER).orElse(null);
         if (ownTeacher != null) {
             requireSameTeacher(requestedTeacherId, ownTeacher);
             return new Scope(ownTeacher, null);
@@ -90,20 +88,19 @@ class CourseAccess {
         return ownStudentProfile(userService.actor(actorUsername));
     }
 
-    private boolean staffOver(Actor actor, UUID teacherId) {
+    private static boolean staffOver(Actor actor, UUID teacherId) {
         return actor.canManage(Role.TEACHER)
-                || teacherService.activeProfileIdOf(actor.personId())
-                        .filter(teacherId::equals).isPresent();
+                || actor.profileId(Role.TEACHER).filter(teacherId::equals).isPresent();
     }
 
-    private void requireStaffOver(Actor actor, UUID teacherId) {
+    private static void requireStaffOver(Actor actor, UUID teacherId) {
         if (!staffOver(actor, teacherId)) {
             throw new CourseOutOfReachException();
         }
     }
 
     private Optional<UUID> enrolledStudentIn(Actor actor, Course course) {
-        return studentService.activeProfileIdOf(actor.personId())
+        return actor.profileId(Role.STUDENT)
                 .filter(studentId -> enrollmentRepository.existsByCourseIdAndStudentIdAndStatus(
                         course.getId(), studentId, EnrollmentStatus.ACTIVE));
     }
@@ -113,14 +110,12 @@ class CourseAccess {
                 .orElseThrow(() -> new CourseNotFoundException(courseId));
     }
 
-    private UUID ownTeacherProfile(Actor actor) {
-        return teacherService.activeProfileIdOf(actor.personId())
-                .orElseThrow(TeacherRequiredException::new);
+    private static UUID ownTeacherProfile(Actor actor) {
+        return actor.profileId(Role.TEACHER).orElseThrow(TeacherRequiredException::new);
     }
 
-    private UUID ownStudentProfile(Actor actor) {
-        return studentService.activeProfileIdOf(actor.personId())
-                .orElseThrow(StudentRequiredException::new);
+    private static UUID ownStudentProfile(Actor actor) {
+        return actor.profileId(Role.STUDENT).orElseThrow(StudentRequiredException::new);
     }
 
     private static void requireSameTeacher(UUID requestedTeacherId, UUID ownTeacherId) {

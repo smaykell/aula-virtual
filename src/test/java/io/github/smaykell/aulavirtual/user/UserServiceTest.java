@@ -10,14 +10,16 @@ import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.security.Actor;
-import io.github.smaykell.aulavirtual.security.PersonRoles;
+import io.github.smaykell.aulavirtual.security.PersonProfiles;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.user.dto.ChangeMyPasswordRequest;
 import io.github.smaykell.aulavirtual.user.dto.Credentials;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,30 +33,42 @@ import org.springframework.test.util.ReflectionTestUtils;
 class UserServiceTest {
 
     private static final UUID PERSON = UUID.randomUUID();
+    private static final UUID TEACHER_PROFILE = UUID.randomUUID();
 
     @Mock
     private UserRepository userRepository;
 
     @Mock
-    private PersonRoles personRoles;
+    private PersonProfiles personProfiles;
 
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, encoder(), personRoles);
+        userService = new UserService(userRepository, encoder(), personProfiles);
     }
 
     @Test
     void the_actor_carries_every_role_of_its_person() {
         givenTheAccount("ana", PERSON);
-        when(personRoles.of(PERSON)).thenReturn(Set.of(Role.ADMIN, Role.TEACHER));
+        when(personProfiles.of(PERSON)).thenReturn(profiles(Role.ADMIN, Role.TEACHER));
 
         Actor actor = userService.actor("ana");
 
         assertThat(actor.username()).isEqualTo("ana");
         assertThat(actor.personId()).isEqualTo(PERSON);
         assertThat(actor.roles()).containsExactlyInAnyOrder(Role.ADMIN, Role.TEACHER);
+    }
+
+    @Test
+    void the_actor_carries_the_id_of_each_of_its_profiles() {
+        givenTheAccount("ana", PERSON);
+        when(personProfiles.of(PERSON)).thenReturn(Map.of(Role.TEACHER, TEACHER_PROFILE));
+
+        Actor actor = userService.actor("ana");
+
+        assertThat(actor.profileId(Role.TEACHER)).contains(TEACHER_PROFILE);
+        assertThat(actor.profileId(Role.STUDENT)).isEmpty();
     }
 
     @Test
@@ -70,7 +84,7 @@ class UserServiceTest {
     @Test
     void an_account_without_any_active_profile_cannot_act() {
         givenTheAccount("ana", PERSON);
-        when(personRoles.of(PERSON)).thenReturn(Set.of());
+        when(personProfiles.of(PERSON)).thenReturn(Map.of());
 
         ApiException error = assertThrows(ApiException.class, () -> userService.actor("ana"));
 
@@ -81,7 +95,7 @@ class UserServiceTest {
     @Test
     void an_admin_reaches_teachers() {
         givenTheAccount("ana", PERSON);
-        when(personRoles.of(PERSON)).thenReturn(Set.of(Role.ADMIN));
+        when(personProfiles.of(PERSON)).thenReturn(profiles(Role.ADMIN));
 
         assertThat(userService.requireManagerOf("ana", Role.TEACHER).roles())
                 .containsExactly(Role.ADMIN);
@@ -90,7 +104,7 @@ class UserServiceTest {
     @Test
     void an_admin_does_not_reach_other_admins() {
         givenTheAccount("ana", PERSON);
-        when(personRoles.of(PERSON)).thenReturn(Set.of(Role.ADMIN));
+        when(personProfiles.of(PERSON)).thenReturn(profiles(Role.ADMIN));
 
         ApiException error = assertThrows(ApiException.class,
                 () -> userService.requireManagerOf("ana", Role.ADMIN));
@@ -101,7 +115,7 @@ class UserServiceTest {
     @Test
     void a_person_that_is_admin_and_teacher_still_reaches_teachers() {
         givenTheAccount("ana", PERSON);
-        when(personRoles.of(PERSON)).thenReturn(Set.of(Role.ADMIN, Role.TEACHER));
+        when(personProfiles.of(PERSON)).thenReturn(profiles(Role.ADMIN, Role.TEACHER));
 
         assertThat(userService.requireManagerOf("ana", Role.TEACHER)).isNotNull();
     }
@@ -242,5 +256,10 @@ class UserServiceTest {
                 return encode(rawPassword).equals(encodedPassword);
             }
         };
+    }
+
+    private static Map<Role, UUID> profiles(Role... roles) {
+        return Arrays.stream(roles).collect(Collectors.toMap(role -> role,
+                role -> UUID.randomUUID()));
     }
 }

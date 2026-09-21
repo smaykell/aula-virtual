@@ -1,7 +1,7 @@
 package io.github.smaykell.aulavirtual.user;
 
 import io.github.smaykell.aulavirtual.security.Actor;
-import io.github.smaykell.aulavirtual.security.PersonRoles;
+import io.github.smaykell.aulavirtual.security.PersonProfiles;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.user.dto.ChangeMyPasswordRequest;
 import io.github.smaykell.aulavirtual.user.dto.Credentials;
@@ -15,7 +15,6 @@ import io.github.smaykell.aulavirtual.user.exception.UnknownActorException;
 import io.github.smaykell.aulavirtual.user.exception.UsernameTakenException;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -29,16 +28,16 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final PersonRoles personRoles;
+    private final PersonProfiles personProfiles;
 
     @Transactional(readOnly = true)
     public Actor actor(String username) {
         User account = accountFor(username);
-        Set<Role> roles = personRoles.of(account.getPersonId());
-        if (roles.isEmpty()) {
+        Map<Role, UUID> profiles = personProfiles.of(account.getPersonId());
+        if (profiles.isEmpty()) {
             throw new InactiveActorException();
         }
-        return new Actor(account.getPersonId(), account.getUsername(), roles);
+        return new Actor(account.getPersonId(), account.getUsername(), profiles);
     }
 
     @Transactional(readOnly = true)

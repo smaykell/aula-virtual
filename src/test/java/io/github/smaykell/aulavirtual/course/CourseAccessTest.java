@@ -9,12 +9,11 @@ import static org.mockito.Mockito.when;
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.security.Actor;
 import io.github.smaykell.aulavirtual.security.Role;
-import io.github.smaykell.aulavirtual.student.StudentService;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.teacher.exception.InactiveTeacherException;
 import io.github.smaykell.aulavirtual.user.UserService;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,15 +43,12 @@ class CourseAccessTest {
     @Mock
     private TeacherService teacherService;
 
-    @Mock
-    private StudentService studentService;
-
     private CourseAccess courseAccess;
 
     @BeforeEach
     void setUp() {
         courseAccess = new CourseAccess(courseRepository, enrollmentRepository, userService,
-                teacherService, studentService);
+                teacherService);
     }
 
     @Test
@@ -78,7 +74,6 @@ class CourseAccessTest {
     void another_teacher_does_not_reach_the_course() {
         givenTheTeacher("otro", OTHER_TEACHER);
         Course course = givenTheCourse(TITULAR);
-        when(studentService.activeProfileIdOf(TEACHER_PERSON)).thenReturn(Optional.empty());
 
         ApiException error = assertThrows(ApiException.class,
                 () -> courseAccess.readable("otro", course.getId()));
@@ -90,7 +85,6 @@ class CourseAccessTest {
     void an_enrolled_student_reads_the_course_but_never_as_staff() {
         Course course = givenTheCourse(TITULAR);
         givenTheStudent("ana.estudiante");
-        givenItsStudentProfile();
         givenTheEnrollment(course, EnrollmentStatus.ACTIVE);
 
         CourseAccess.Reader reader = courseAccess.readable("ana.estudiante", course.getId());
@@ -103,7 +97,6 @@ class CourseAccessTest {
     void a_student_whose_enrollment_is_not_active_does_not_reach_the_course() {
         Course course = givenTheCourse(TITULAR);
         givenTheStudent("ana.estudiante");
-        givenItsStudentProfile();
         givenTheEnrollment(course, EnrollmentStatus.PENDING);
 
         ApiException error = assertThrows(ApiException.class,
@@ -159,7 +152,6 @@ class CourseAccessTest {
     @Test
     void an_admin_has_to_name_the_titular_because_it_does_not_teach() {
         givenTheAdmin("ana");
-        when(teacherService.activeProfileIdOf(ADMIN_PERSON)).thenReturn(Optional.empty());
 
         ApiException error = assertThrows(ApiException.class,
                 () -> courseAccess.resolveTitular("ana", null));
@@ -217,7 +209,6 @@ class CourseAccessTest {
     @Test
     void the_listing_of_a_student_is_the_one_of_its_enrollments() {
         givenTheStudent("ana.estudiante");
-        givenItsStudentProfile();
 
         CourseAccess.Scope scope = courseAccess.listingScope("ana.estudiante", null);
 
@@ -229,7 +220,6 @@ class CourseAccessTest {
     @Test
     void whoever_is_neither_teacher_nor_student_cannot_enroll() {
         givenTheAdmin("ana");
-        when(studentService.activeProfileIdOf(ADMIN_PERSON)).thenReturn(Optional.empty());
 
         ApiException error = assertThrows(ApiException.class,
                 () -> courseAccess.requireStudent("ana"));
@@ -238,24 +228,18 @@ class CourseAccessTest {
     }
 
     private void givenTheAdmin(String username) {
-        when(userService.actor(username))
-                .thenReturn(new Actor(ADMIN_PERSON, username, Set.of(Role.ADMIN)));
+        when(userService.actor(username)).thenReturn(new Actor(ADMIN_PERSON, username,
+                Map.of(Role.ADMIN, UUID.randomUUID())));
     }
 
     private void givenTheTeacher(String username, UUID teacherId) {
-        when(userService.actor(username))
-                .thenReturn(new Actor(TEACHER_PERSON, username, Set.of(Role.TEACHER)));
-        when(teacherService.activeProfileIdOf(TEACHER_PERSON)).thenReturn(Optional.of(teacherId));
+        when(userService.actor(username)).thenReturn(new Actor(TEACHER_PERSON, username,
+                Map.of(Role.TEACHER, teacherId)));
     }
 
     private void givenTheStudent(String username) {
-        when(userService.actor(username))
-                .thenReturn(new Actor(STUDENT_PERSON, username, Set.of(Role.STUDENT)));
-        when(teacherService.activeProfileIdOf(STUDENT_PERSON)).thenReturn(Optional.empty());
-    }
-
-    private void givenItsStudentProfile() {
-        when(studentService.activeProfileIdOf(STUDENT_PERSON)).thenReturn(Optional.of(STUDENT));
+        when(userService.actor(username)).thenReturn(new Actor(STUDENT_PERSON, username,
+                Map.of(Role.STUDENT, STUDENT)));
     }
 
     private void givenTheEnrollment(Course course, EnrollmentStatus status) {

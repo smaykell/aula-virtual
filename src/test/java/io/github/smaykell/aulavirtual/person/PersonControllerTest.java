@@ -15,7 +15,7 @@ import io.github.smaykell.aulavirtual.person.dto.PersonResponse;
 import io.github.smaykell.aulavirtual.security.JwtAuthenticationFilter;
 import io.github.smaykell.aulavirtual.security.JwtProperties;
 import io.github.smaykell.aulavirtual.security.JwtService;
-import io.github.smaykell.aulavirtual.security.PersonRoles;
+import io.github.smaykell.aulavirtual.security.PersonProfiles;
 import io.github.smaykell.aulavirtual.security.RestAccessDeniedHandler;
 import io.github.smaykell.aulavirtual.security.RestAuthenticationEntryPoint;
 import io.github.smaykell.aulavirtual.security.Role;
@@ -57,13 +57,13 @@ class PersonControllerTest {
     private PersonService personService;
 
     @MockitoBean
-    private PersonRoles personRoles;
+    private PersonProfiles personProfiles;
 
     @Test
     void an_admin_finds_a_person_by_its_document_and_sees_what_it_already_is() throws Exception {
         when(personService.findByDocument(DocumentType.DNI, "45678912"))
                 .thenReturn(Optional.of(person()));
-        when(personRoles.of(PERSON)).thenReturn(Set.of(Role.STUDENT));
+        when(personProfiles.rolesOf(PERSON)).thenReturn(Set.of(Role.STUDENT));
 
         mockMvc.perform(get("/persons/$byDocument")
                         .param("documentType", "DNI")

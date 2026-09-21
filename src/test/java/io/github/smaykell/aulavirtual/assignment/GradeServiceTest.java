@@ -15,8 +15,8 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,7 +83,7 @@ class GradeServiceTest {
         when(gradeRepository.findBySourceTypeAndSourceId(GradeSource.ASSIGNMENT, submissionId))
                 .thenReturn(Optional.of(existing));
         when(userService.actor("juan"))
-                .thenReturn(new Actor(TEACHER_PERSON, "juan", Set.of(Role.TEACHER)));
+                .thenReturn(new Actor(TEACHER_PERSON, "juan", Map.of(Role.TEACHER, UUID.randomUUID())));
 
         Grade recorded = gradeService.record("juan", GradeSource.ASSIGNMENT, submissionId,
                 STUDENT, COURSE, new BigDecimal("17.00"), "Mejoro mucho");

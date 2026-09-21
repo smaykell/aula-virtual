@@ -144,7 +144,8 @@ class AdministratorServiceTest {
 
     private void givenTheSuperadminActs() {
         when(userService.requireManagerOf("root", Role.ADMIN))
-                .thenReturn(new Actor(UUID.randomUUID(), "root", Set.of(Role.SUPER_ADMIN)));
+                .thenReturn(new Actor(UUID.randomUUID(), "root",
+                        Map.of(Role.SUPER_ADMIN, UUID.randomUUID())));
     }
 
     private void givenTheAdministratorIsStored() {

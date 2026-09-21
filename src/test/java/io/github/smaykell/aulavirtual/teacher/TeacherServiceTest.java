@@ -188,13 +188,11 @@ class TeacherServiceTest {
     @Test
     void a_teacher_given_up_is_no_longer_active_for_the_rest_of_the_modules() {
         Teacher teacher = givenTheTeacher(UUID.randomUUID(), false);
-        when(teacherRepository.findByPersonId(PERSON)).thenReturn(Optional.of(teacher));
 
         ApiException error = assertThrows(ApiException.class,
                 () -> teacherService.requireActive(teacher.getId()));
 
         assertThat(error.getCode()).isEqualTo("TCH_INACTIVE");
-        assertThat(teacherService.activeProfileIdOf(PERSON)).isEmpty();
     }
 
     @Test

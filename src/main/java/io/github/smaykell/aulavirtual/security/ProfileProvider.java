@@ -3,7 +3,7 @@ package io.github.smaykell.aulavirtual.security;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface RoleProvider {
+public interface ProfileProvider {
 
-    Optional<Role> activeRoleOf(UUID personId);
+    Optional<Profile> activeProfileOf(UUID personId);
 }

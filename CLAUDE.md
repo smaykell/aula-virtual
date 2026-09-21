@@ -167,17 +167,25 @@ enumera los permisos y `security/Role` asigna a cada rol los suyos.
 
 **El rol de una persona *es* tener el perfil correspondiente activo**, así que no hay
 tabla de roles ni columna que pueda divergir del perfil real. Cada módulo de persona
-publica un `security/RoleProvider` que responde si esa persona tiene su perfil activo, y
-`security/PersonRoles` los agrega. Es lo que permite que el módulo de cuentas no conozca
-a los de docentes o administradores: la dependencia va de los módulos hacia `security`,
-nunca al revés. **Un módulo de persona nuevo solo tiene que publicar su `RoleProvider`**;
-no hay que registrarlo en ningún otro sitio.
+publica un `security/ProfileProvider` que, si esa persona tiene su perfil activo,
+devuelve un `security/Profile` — **el rol y el id del perfil que lo concede** —, y
+`security/PersonProfiles` los agrega en un `Map<Role, UUID>`. El id viaja junto al rol
+porque quien pregunta suele necesitar los dos, y así sale de una sola pasada: el
+proveedor de administrador, por ejemplo, devuelve el rol que trae su fila
+(`SUPER_ADMIN` o `ADMIN`), no una constante. Es lo que permite que el módulo de cuentas
+no conozca a los de docentes o administradores: la dependencia va de los módulos hacia
+`security`, nunca al revés. **Un módulo de persona nuevo solo tiene que publicar su
+`ProfileProvider`**; no hay que registrarlo en ningún otro sitio.
 
 Como una persona puede tener varios roles, lo que decide una autorización es el
-`security/Actor` (persona, username y roles), no un rol suelto: su alcance es la **unión**
-de lo que administra cada uno de sus roles. `Role.manageableRoles()` sigue siendo la
-**única** fuente de quién administra a quién — el superadmin administra admins, docentes y estudiantes; un admin solo
-docentes y estudiantes; nadie administra a un `SUPER_ADMIN`, que solo nace de la semilla de
+`security/Actor` (persona, username y sus perfiles), no un rol suelto: su alcance es la
+**unión** de lo que administra cada uno de sus roles. `Actor.profileId(Role)` responde
+«qué id tengo como docente / como estudiante», así que **ningún módulo tiene que volver a
+preguntárselo al módulo del perfil**: el actor ya viene resuelto de la base.
+
+`Role.manageableRoles()` sigue siendo la **única** fuente de quién administra a quién —
+el superadmin administra admins, docentes y estudiantes; un admin solo docentes y
+estudiantes; nadie administra a un `SUPER_ADMIN`, que solo nace de la semilla de
 `V2__create_users.sql`. De ahí salen sin código extra las dos reglas del enunciado: entre
 admins no se tocan y el listado solo muestra los roles que el solicitante administra.
 
@@ -198,7 +206,7 @@ hace falta — **sirve mientras quede algún perfil activo** —, y por eso no e
 pantalla ni ningún endpoint para activar o desactivar cuentas.
 
 Toda operación recalcula al actor desde la base (`UserService.actor`, que vuelve a
-preguntar a los `RoleProvider`) en vez de fiarse del token: es lo que hace que dar de baja
+preguntar a los `ProfileProvider`) en vez de fiarse del token: es lo que hace que dar de baja
 a alguien surta efecto de inmediato en lugar de esperar a que caduque su JWT.
 
 **`/me` es la única vía de autoservicio** (`user/MeController`): ver mis datos,

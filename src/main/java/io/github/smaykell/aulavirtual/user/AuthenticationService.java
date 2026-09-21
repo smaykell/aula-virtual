@@ -1,7 +1,7 @@
 package io.github.smaykell.aulavirtual.user;
 
 import io.github.smaykell.aulavirtual.security.JwtService;
-import io.github.smaykell.aulavirtual.security.PersonRoles;
+import io.github.smaykell.aulavirtual.security.PersonProfiles;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.user.dto.LoginRequest;
 import io.github.smaykell.aulavirtual.user.dto.LoginResponse;
@@ -21,7 +21,7 @@ public class AuthenticationService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final PersonRoles personRoles;
+    private final PersonProfiles personProfiles;
     private final JwtService jwtService;
 
     @Transactional(readOnly = true)
@@ -32,7 +32,7 @@ public class AuthenticationService {
         if (!passwordEncoder.matches(request.password(), account.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
-        Set<Role> roles = personRoles.of(account.getPersonId());
+        Set<Role> roles = personProfiles.rolesOf(account.getPersonId());
         if (roles.isEmpty()) {
             throw new InactiveAccountException();
         }

@@ -188,13 +188,11 @@ class StudentServiceTest {
     @Test
     void a_student_given_up_is_no_longer_active_for_the_rest_of_the_modules() {
         Student student = givenTheStudent(UUID.randomUUID(), false);
-        when(studentRepository.findByPersonId(PERSON)).thenReturn(Optional.of(student));
 
         ApiException error = assertThrows(ApiException.class,
                 () -> studentService.requireActive(student.getId()));
 
         assertThat(error.getCode()).isEqualTo("STD_INACTIVE");
-        assertThat(studentService.activeProfileIdOf(PERSON)).isEmpty();
     }
 
     @Test

@@ -257,10 +257,11 @@ crea un `SUPER_ADMIN` por API. El listado de `/api/administrators` devuelve solo
 roles que el solicitante administra, así que el superadmin no aparece para nadie.
 
 No hay tabla de roles: el rol de una persona *es* tener el perfil correspondiente
-activo. Cada módulo de persona publica un `RoleProvider` (`security/RoleProvider`) que
-responde si esa persona tiene su perfil, y `PersonRoles` los agrega. Así el módulo de
-cuentas no necesita conocer a los de docentes o administradores, y no existe un sitio
-donde el rol guardado pueda divergir del perfil real.
+activo. Cada módulo de persona publica un `ProfileProvider` (`security/ProfileProvider`)
+que, si esa persona tiene su perfil activo, devuelve el rol que le concede junto al id de
+ese perfil, y `PersonProfiles` los agrega. Así el módulo de cuentas no necesita conocer a
+los de docentes o administradores, y no existe un sitio donde el rol guardado pueda
+divergir del perfil real.
 
 ### El primer superadmin
 
@@ -542,7 +543,7 @@ para el 401 y el 403 que Spring Security responde antes de llegar al advice.
 ./gradlew test
 ```
 
-Los unitarios (`JwtServiceTest`, `RoleTest`, `PersonRolesTest`, `PersonServiceTest`,
+Los unitarios (`JwtServiceTest`, `RoleTest`, `PersonProfilesTest`, `PersonServiceTest`,
 `UserServiceTest`, `AuthenticationServiceTest`, `TeacherServiceTest`,
 `AdministratorServiceTest`) y las rodajas web con MockMvc y tokens reales
 (`SecurityConfigTest`, `GlobalExceptionHandlerTest`, `AuthControllerTest`,

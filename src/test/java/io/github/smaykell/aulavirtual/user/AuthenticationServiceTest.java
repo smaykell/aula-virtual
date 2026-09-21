@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.security.JwtProperties;
 import io.github.smaykell.aulavirtual.security.JwtService;
-import io.github.smaykell.aulavirtual.security.PersonRoles;
+import io.github.smaykell.aulavirtual.security.PersonProfiles;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.user.dto.LoginRequest;
 import io.github.smaykell.aulavirtual.user.dto.LoginResponse;
@@ -40,7 +40,7 @@ class AuthenticationServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private PersonRoles personRoles;
+    private PersonProfiles personProfiles;
 
     private PasswordEncoder passwordEncoder;
     private JwtService jwtService;
@@ -52,7 +52,7 @@ class AuthenticationServiceTest {
         jwtService = new JwtService(new JwtProperties(SECRET, ISSUER, EXPIRATION),
                 Clock.systemUTC());
         authenticationService = new AuthenticationService(userRepository, passwordEncoder,
-                personRoles, jwtService);
+                personProfiles, jwtService);
     }
 
     @Test
@@ -130,6 +130,6 @@ class AuthenticationServiceTest {
 
     private void givenTheAccount(String username, Set<Role> roles) {
         givenTheAccount(username);
-        when(personRoles.of(PERSON)).thenReturn(roles);
+        when(personProfiles.rolesOf(PERSON)).thenReturn(roles);
     }
 }

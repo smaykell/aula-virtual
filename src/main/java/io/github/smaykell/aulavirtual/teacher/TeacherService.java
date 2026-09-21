@@ -16,7 +16,6 @@ import io.github.smaykell.aulavirtual.user.dto.ChangePasswordRequest;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -109,13 +108,6 @@ public class TeacherService {
         if (!existing(teacherId).isActive()) {
             throw new InactiveTeacherException(teacherId);
         }
-    }
-
-    @Transactional(readOnly = true)
-    public Optional<UUID> activeProfileIdOf(UUID personId) {
-        return teacherRepository.findByPersonId(personId)
-                .filter(Teacher::isActive)
-                .map(Teacher::getId);
     }
 
     @Transactional(readOnly = true)
