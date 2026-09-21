@@ -142,7 +142,7 @@ class EnrollmentServiceTest {
 
     @Test
     void accepting_a_request_turns_it_into_an_active_enrollment() {
-        Enrollment enrollment = givenTheManagedEnrollmentReadBack(EnrollmentStatus.PENDING);
+        Enrollment enrollment = givenTheManagedEnrollmentWithItsStudent(EnrollmentStatus.PENDING);
 
         EnrollmentResponse accepted = enrollmentService.accept("juan", enrollment.getId());
 
@@ -152,7 +152,7 @@ class EnrollmentServiceTest {
 
     @Test
     void rejecting_a_request_closes_it_without_enrolling_anybody() {
-        Enrollment enrollment = givenTheManagedEnrollmentReadBack(EnrollmentStatus.PENDING);
+        Enrollment enrollment = givenTheManagedEnrollmentWithItsStudent(EnrollmentStatus.PENDING);
 
         assertThat(enrollmentService.reject("juan", enrollment.getId()).status())
                 .isEqualTo(EnrollmentStatus.REJECTED);
@@ -180,10 +180,20 @@ class EnrollmentServiceTest {
 
     @Test
     void withdrawing_takes_the_student_out_of_the_course() {
-        Enrollment enrollment = givenTheManagedEnrollmentReadBack(EnrollmentStatus.ACTIVE);
+        Enrollment enrollment = givenTheManagedEnrollmentWithItsStudent(EnrollmentStatus.ACTIVE);
 
         assertThat(enrollmentService.withdraw("juan", enrollment.getId()).status())
                 .isEqualTo(EnrollmentStatus.WITHDRAWN);
+    }
+
+    @Test
+    void resolving_a_request_reuses_the_course_that_the_check_already_read() {
+        Enrollment enrollment =
+                givenTheManagedEnrollmentWithItsStudent(EnrollmentStatus.PENDING);
+
+        enrollmentService.accept("juan", enrollment.getId());
+
+        verify(courseRepository, never()).findById(any());
     }
 
     @Test
@@ -232,16 +242,10 @@ class EnrollmentServiceTest {
         return enrollment;
     }
 
-    private Enrollment givenTheManagedEnrollmentReadBack(EnrollmentStatus status) {
+    private Enrollment givenTheManagedEnrollmentWithItsStudent(EnrollmentStatus status) {
         Enrollment enrollment = givenTheManagedEnrollment(status);
-        givenItsCourseAndStudentAreReadBack();
-        return enrollment;
-    }
-
-    private void givenItsCourseAndStudentAreReadBack() {
-        when(courseRepository.findById(managedCourse.getId()))
-                .thenReturn(Optional.of(managedCourse));
         givenTheSummaryOfTheStudent();
+        return enrollment;
     }
 
     private void givenTheSummaryOfTheStudent() {

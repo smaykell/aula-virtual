@@ -9,7 +9,6 @@ import io.github.smaykell.aulavirtual.course.enrollment.dto.EnrollmentResponse;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.JoinCourseRequest;
 import io.github.smaykell.aulavirtual.course.exception.AlreadyEnrolledException;
 import io.github.smaykell.aulavirtual.course.exception.ArchivedCourseException;
-import io.github.smaykell.aulavirtual.course.exception.CourseNotFoundException;
 import io.github.smaykell.aulavirtual.course.exception.EnrollmentNotActiveException;
 import io.github.smaykell.aulavirtual.course.exception.EnrollmentNotFoundException;
 import io.github.smaykell.aulavirtual.course.exception.EnrollmentNotPendingException;
@@ -37,6 +36,9 @@ public class EnrollmentService {
     private final CourseAccess courseAccess;
     private final StudentService studentService;
     private final Clock clock;
+
+    private record Managed(Enrollment enrollment, Course course) {
+    }
 
     @Transactional
     public EnrollmentResponse join(String actorUsername, JoinCourseRequest request) {
@@ -88,28 +90,31 @@ public class EnrollmentService {
 
     @Transactional
     public EnrollmentResponse accept(String actorUsername, UUID enrollmentId) {
-        Enrollment enrollment = manageable(actorUsername, enrollmentId);
+        Managed managed = manageable(actorUsername, enrollmentId);
+        Enrollment enrollment = managed.enrollment();
         requirePending(enrollment);
         enrollment.accept(clock.instant());
-        return responseFor(enrollment);
+        return responseFor(enrollment, managed.course());
     }
 
     @Transactional
     public EnrollmentResponse reject(String actorUsername, UUID enrollmentId) {
-        Enrollment enrollment = manageable(actorUsername, enrollmentId);
+        Managed managed = manageable(actorUsername, enrollmentId);
+        Enrollment enrollment = managed.enrollment();
         requirePending(enrollment);
         enrollment.reject(clock.instant());
-        return responseFor(enrollment);
+        return responseFor(enrollment, managed.course());
     }
 
     @Transactional
     public EnrollmentResponse withdraw(String actorUsername, UUID enrollmentId) {
-        Enrollment enrollment = manageable(actorUsername, enrollmentId);
+        Managed managed = manageable(actorUsername, enrollmentId);
+        Enrollment enrollment = managed.enrollment();
         if (!enrollment.isActive()) {
             throw new EnrollmentNotActiveException();
         }
         enrollment.withdraw(clock.instant());
-        return responseFor(enrollment);
+        return responseFor(enrollment, managed.course());
     }
 
     private Enrollment askAgain(Enrollment enrollment, Course course) {
@@ -123,17 +128,11 @@ public class EnrollmentService {
         return enrollment;
     }
 
-    private Enrollment manageable(String actorUsername, UUID enrollmentId) {
+    private Managed manageable(String actorUsername, UUID enrollmentId) {
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
                 .orElseThrow(() -> new EnrollmentNotFoundException(enrollmentId));
-        courseAccess.writable(actorUsername, enrollment.getCourseId());
-        return enrollment;
-    }
-
-    private EnrollmentResponse responseFor(Enrollment enrollment) {
-        UUID courseId = enrollment.getCourseId();
-        return responseFor(enrollment, courseRepository.findById(courseId)
-                .orElseThrow(() -> new CourseNotFoundException(courseId)));
+        return new Managed(enrollment,
+                courseAccess.writable(actorUsername, enrollment.getCourseId()));
     }
 
     private EnrollmentResponse responseFor(Enrollment enrollment, Course course) {
