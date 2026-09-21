@@ -55,29 +55,32 @@ escribir código.
 
 ## Arquitectura
 
-Paquete raíz `io.github.smaykell.aulavirtual`, con tres zonas transversales (`config`,
-`security`, `common`) más `modules/`, donde va todo el dominio.
+Paquete raíz `io.github.smaykell.aulavirtual`. De él cuelgan tres zonas transversales
+(`config`, `security`, `common`) y, al mismo nivel, un paquete por módulo de dominio.
+**No hay un `modules/` intermedio**: el paquete raíz ya es la aplicación y esa carpeta no
+distinguía nada que el nombre del módulo no dijera ya.
 
 **Persona, perfiles y cuenta son tres cosas distintas**, y esa separación es el eje de
 todo lo demás:
 
-- `modules/person` — la identidad (`persons`): tipo y número de documento, nombres,
-  apellidos, fecha de nacimiento y sexo. El documento es la **clave natural**: es lo
-  único que permite saber que el docente que se está registrando ya existe como
-  estudiante. `PersonService.resolveOrCreate` reutiliza a quien ya está, sin
-  sobrescribir sus datos.
-- `modules/teacher`, `modules/administrator` (y `student` cuando llegue) — los
-  perfiles. Cada uno guarda `person_id`, su propio `active` y **sus atributos
-  propios**; los que le sobren a otro perfil no le estorban. Una misma persona puede
-  tener varios.
-- `modules/user` — la cuenta (`users`): username, contraseña, `person_id`. Una por
-  persona, 1:1. No guarda rol ni `active`.
+- `person` — la identidad (`persons`): tipo y número de documento, nombres, apellidos,
+  fecha de nacimiento y sexo. El documento es la **clave natural**: es lo único que
+  permite saber que el docente que se está registrando ya existe como estudiante.
+  `PersonService.resolveOrCreate` reutiliza a quien ya está, sin sobrescribir sus datos.
+- `teacher`, `student`, `administrator` — los perfiles. Cada uno guarda `person_id`, su
+  propio `active` y **sus atributos propios**; los que le sobren a otro perfil no le
+  estorban. Una misma persona puede tener varios. Hoy `Teacher` y `Student` son casi
+  idénticos, y **eso es transitorio**: cada uno va a recibir campos exclusivos, así que
+  la duplicación es deliberada y **no se unifican** en una entidad ni en un servicio
+  genérico de perfiles.
+- `user` — la cuenta (`users`): username, contraseña, `person_id`. Una por persona,
+  1:1. No guarda rol ni `active`.
 
 Una persona sin perfiles no existe en la práctica: `resolveOrCreate` solo se llama
 desde el alta de un perfil, dentro de la misma transacción.
 
 **Vertical slice.** Cada módulo de dominio es un paquete autocontenido
-(`modules/course/`: entidad, repositorio, servicio, controlador, `dto/`). Un módulo solo
+(`course/`: entidad, repositorio, servicio, controlador, `dto/`). Un módulo solo
 depende de `common` y `config`; si dos módulos necesitan hablarse lo hacen a través del
 *service* del otro, nunca de su repositorio ni de sus entidades.
 
@@ -153,7 +156,7 @@ El mensaje de una `ApiException` se envía tal cual al cliente: escribirlo para 
 final, sin detalles internos; los detalles van al log.
 
 **Seguridad.** Cadena *stateless*, sin CSRF, sin usuarios en memoria. El login vive en
-`modules/user` (`POST /auth/login`) y llama a `jwtService.issueToken(subject, authorities)`.
+`user` (`POST /auth/login`) y llama a `jwtService.issueToken(subject, authorities)`.
 Las authorities viajan en el claim `roles` y son dos cosas a la vez: **cada** rol con
 prefijo (`ROLE_TEACHER`) y, junto a ellos, la unión de los permisos de esos roles
 (`teachers:read`), de modo que `hasRole(...)` y `hasAuthority(...)` funcionan sin
@@ -198,7 +201,7 @@ Toda operación recalcula al actor desde la base (`UserService.actor`, que vuelv
 preguntar a los `RoleProvider`) en vez de fiarse del token: es lo que hace que dar de baja
 a alguien surta efecto de inmediato en lugar de esperar a que caduque su JWT.
 
-**`/me` es la única vía de autoservicio** (`modules/user/MeController`): ver mis datos,
+**`/me` es la única vía de autoservicio** (`user/MeController`): ver mis datos,
 cambiarlos y cambiar mi contraseña dando la actual. No pasa por `manageableRoles()`,
 porque nadie se administra a sí mismo — y es lo único que permite al superadmin, a quien
 nadie administra, corregir sus propios datos.
@@ -213,9 +216,9 @@ Dos detalles fáciles de romper:
 `JwtService` recibe el `Clock` por constructor (bean de `ClockConfig`) para que los tests
 controlen el tiempo sin un segundo constructor.
 
-**Cursos.** `modules/course` es un agregado, no tres módulos: el curso, sus unidades
-(`Unit`, la «semana» o tema — «módulo» ya significa otra cosa en este repo) y el
-material de cada unidad comparten paquete, catálogo (`CRS`) y permisos
+**Cursos.** `course` es un agregado, no tres módulos: el curso, sus unidades (`Unit`, la
+«semana» o tema — «módulo» ya significa otra cosa en este repo) y el material de cada
+unidad comparten paquete, catálogo (`CRS`) y permisos
 (`courses:read`, `courses:create`, `courses:update`; el de escritura cubre también
 unidades y material).
 
@@ -259,7 +262,7 @@ matriculado entra, pero ve menos—, mientras que `managed` y `writable` siguen 
 solo para el titular y quien administra docentes. `listingScope` hace lo propio con los
 listados: filtro por docente para el staff, por matrícula activa para el estudiante.
 
-**Tareas y calificaciones.** `modules/assignment` es el primero que **no** vive dentro de
+**Tareas y calificaciones.** `assignment` es el primero que **no** vive dentro de
 `course`: tarea, entrega y calificación tienen su propio catálogo (`ASG`) y hablan con el
 módulo de cursos por servicio, que es la regla de slices. El contrato es de tres métodos y
 conviene que no crezca: `UnitService.courseOf`, `CourseService.requireWritable` y

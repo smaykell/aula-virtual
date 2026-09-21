@@ -113,15 +113,18 @@ io.github.smaykell.aulavirtual
 │   ├── dto/           ApiError, PageResponse
 │   ├── web/           ApiErrorWriter
 │   └── exception/     ApiException, ResourceNotFoundException, handler global
-└── modules/
-    ├── person/        la identidad: documento, nombres, fecha de nacimiento, sexo
-    ├── user/          la cuenta: login, credenciales y /me
-    ├── teacher/       el perfil de docente
-    ├── administrator/ el perfil de administrador
-    ├── student/       el perfil de estudiante
-    ├── course/        el curso, sus unidades, su material y sus matrículas
-    └── assignment/    las tareas, sus entregas y las calificaciones
+├── person/            la identidad: documento, nombres, fecha de nacimiento, sexo
+├── user/              la cuenta: login, credenciales y /me
+├── teacher/           el perfil de docente
+├── administrator/     el perfil de administrador
+├── student/           el perfil de estudiante
+├── course/            el curso, sus unidades, su material y sus matrículas
+└── assignment/        las tareas, sus entregas y las calificaciones
 ```
+
+Los módulos de dominio cuelgan del paquete raíz, al mismo nivel que las zonas
+transversales: el paquete raíz ya es la aplicación y un `modules/` intermedio no
+distinguía nada que el nombre del paquete no dijera ya.
 
 Una **persona** (`persons`) puede tener varios **perfiles** —docente, estudiante,
 administrador— y una sola **cuenta** (`users`). El documento de identidad es la clave
@@ -136,7 +139,7 @@ entidad, repositorio, servicio, controlador y DTOs en un solo paquete. Ver
 
 ### Añadir un módulo
 
-1. Crea el paquete `modules/<name>/` (en inglés, como el resto del código).
+1. Crea el paquete `<name>/` bajo el paquete raíz (en inglés, como el resto del código).
 2. Añade la migración Flyway `V<n>__create_<name>.sql` en
    `src/main/resources/db/migration`.
 3. La entidad extiende `BaseEntity`; los DTOs son `record` y nunca se exponen
@@ -319,7 +322,7 @@ la contraseña de otro admin ni la del superadmin.
 
 El curso es un agregado: sus **unidades** (las semanas o temas en que se divide) y el
 **material** de cada unidad no existen fuera de él. Por eso viven en un solo módulo,
-`modules/course/`, con un único catálogo de errores (`CRS`) y un único permiso de
+`course/`, con un único catálogo de errores (`CRS`) y un único permiso de
 escritura, `courses:update`, que cubre también unidades y material.
 
 Quién puede tocar un curso lo decide **el docente titular**, no el rol suelto
@@ -424,7 +427,7 @@ administra docentes.
 
 ### Tareas, entregas y calificaciones
 
-Las tareas son el **primer módulo que no vive dentro de `course`**: `modules/assignment`
+Las tareas son el **primer módulo que no vive dentro de `course`**: `assignment`
 tiene su propio catálogo (`ASG`) y le pregunta al de cursos lo que necesita saber, que es
 poco y está en tres métodos —`UnitService.courseOf`, `CourseService.memberOf` y
 `CourseService.requireWritable`—. `memberOf` es el que sostiene todo: responde **quién
@@ -504,13 +507,13 @@ HTTP y su mensaje; ese enum es el catálogo. Hay uno global y uno por módulo:
 | Catálogo | Prefijo | Dónde |
 |---|---|---|
 | `CommonError` | `GEN` | `common/exception` |
-| `PersonError` | `PRS` | `modules/person/exception` |
-| `UserError` | `USR` | `modules/user/exception` |
-| `TeacherError` | `TCH` | `modules/teacher/exception` |
-| `AdministratorError` | `ADM` | `modules/administrator/exception` |
-| `StudentError` | `STD` | `modules/student/exception` |
-| `CourseError` | `CRS` | `modules/course/exception` |
-| `AssignmentError` | `ASG` | `modules/assignment/exception` |
+| `PersonError` | `PRS` | `person/exception` |
+| `UserError` | `USR` | `user/exception` |
+| `TeacherError` | `TCH` | `teacher/exception` |
+| `AdministratorError` | `ADM` | `administrator/exception` |
+| `StudentError` | `STD` | `student/exception` |
+| `CourseError` | `CRS` | `course/exception` |
+| `AssignmentError` | `ASG` | `assignment/exception` |
 
 El código no se escribe a mano: `ErrorCode.code()` lo compone como
 `prefijo + "_" + nombre de la constante`, de modo que `UserError.USERNAME_TAKEN` es
