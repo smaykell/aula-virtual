@@ -35,7 +35,7 @@ public class TeacherController {
     @PreAuthorize("hasAuthority('" + Permission.Name.TEACHERS_READ + "')")
     public PageResponse<TeacherResponse> list(Authentication authentication,
             @RequestParam(required = false) Boolean active,
-            @PageableDefault(sort = "lastName") Pageable pageable) {
+            @PageableDefault(sort = "createdAt") Pageable pageable) {
 
         return teacherService.list(authentication.getName(), active, pageable);
     }

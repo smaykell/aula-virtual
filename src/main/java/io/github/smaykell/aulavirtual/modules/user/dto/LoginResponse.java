@@ -8,6 +8,6 @@ public record LoginResponse(
         String tokenType,
         long expiresIn,
         String username,
-        Role role,
+        List<Role> roles,
         List<String> permissions) {
 }

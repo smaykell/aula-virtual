@@ -1,15 +1,18 @@
 package io.github.smaykell.aulavirtual.security;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public enum Role {
 
-    SUPER_ADMIN(Set.of(Permission.USERS_READ, Permission.USERS_CREATE, Permission.USERS_UPDATE,
-            Permission.TEACHERS_READ, Permission.TEACHERS_CREATE, Permission.TEACHERS_UPDATE)),
-    ADMIN(Set.of(Permission.USERS_READ, Permission.USERS_CREATE, Permission.USERS_UPDATE,
-            Permission.TEACHERS_READ, Permission.TEACHERS_CREATE, Permission.TEACHERS_UPDATE)),
+    SUPER_ADMIN(Set.of(Permission.ADMINISTRATORS_READ, Permission.ADMINISTRATORS_CREATE,
+            Permission.ADMINISTRATORS_UPDATE, Permission.TEACHERS_READ, Permission.TEACHERS_CREATE,
+            Permission.TEACHERS_UPDATE)),
+    ADMIN(Set.of(Permission.TEACHERS_READ, Permission.TEACHERS_CREATE,
+            Permission.TEACHERS_UPDATE)),
     TEACHER(Set.of()),
     STUDENT(Set.of());
 
@@ -29,11 +32,6 @@ public enum Role {
         return AUTHORITY_PREFIX + name();
     }
 
-    public List<String> grantedAuthorities() {
-        return Stream.concat(Stream.of(authority()), permissions.stream().map(Permission::authority))
-                .toList();
-    }
-
     public Set<Role> manageableRoles() {
         return switch (this) {
             case SUPER_ADMIN -> Set.of(ADMIN, TEACHER, STUDENT);
@@ -44,5 +42,33 @@ public enum Role {
 
     public boolean canManage(Role target) {
         return manageableRoles().contains(target);
+    }
+
+    public static Set<Permission> permissionsOf(Collection<Role> roles) {
+        return roles.stream()
+                .flatMap(role -> role.permissions().stream())
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    public static Set<Role> manageableBy(Collection<Role> roles) {
+        return roles.stream()
+                .flatMap(role -> role.manageableRoles().stream())
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    public static List<Role> sorted(Collection<Role> roles) {
+        return roles.stream().sorted().toList();
+    }
+
+    public static List<String> permissionAuthoritiesOf(Collection<Role> roles) {
+        return permissionsOf(roles).stream().map(Permission::authority).sorted().toList();
+    }
+
+    public static List<String> grantedAuthoritiesOf(Collection<Role> roles) {
+        return Stream.concat(
+                roles.stream().map(Role::authority),
+                permissionsOf(roles).stream().map(Permission::authority))
+                .sorted()
+                .toList();
     }
 }

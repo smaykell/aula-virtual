@@ -2,9 +2,9 @@ package io.github.smaykell.aulavirtual.security;
 
 public enum Permission {
 
-    USERS_READ(Name.USERS_READ),
-    USERS_CREATE(Name.USERS_CREATE),
-    USERS_UPDATE(Name.USERS_UPDATE),
+    ADMINISTRATORS_READ(Name.ADMINISTRATORS_READ),
+    ADMINISTRATORS_CREATE(Name.ADMINISTRATORS_CREATE),
+    ADMINISTRATORS_UPDATE(Name.ADMINISTRATORS_UPDATE),
     TEACHERS_READ(Name.TEACHERS_READ),
     TEACHERS_CREATE(Name.TEACHERS_CREATE),
     TEACHERS_UPDATE(Name.TEACHERS_UPDATE);
@@ -21,9 +21,9 @@ public enum Permission {
 
     public static final class Name {
 
-        public static final String USERS_READ = "users:read";
-        public static final String USERS_CREATE = "users:create";
-        public static final String USERS_UPDATE = "users:update";
+        public static final String ADMINISTRATORS_READ = "administrators:read";
+        public static final String ADMINISTRATORS_CREATE = "administrators:create";
+        public static final String ADMINISTRATORS_UPDATE = "administrators:update";
         public static final String TEACHERS_READ = "teachers:read";
         public static final String TEACHERS_CREATE = "teachers:create";
         public static final String TEACHERS_UPDATE = "teachers:update";

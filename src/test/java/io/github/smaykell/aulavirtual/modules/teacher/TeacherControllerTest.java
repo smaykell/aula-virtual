@@ -11,11 +11,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.github.smaykell.aulavirtual.common.domain.Sex;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.common.web.ApiErrorWriter;
 import io.github.smaykell.aulavirtual.config.ClockConfig;
 import io.github.smaykell.aulavirtual.config.CorsProperties;
+import io.github.smaykell.aulavirtual.modules.person.DocumentType;
+import io.github.smaykell.aulavirtual.modules.person.Sex;
+import io.github.smaykell.aulavirtual.modules.person.dto.PersonResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
@@ -30,6 +32,7 @@ import io.github.smaykell.aulavirtual.security.SecurityConfig;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,9 +91,7 @@ class TeacherControllerTest {
     @Test
     void an_admin_registers_a_teacher_and_gets_a_201() throws Exception {
         when(teacherService.create(eq("ana"), any(CreateTeacherRequest.class)))
-                .thenReturn(new TeacherResponse(UUID.randomUUID(), UUID.randomUUID(),
-                        "nuevo.docente", "Juan Carlos", "Perez Gomez", LocalDate.of(1990, 5, 20),
-                        Sex.MALE, true, Instant.EPOCH));
+                .thenReturn(aTeacher(true));
 
         mockMvc.perform(post("/teachers")
                         .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN))
@@ -98,10 +99,24 @@ class TeacherControllerTest {
                         .content(registrationBody("1990-05-20", "contrasena")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("nuevo.docente"))
-                .andExpect(jsonPath("$.firstName").value("Juan Carlos"))
-                .andExpect(jsonPath("$.birthDate").value("1990-05-20"))
-                .andExpect(jsonPath("$.sex").value("MALE"))
+                .andExpect(jsonPath("$.person.firstName").value("Juan Carlos"))
+                .andExpect(jsonPath("$.person.documentNumber").value("45678912"))
+                .andExpect(jsonPath("$.person.birthDate").value("1990-05-20"))
                 .andExpect(jsonPath("$.active").value(true));
+    }
+
+    @Test
+    void a_registration_without_credentials_reaches_the_service() throws Exception {
+        when(teacherService.create(eq("ana"), any(CreateTeacherRequest.class)))
+                .thenReturn(aTeacher(true));
+
+        mockMvc.perform(post("/teachers")
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"person\": " + personBody("1990-05-20") + "}"))
+                .andExpect(status().isCreated());
+
+        verify(teacherService).create(eq("ana"), any(CreateTeacherRequest.class));
     }
 
     @Test
@@ -112,7 +127,7 @@ class TeacherControllerTest {
                         .content(registrationBody("2999-01-01", "contrasena")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("GEN_VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.errors[0].field").value("birthDate"));
+                .andExpect(jsonPath("$.errors[0].field").value("person.birthDate"));
 
         verify(teacherService, never()).create(any(), any());
     }
@@ -124,19 +139,19 @@ class TeacherControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registrationBody("1990-05-20", "corta")))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0].field").value("password"));
+                .andExpect(jsonPath("$.errors[0].field").value("credentials.password"));
 
         verify(teacherService, never()).create(any(), any());
     }
 
     @Test
-    void the_first_name_is_mandatory() throws Exception {
+    void the_document_number_is_mandatory() throws Exception {
         mockMvc.perform(post("/teachers")
                         .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(bodyWithFirstName("   ")))
+                        .content(bodyWithDocumentNumber("   ")))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0].field").value("firstName"));
+                .andExpect(jsonPath("$.errors[0].field").value("person.documentNumber"));
 
         verify(teacherService, never()).create(any(), any());
     }
@@ -173,7 +188,7 @@ class TeacherControllerTest {
         mockMvc.perform(get("/teachers/{id}", id)
                         .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.firstName").value("Juan Carlos"));
+                .andExpect(jsonPath("$.person.firstName").value("Juan Carlos"));
     }
 
     @Test
@@ -187,7 +202,7 @@ class TeacherControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateBody("1990-05-20")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.lastName").value("Perez Gomez"));
+                .andExpect(jsonPath("$.person.lastName").value("Perez Gomez"));
     }
 
     @Test
@@ -197,7 +212,7 @@ class TeacherControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateBody("2999-01-01")))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0].field").value("birthDate"));
+                .andExpect(jsonPath("$.errors[0].field").value("person.birthDate"));
 
         verify(teacherService, never()).update(any(), any(), any());
     }
@@ -260,28 +275,19 @@ class TeacherControllerTest {
     }
 
     @Test
-    void a_teacher_cannot_change_the_password_of_teachers() throws Exception {
-        mockMvc.perform(post("/teachers/{id}/$changePassword", UUID.randomUUID())
-                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(passwordBody("contrasena")))
-                .andExpect(status().isForbidden());
-
-        verify(teacherService, never()).changePassword(any(), any(), any());
-    }
-
-    @Test
     void a_student_cannot_list_teachers() throws Exception {
-        mockMvc.perform(get("/teachers").header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
+        mockMvc.perform(get("/teachers")
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
                 .andExpect(status().isForbidden());
 
         verify(teacherService, never()).list(any(), any(), any());
     }
 
     private TeacherResponse aTeacher(boolean active) {
-        return new TeacherResponse(UUID.randomUUID(), UUID.randomUUID(), "nuevo.docente",
-                "Juan Carlos", "Perez Gomez", LocalDate.of(1990, 5, 20), Sex.MALE, active,
-                Instant.EPOCH);
+        return new TeacherResponse(UUID.randomUUID(),
+                new PersonResponse(UUID.randomUUID(), DocumentType.DNI, "45678912", "Juan Carlos",
+                        "Perez Gomez", LocalDate.of(1990, 5, 20), Sex.MALE),
+                "nuevo.docente", active, Instant.EPOCH);
     }
 
     private String passwordBody(String password) {
@@ -290,27 +296,37 @@ class TeacherControllerTest {
                 """.formatted(password);
     }
 
+    private String personBody(String birthDate) {
+        return """
+                {"documentType": "DNI", "documentNumber": "45678912",
+                 "firstName": "Juan Carlos", "lastName": "Perez Gomez",
+                 "birthDate": "%s", "sex": "MALE"}
+                """.formatted(birthDate);
+    }
+
     private String updateBody(String birthDate) {
         return """
-                {"firstName": "Juan Carlos", "lastName": "Perez Gomez", "birthDate": "%s",                 "sex": "MALE"}
-                """.formatted(birthDate);
+                {"person": %s}
+                """.formatted(personBody(birthDate));
     }
 
     private String registrationBody(String birthDate, String password) {
         return """
-                {"firstName": "Juan Carlos", "lastName": "Perez Gomez", "birthDate": "%s", \
-                "sex": "MALE", "username": "nuevo.docente", "password": "%s"}
-                """.formatted(birthDate, password);
+                {"person": %s,
+                 "credentials": {"username": "nuevo.docente", "password": "%s"}}
+                """.formatted(personBody(birthDate), password);
     }
 
-    private String bodyWithFirstName(String firstName) {
+    private String bodyWithDocumentNumber(String documentNumber) {
         return """
-                {"firstName": "%s", "lastName": "Perez Gomez", "birthDate": "1990-05-20", \
-                "sex": "MALE", "username": "nuevo.docente", "password": "contrasena"}
-                """.formatted(firstName);
+                {"person": {"documentType": "DNI", "documentNumber": "%s",
+                            "firstName": "Juan Carlos", "lastName": "Perez Gomez",
+                            "birthDate": "1990-05-20", "sex": "MALE"},
+                 "credentials": {"username": "nuevo.docente", "password": "contrasena"}}
+                """.formatted(documentNumber);
     }
 
     private String bearerFor(Role role) {
-        return "Bearer " + jwtService.issueToken("ana", role.grantedAuthorities());
+        return "Bearer " + jwtService.issueToken("ana", Role.grantedAuthoritiesOf(Set.of(role)));
     }
 }

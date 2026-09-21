@@ -56,12 +56,25 @@ escribir código.
 ## Arquitectura
 
 Paquete raíz `io.github.smaykell.aulavirtual`, con tres zonas transversales (`config`,
-`security`, `common`) más `modules/`, donde va todo el dominio. Hoy existe
-`modules/user` (usuarios, login y aplicación del catálogo de roles) y
-`modules/teacher` (registro de docentes, que pide su cuenta a `UserService`). Los datos
-de persona —nombres, apellidos, fecha de nacimiento y sexo— viven en el
-`@MappedSuperclass` `common/domain/Person`, del que hereda toda entidad que sea una
-persona.
+`security`, `common`) más `modules/`, donde va todo el dominio.
+
+**Persona, perfiles y cuenta son tres cosas distintas**, y esa separación es el eje de
+todo lo demás:
+
+- `modules/person` — la identidad (`persons`): tipo y número de documento, nombres,
+  apellidos, fecha de nacimiento y sexo. El documento es la **clave natural**: es lo
+  único que permite saber que el docente que se está registrando ya existe como
+  estudiante. `PersonService.resolveOrCreate` reutiliza a quien ya está, sin
+  sobrescribir sus datos.
+- `modules/teacher`, `modules/administrator` (y `student` cuando llegue) — los
+  perfiles. Cada uno guarda `person_id`, su propio `active` y **sus atributos
+  propios**; los que le sobren a otro perfil no le estorban. Una misma persona puede
+  tener varios.
+- `modules/user` — la cuenta (`users`): username, contraseña, `person_id`. Una por
+  persona, 1:1. No guarda rol ni `active`.
+
+Una persona sin perfiles no existe en la práctica: `resolveOrCreate` solo se llama
+desde el alta de un perfil, dentro de la misma transacción.
 
 **Vertical slice.** Cada módulo de dominio es un paquete autocontenido
 (`modules/course/`: entidad, repositorio, servicio, controlador, `dto/`). Un módulo solo
@@ -120,8 +133,8 @@ status y un literal sueltos, hay que darle nombre. Las excepciones viven en el p
 
 Detrás de cada una hay una constante de un `enum` que implementa `ErrorCode` y declara su
 status HTTP y su mensaje. Hay un catálogo global, `CommonError` (`GEN`), y uno por módulo
-— `UserError` (`USR`), `TeacherError` (`TCH`) —; un módulo nuevo trae el suyo con su
-propio prefijo. Son dos piezas por error a propósito: el enum es la lista legible de todo
+— `PersonError` (`PRS`), `UserError` (`USR`), `TeacherError` (`TCH`),
+`AdministratorError` (`ADM`) —; un módulo nuevo trae el suyo con su propio prefijo. Son dos piezas por error a propósito: el enum es la lista legible de todo
 lo que un módulo puede responder y lo que hace verificable la unicidad; la clase es lo que
 se lanza y lo que hace que el `throw` se lea solo.
 
@@ -141,35 +154,54 @@ final, sin detalles internos; los detalles van al log.
 
 **Seguridad.** Cadena *stateless*, sin CSRF, sin usuarios en memoria. El login vive en
 `modules/user` (`POST /auth/login`) y llama a `jwtService.issueToken(subject, authorities)`.
-Las authorities viajan en el claim `roles` y son dos cosas a la vez: el rol **con prefijo**
-(`ROLE_TEACHER`) y, junto a él, cada permiso del rol (`users:read`), de modo que
-`hasRole(...)` y `hasAuthority(...)` funcionan sin traducción.
+Las authorities viajan en el claim `roles` y son dos cosas a la vez: **cada** rol con
+prefijo (`ROLE_TEACHER`) y, junto a ellos, la unión de los permisos de esos roles
+(`teachers:read`), de modo que `hasRole(...)` y `hasAuthority(...)` funcionan sin
+traducción. Quien es administrador y docente inicia sesión una vez y lleva los dos.
 
 **Roles y permisos.** El catálogo vive en código, no en tablas: `security/Permission`
-enumera los permisos y `security/Role` asigna a cada rol los suyos. Un usuario tiene
-exactamente un rol (`users.role`). `Role.manageableRoles()` es la **única** fuente de quién
-administra a quién — el superadmin administra admins, docentes y estudiantes; un admin solo
+enumera los permisos y `security/Role` asigna a cada rol los suyos.
+
+**El rol de una persona *es* tener el perfil correspondiente activo**, así que no hay
+tabla de roles ni columna que pueda divergir del perfil real. Cada módulo de persona
+publica un `security/RoleProvider` que responde si esa persona tiene su perfil activo, y
+`security/PersonRoles` los agrega. Es lo que permite que el módulo de cuentas no conozca
+a los de docentes o administradores: la dependencia va de los módulos hacia `security`,
+nunca al revés. **Un módulo de persona nuevo solo tiene que publicar su `RoleProvider`**;
+no hay que registrarlo en ningún otro sitio.
+
+Como una persona puede tener varios roles, lo que decide una autorización es el
+`security/Actor` (persona, username y roles), no un rol suelto: su alcance es la **unión**
+de lo que administra cada uno de sus roles. `Role.manageableRoles()` sigue siendo la
+**única** fuente de quién administra a quién — el superadmin administra admins, docentes y estudiantes; un admin solo
 docentes y estudiantes; nadie administra a un `SUPER_ADMIN`, que solo nace de la semilla de
 `V2__create_users.sql`. De ahí salen sin código extra las dos reglas del enunciado: entre
 admins no se tocan y el listado solo muestra los roles que el solicitante administra.
 
 Los literales de `@PreAuthorize` salen de `Permission.Name`, no de cadenas sueltas: así un
 permiso mal escrito no compila. El catálogo de cada rol se escribe permiso a permiso y
-**nunca** con `Permission.values()`: hoy admin y superadmin coinciden, pero atajarlo
-regalaría a los admins cualquier permiso futuro que solo debería tener el superadmin.
+**nunca** con `Permission.values()`: atajarlo regalaría a los admins cualquier permiso
+futuro que solo debería tener el superadmin — hoy ya difieren, porque `administrators:*`
+es solo del superadmin.
 
 **Operaciones con `$`.** Lo que no es CRUD va como sub-recurso con `$`:
 `POST /teachers/{id}/$disable`, `$enable`. El `$` no es especial para `PathPattern` ni
 para Spring Security, pero deja el recurso en el sustantivo y hace evidente en el log
 que ese segmento es un verbo y no un id.
 
-Desactivar a un docente apaga también su cuenta (`TeacherService` llama a
-`UserService.disable`); el módulo de usuarios no hace el viaje de vuelta, porque no
-conoce al de docentes.
+`$disable` apaga **el perfil, no la cuenta**: dar de baja a un docente que además es
+estudiante lo deja entrando como estudiante. La cuenta no tiene interruptor propio ni le
+hace falta — **sirve mientras quede algún perfil activo** —, y por eso no existe ninguna
+pantalla ni ningún endpoint para activar o desactivar cuentas.
 
-Toda operación sobre usuarios recarga al actor desde la base (`UserService.activeActor`) en
-vez de fiarse del token: es lo que hace que desactivar a alguien surta efecto de inmediato
-en lugar de esperar a que caduque su JWT.
+Toda operación recalcula al actor desde la base (`UserService.actor`, que vuelve a
+preguntar a los `RoleProvider`) en vez de fiarse del token: es lo que hace que dar de baja
+a alguien surta efecto de inmediato en lugar de esperar a que caduque su JWT.
+
+**`/me` es la única vía de autoservicio** (`modules/user/MeController`): ver mis datos,
+cambiarlos y cambiar mi contraseña dando la actual. No pasa por `manageableRoles()`,
+porque nadie se administra a sí mismo — y es lo único que permite al superadmin, a quien
+nadie administra, corregir sus propios datos.
 
 Dos detalles fáciles de romper:
 
@@ -186,7 +218,7 @@ controlen el tiempo sin un segundo constructor.
 - Ningún test salvo el de contexto necesita base de datos; todos corren siempre.
 - Las rodajas `@WebMvcTest` usan tokens reales y traen los beans de seguridad con `@Import`
   explícito — al añadir un bean a la cadena hay que añadirlo también ahí, en todas.
-- Cada rodaja declara **su** controlador: `@WebMvcTest(UserController.class)`, y las de
+- Cada rodaja declara **su** controlador: `@WebMvcTest(TeacherController.class)`, y las de
   `security`/`common` apuntan a su `ProbeController` anidado. Un `@WebMvcTest` sin
   argumentos escanea todos los `@RestController` de la aplicación y revienta el contexto en
   cuanto otro módulo añade un controlador con dependencias que la rodaja no conoce.

@@ -113,8 +113,18 @@ io.github.smaykell.aulavirtual
 │   ├── web/           ApiErrorWriter
 │   └── exception/     ApiException, ResourceNotFoundException, handler global
 └── modules/
-    └── user/          usuarios, login y catálogo de roles aplicado
+    ├── person/        la identidad: documento, nombres, fecha de nacimiento, sexo
+    ├── user/          la cuenta: login, credenciales y /me
+    ├── teacher/       el perfil de docente
+    └── administrator/ el perfil de administrador
 ```
+
+Una **persona** (`persons`) puede tener varios **perfiles** —docente, estudiante,
+administrador— y una sola **cuenta** (`users`). El documento de identidad es la clave
+natural que permite reconocer que quien se está registrando como docente ya existe en
+la base como estudiante: en ese caso se reutiliza su persona y su cuenta, y solo se le
+añade el perfil nuevo. Cada perfil aporta lo suyo y su propio `active`, de modo que se
+puede ser docente inactivo y estudiante activo a la vez.
 
 La organización es por **vertical slice**: cada módulo de dominio agrupa su
 entidad, repositorio, servicio, controlador y DTOs en un solo paquete. Ver
@@ -145,24 +155,33 @@ La cadena de seguridad es *stateless*: cada petición se autentica con el token 
 de la cabecera `Authorization: Bearer <token>`.
 
 `POST /api/auth/login` recibe `{"username", "password"}` y devuelve el token, su
-duración en segundos, el rol y los permisos de la sesión. Las authorities viajan en
-el claim `roles`: el rol con prefijo (`ROLE_ADMIN`) y, junto a él, cada permiso de
-ese rol (`users:read`). Por eso `hasRole(...)` y `hasAuthority('users:create')`
+duración en segundos, los **roles** y los permisos de la sesión. Los roles de una
+persona son sus perfiles activos, así que quien es administrador y docente inicia
+sesión una vez y lleva los dos. Las authorities viajan en el claim `roles`: cada rol
+con prefijo (`ROLE_ADMIN`) y, junto a ellos, la unión de sus permisos
+(`teachers:read`). Por eso `hasRole(...)` y `hasAuthority('teachers:create')`
 funcionan sin traducción.
 
 | Endpoint | Quién | Qué |
 |---|---|---|
 | `POST /api/auth/login` | público | devuelve el token y los permisos de la sesión |
-| `GET /api/users` | `users:read` | listado paginado, filtro opcional `?active=` |
-| `POST /api/users` | `users:create` | crea un usuario y devuelve 201 |
-| `POST /api/users/{id}/$enable` | `users:update` | reactiva la cuenta |
-| `POST /api/users/{id}/$disable` | `users:update` | desactiva la cuenta |
+| `GET /api/me` | autenticado | mis datos, mis roles y mis permisos |
+| `PUT /api/me` | autenticado | cambia mis datos de persona |
+| `POST /api/me/$changePassword` | autenticado | pide la contraseña actual y devuelve 204 |
+| `GET /api/persons/$byDocument` | `teachers:create` o `administrators:create` | busca una persona por documento y dice qué es ya |
+| `GET /api/administrators` | `administrators:read` | listado paginado, filtro opcional `?active=` |
+| `GET /api/administrators/{id}` | `administrators:read` | un administrador |
+| `POST /api/administrators` | `administrators:create` | registra un administrador y devuelve 201 |
+| `PUT /api/administrators/{id}` | `administrators:update` | cambia sus datos de persona |
+| `POST /api/administrators/{id}/$enable` | `administrators:update` | reactiva el perfil |
+| `POST /api/administrators/{id}/$disable` | `administrators:update` | desactiva el perfil |
+| `POST /api/administrators/{id}/$changePassword` | `administrators:update` | cambia su contraseña y devuelve 204 |
 | `GET /api/teachers` | `teachers:read` | listado paginado, filtro opcional `?active=` |
 | `GET /api/teachers/{id}` | `teachers:read` | un docente |
-| `POST /api/teachers` | `teachers:create` | registra un docente con su cuenta y devuelve 201 |
+| `POST /api/teachers` | `teachers:create` | registra un docente y devuelve 201 |
 | `PUT /api/teachers/{id}` | `teachers:update` | cambia los datos de persona |
-| `POST /api/teachers/{id}/$enable` | `teachers:update` | reactiva al docente y su cuenta |
-| `POST /api/teachers/{id}/$disable` | `teachers:update` | desactiva al docente y su cuenta |
+| `POST /api/teachers/{id}/$enable` | `teachers:update` | reactiva el perfil de docente |
+| `POST /api/teachers/{id}/$disable` | `teachers:update` | desactiva el perfil de docente |
 | `POST /api/teachers/{id}/$changePassword` | `teachers:update` | cambia la contraseña de su cuenta y devuelve 204 |
 
 Los verbos que no encajan en el CRUD van como sub-recurso con `$`
@@ -178,54 +197,74 @@ Rutas públicas: `/auth/login`, `/actuator/health`, `/actuator/info`,
 ### Roles y permisos
 
 El catálogo vive en código: `security/Permission` enumera los permisos y
-`security/Role` asigna a cada rol los suyos. Un usuario tiene exactamente un rol.
+`security/Role` asigna a cada rol los suyos. Una persona tiene un rol por cada perfil
+activo, y sus permisos son la unión de los de esos roles.
 
 | Rol | Permisos | Administra a |
 |---|---|---|
-| `SUPER_ADMIN` | todos los de `users:` y `teachers:` | `ADMIN`, `TEACHER`, `STUDENT` |
-| `ADMIN` | todos los de `users:` y `teachers:` | `TEACHER`, `STUDENT` |
+| `SUPER_ADMIN` | `administrators:` y `teachers:` | `ADMIN`, `TEACHER`, `STUDENT` |
+| `ADMIN` | `teachers:` | `TEACHER`, `STUDENT` |
 | `TEACHER` | — | — |
 | `STUDENT` | — | — |
 
 `Role.manageableRoles()` es la única fuente de la última columna, y de ella salen
 dos reglas: un admin no puede tocar a otro admin, y nadie —tampoco el superadmin—
-crea un `SUPER_ADMIN` por API. El listado de `/api/users` devuelve solo los roles
-que el solicitante administra, así que la cuenta del superadmin no aparece para
-nadie.
+crea un `SUPER_ADMIN` por API. El listado de `/api/administrators` devuelve solo los
+roles que el solicitante administra, así que el superadmin no aparece para nadie.
+
+No hay tabla de roles: el rol de una persona *es* tener el perfil correspondiente
+activo. Cada módulo de persona publica un `RoleProvider` (`security/RoleProvider`) que
+responde si esa persona tiene su perfil, y `PersonRoles` los agrega. Así el módulo de
+cuentas no necesita conocer a los de docentes o administradores, y no existe un sitio
+donde el rol guardado pueda divergir del perfil real.
 
 ### El primer superadmin
 
 `V2__create_users.sql` siembra el usuario `superadmin` con la contraseña
 `Superadmin.2026`. Ese hash está versionado en el repositorio: **cambia la
-contraseña en el primer arranque de cada entorno**.
+contraseña en el primer arranque de cada entorno**, desde
+`POST /api/me/$changePassword`.
+
+Su persona y su perfil los crea `V6__migrate_accounts_to_persons.sql` con datos
+marcados `Pendiente` y un documento `PEND...` que no pasa la validación de la
+aplicación: es deliberado, obliga a corregirlos desde `PUT /api/me` antes de poder
+volver a guardar. Nadie administra a un `SUPER_ADMIN`, así que `/api/me` es el único
+camino para arreglarlos.
 
 ### Registro de docentes
 
-`POST /api/teachers` recibe los datos de la persona (`firstName`, `lastName`,
-`birthDate`, `sex`) y las credenciales que elige el front (`username`, `password`),
-y en una sola transacción crea la cuenta con rol `TEACHER` y la ficha del docente.
-La cuenta la crea `UserService`, así que el registro hereda sin código extra sus tres
-reglas: quien registra debe administrar el rol `TEACHER`, el usuario repetido es un
-409 y la contraseña se guarda cifrada. Si la cuenta se rechaza no queda ficha a medias.
+`POST /api/teachers` recibe `{"person": {...}, "credentials": {...}}` y, en una sola
+transacción, resuelve la persona por su documento, se asegura de que tenga cuenta y
+crea el perfil de docente.
 
-`teachers.user_id` apunta a `users.id`: el módulo guarda el identificador, no la
-entidad `User`, que vive en otro módulo.
+Resolver la persona es lo que evita duplicarla: si el documento ya existe se reutiliza
+esa persona **con los datos que ya tenía** y su cuenta, y `credentials` sobra
+—enviarlo responde `USR_ACCOUNT_ALREADY_EXISTS`—; si no existe, `credentials` es
+obligatorio (`USR_CREDENTIALS_REQUIRED`). Por eso el front llama antes a
+`GET /api/persons/$byDocument`, que además le dice qué es ya esa persona y le ahorra
+pedir un usuario y una contraseña que no hacen falta.
+
+Registrar dos veces al mismo docente responde `TCH_ALREADY_REGISTERED`. Si algo se
+rechaza no queda ficha a medias.
+
+`teachers.person_id` apunta a `persons.id`: el módulo guarda el identificador, no la
+entidad `Person`, que vive en otro módulo.
 
 ### Activar y desactivar
 
-`users.active` corta el acceso en dos puntos: el login responde 403 y cada
-operación de `/api/users` vuelve a comprobarlo contra la base, de modo que un token
-emitido antes de la desactivación deja de servir en el acto.
+Se desactiva el **perfil**, no la cuenta: `POST /api/teachers/{id}/$disable` apaga al
+docente y deja intactos sus demás perfiles, así que quien además sea estudiante sigue
+entrando como estudiante. La cuenta no tiene un interruptor propio ni le hace falta:
+**sirve mientras quede algún perfil activo**, y quien se queda sin ninguno no pasa del
+login (`USR_INACTIVE_ACCOUNT`).
+
+El efecto es inmediato aunque el token siga vivo: cada operación recalcula los roles
+del actor contra la base (`UserService.actor`), de modo que un token emitido antes de
+la baja deja de servir en el acto.
 
 Quién puede apagar a quién sale otra vez de `Role.manageableRoles()`: un admin no
 desactiva a otro admin y nadie desactiva al superadmin. De ahí sale gratis que nadie
 pueda desactivarse a sí mismo, porque ningún rol se administra a sí mismo.
-
-`POST /api/teachers/{id}/$disable` apaga la ficha del docente **y** su cuenta, que es
-lo que evita un docente dado de baja que sigue pudiendo entrar. El camino inverso no
-existe: `POST /api/users/{id}/$disable` apaga solo la cuenta y deja
-`teachers.active` como estaba, porque el módulo de usuarios no conoce al de docentes.
-Para dar de baja a un docente hay que usar la ruta de `/teachers`.
 
 ### Cambiar la contraseña de un docente
 
@@ -279,8 +318,10 @@ HTTP y su mensaje; ese enum es el catálogo. Hay uno global y uno por módulo:
 | Catálogo | Prefijo | Dónde |
 |---|---|---|
 | `CommonError` | `GEN` | `common/exception` |
+| `PersonError` | `PRS` | `modules/person/exception` |
 | `UserError` | `USR` | `modules/user/exception` |
 | `TeacherError` | `TCH` | `modules/teacher/exception` |
+| `AdministratorError` | `ADM` | `modules/administrator/exception` |
 
 El código no se escribe a mano: `ErrorCode.code()` lo compone como
 `prefijo + "_" + nombre de la constante`, de modo que `UserError.USERNAME_TAKEN` es
@@ -309,10 +350,12 @@ para el 401 y el 403 que Spring Security responde antes de llegar al advice.
 ./gradlew test
 ```
 
-`JwtServiceTest`, `RoleTest`, `UserServiceTest` y `AuthenticationServiceTest`
-(unitarios) y `SecurityConfigTest`, `GlobalExceptionHandlerTest`, `UserControllerTest`
-y `AuthControllerTest` (rodajas web con MockMvc y tokens reales) corren siempre: no
-necesitan base de datos.
+Los unitarios (`JwtServiceTest`, `RoleTest`, `PersonRolesTest`, `PersonServiceTest`,
+`UserServiceTest`, `AuthenticationServiceTest`, `TeacherServiceTest`,
+`AdministratorServiceTest`) y las rodajas web con MockMvc y tokens reales
+(`SecurityConfigTest`, `GlobalExceptionHandlerTest`, `AuthControllerTest`,
+`MeControllerTest`, `PersonControllerTest`, `TeacherControllerTest`,
+`AdministratorControllerTest`) corren siempre: no necesitan base de datos.
 
 `AulaVirtualApplicationTests` levanta el contexto completo y necesita Postgres
 (base `aula_virtual_test`). Si no hay base accesible, **se omite en lugar de

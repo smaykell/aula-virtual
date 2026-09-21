@@ -4,24 +4,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.github.smaykell.aulavirtual.common.domain.Sex;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
+import io.github.smaykell.aulavirtual.modules.person.DocumentType;
+import io.github.smaykell.aulavirtual.modules.person.PersonService;
+import io.github.smaykell.aulavirtual.modules.person.Sex;
+import io.github.smaykell.aulavirtual.modules.person.dto.PersonData;
+import io.github.smaykell.aulavirtual.modules.person.dto.PersonResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.user.UserService;
 import io.github.smaykell.aulavirtual.modules.user.dto.ChangePasswordRequest;
-import io.github.smaykell.aulavirtual.modules.user.dto.CreateUserRequest;
-import io.github.smaykell.aulavirtual.modules.user.dto.UserResponse;
+import io.github.smaykell.aulavirtual.modules.user.dto.Credentials;
 import io.github.smaykell.aulavirtual.modules.user.exception.RoleOutOfReachException;
 import io.github.smaykell.aulavirtual.security.Role;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -30,23 +31,25 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class TeacherServiceTest {
 
-    private static final UUID ACCOUNT_ID = UUID.randomUUID();
+    private static final UUID PERSON = UUID.randomUUID();
+    private static final LocalDate BIRTH_DATE = LocalDate.of(1990, 5, 20);
     private static final Pageable FIRST_PAGE = PageRequest.of(0, 20);
 
     @Mock
     private TeacherRepository teacherRepository;
+
+    @Mock
+    private PersonService personService;
 
     @Mock
     private UserService userService;
@@ -55,241 +58,176 @@ class TeacherServiceTest {
 
     @BeforeEach
     void setUp() {
-        teacherService = new TeacherService(teacherRepository, userService);
+        teacherService = new TeacherService(teacherRepository, personService, userService);
     }
 
     @Test
-    void registering_a_teacher_returns_its_data_and_its_account() {
-        givenTheAccountIsCreatedAs("nuevo.docente");
+    void registering_a_teacher_resolves_the_person_and_opens_its_account() {
+        givenThePersonResolvesTo(PERSON);
+        when(teacherRepository.existsByPersonId(PERSON)).thenReturn(false);
         givenTheTeacherIsStored();
+        givenTheProfileOf(PERSON, "nuevo.docente");
 
         TeacherResponse teacher = teacherService.create("ana", requestFor("nuevo.docente"));
 
         assertThat(teacher.username()).isEqualTo("nuevo.docente");
-        assertThat(teacher.userId()).isEqualTo(ACCOUNT_ID);
-        assertThat(teacher.firstName()).isEqualTo("Juan Carlos");
-        assertThat(teacher.lastName()).isEqualTo("Perez Gomez");
-        assertThat(teacher.birthDate()).isEqualTo(LocalDate.of(1990, 5, 20));
-        assertThat(teacher.sex()).isEqualTo(Sex.MALE);
+        assertThat(teacher.person().firstName()).isEqualTo("Juan Carlos");
+        assertThat(teacher.active()).isTrue();
+        verify(userService).ensureAccount(eq(PERSON), any(Credentials.class));
     }
 
     @Test
-    void a_registered_teacher_starts_active() {
-        givenTheAccountIsCreatedAs("nuevo.docente");
-        givenTheTeacherIsStored();
-
-        assertThat(teacherService.create("ana", requestFor("nuevo.docente")).active()).isTrue();
-    }
-
-    @Test
-    void the_account_is_created_with_the_teacher_role() {
-        givenTheAccountIsCreatedAs("nuevo.docente");
-        givenTheTeacherIsStored();
-
-        teacherService.create("ana", requestFor("nuevo.docente"));
-
-        assertThat(requestedAccount().role()).isEqualTo(Role.TEACHER);
-        assertThat(requestedAccount().password()).isEqualTo("contrasena");
-    }
-
-    @Test
-    void the_teacher_points_at_the_account_that_was_created() {
-        givenTheAccountIsCreatedAs("nuevo.docente");
-        givenTheTeacherIsStored();
-
-        teacherService.create("ana", requestFor("nuevo.docente"));
-
-        assertThat(storedTeacher().getUserId()).isEqualTo(ACCOUNT_ID);
-    }
-
-    @Test
-    void the_surrounding_spaces_of_the_names_are_trimmed() {
-        givenTheAccountIsCreatedAs("nuevo.docente");
-        givenTheTeacherIsStored();
-
-        teacherService.create("ana", new CreateTeacherRequest("  Juan   Carlos ",
-                " Perez  Gomez  ", LocalDate.of(1990, 5, 20), Sex.MALE, "nuevo.docente",
-                "contrasena"));
-
-        assertThat(storedTeacher().getFirstName()).isEqualTo("Juan Carlos");
-        assertThat(storedTeacher().getLastName()).isEqualTo("Perez Gomez");
-    }
-
-    @Test
-    void a_rejected_account_leaves_no_teacher_behind() {
-        when(userService.create(eq("docente"), any(CreateUserRequest.class)))
-                .thenThrow(new RoleOutOfReachException());
+    void a_person_already_registered_as_a_teacher_is_not_registered_twice() {
+        givenThePersonResolvesTo(PERSON);
+        when(teacherRepository.existsByPersonId(PERSON)).thenReturn(true);
 
         ApiException error = assertThrows(ApiException.class,
-                () -> teacherService.create("docente", requestFor("nuevo.docente")));
+                () -> teacherService.create("ana", requestFor("nuevo.docente")));
 
-        assertThat(error.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(error.getCode()).isEqualTo("TCH_ALREADY_REGISTERED");
         verify(teacherRepository, never()).save(any(Teacher.class));
+        verify(userService, never()).ensureAccount(any(), any());
     }
 
     @Test
-    void disabling_a_teacher_also_turns_its_account_off() {
-        Teacher teacher = givenStoredTeacher();
-        when(userService.disable("ana", teacher.getUserId())).thenReturn(account("docente", false));
+    void a_person_that_already_has_an_account_is_registered_without_credentials() {
+        givenThePersonResolvesTo(PERSON);
+        when(teacherRepository.existsByPersonId(PERSON)).thenReturn(false);
+        givenTheTeacherIsStored();
+        givenTheProfileOf(PERSON, "ana.estudiante");
+
+        TeacherResponse teacher = teacherService.create("ana",
+                new CreateTeacherRequest(personData(), null));
+
+        assertThat(teacher.username()).isEqualTo("ana.estudiante");
+        verify(userService).ensureAccount(PERSON, null);
+    }
+
+    @Test
+    void whoever_does_not_manage_teachers_cannot_register_one() {
+        doesNotManageTeachers("docente");
+
+        assertThrows(RoleOutOfReachException.class,
+                () -> teacherService.create("docente", requestFor("nuevo.docente")));
+
+        verify(personService, never()).resolveOrCreate(any());
+    }
+
+    @Test
+    void disabling_a_teacher_only_turns_off_its_teaching_profile() {
+        Teacher teacher = givenTheTeacher(UUID.randomUUID(), true);
+        givenTheProfileOf(PERSON, "ana.docente");
 
         TeacherResponse disabled = teacherService.disable("ana", teacher.getId());
 
-        assertThat(teacher.isActive()).isFalse();
         assertThat(disabled.active()).isFalse();
-        verify(userService).disable("ana", teacher.getUserId());
+        assertThat(teacher.isActive()).isFalse();
     }
 
     @Test
-    void enabling_a_teacher_also_turns_its_account_back_on() {
-        Teacher teacher = givenStoredTeacher();
-        teacher.deactivate();
-        when(userService.enable("ana", teacher.getUserId())).thenReturn(account("docente", true));
+    void enabling_a_teacher_turns_its_teaching_profile_back_on() {
+        Teacher teacher = givenTheTeacher(UUID.randomUUID(), false);
+        givenTheProfileOf(PERSON, "ana.docente");
 
         assertThat(teacherService.enable("ana", teacher.getId()).active()).isTrue();
-        verify(userService).enable("ana", teacher.getUserId());
     }
 
     @Test
-    void a_rejected_disable_leaves_the_teacher_active() {
-        Teacher teacher = givenStoredTeacher();
-        when(userService.disable("otro", teacher.getUserId()))
-                .thenThrow(new RoleOutOfReachException());
+    void an_unknown_teacher_is_not_found() {
+        UUID teacherId = UUID.randomUUID();
+        when(teacherRepository.findById(teacherId)).thenReturn(Optional.empty());
 
-        assertThrows(ApiException.class, () -> teacherService.disable("otro", teacher.getId()));
-
-        assertThat(teacher.isActive()).isTrue();
-    }
-
-    @Test
-    void changing_the_password_of_a_teacher_reaches_its_account() {
-        Teacher teacher = givenStoredTeacher();
-        ChangePasswordRequest request = new ChangePasswordRequest("contrasena");
-
-        teacherService.changePassword("ana", teacher.getId(), request);
-
-        verify(userService).changePassword("ana", teacher.getUserId(), request);
-    }
-
-    @Test
-    void changing_the_password_of_a_teacher_that_does_not_exist_is_a_404() {
-        UUID unknown = UUID.randomUUID();
-        when(teacherRepository.findById(unknown)).thenReturn(Optional.empty());
-
-        ApiException error = assertThrows(ApiException.class, () -> teacherService
-                .changePassword("ana", unknown, new ChangePasswordRequest("contrasena")));
+        ApiException error = assertThrows(ApiException.class,
+                () -> teacherService.disable("ana", teacherId));
 
         assertThat(error.getCode()).isEqualTo("TCH_NOT_FOUND");
-        verify(userService, never()).changePassword(any(), any(), any());
     }
 
     @Test
-    void updating_a_teacher_replaces_its_personal_data() {
-        Teacher teacher = givenStoredTeacher();
-        givenTheUsernameLookupAnswers(teacher, "docente");
+    void updating_a_teacher_updates_the_person_shared_with_its_other_profiles() {
+        Teacher teacher = givenTheTeacher(UUID.randomUUID(), true);
+        when(personService.update(PERSON, personData())).thenReturn(personResponse());
+        when(userService.usernameOf(PERSON)).thenReturn("ana.docente");
 
         TeacherResponse updated = teacherService.update("ana", teacher.getId(),
-                new UpdateTeacherRequest("  Ana  Maria ", " Lopez ", LocalDate.of(1985, 3, 1),
-                        Sex.FEMALE));
+                new UpdateTeacherRequest(personData()));
 
-        assertThat(updated.firstName()).isEqualTo("Ana Maria");
-        assertThat(updated.lastName()).isEqualTo("Lopez");
-        assertThat(updated.birthDate()).isEqualTo(LocalDate.of(1985, 3, 1));
-        assertThat(updated.sex()).isEqualTo(Sex.FEMALE);
-        assertThat(updated.username()).isEqualTo("docente");
+        assertThat(updated.person().lastName()).isEqualTo("Perez Gomez");
+        verify(personService).update(PERSON, personData());
     }
 
     @Test
-    void updating_a_teacher_checks_the_actor_first() {
-        doThrow(new RoleOutOfReachException())
-                .when(userService).requireManagerOf("otro", Role.TEACHER);
+    void changing_the_password_of_a_teacher_changes_the_one_of_its_person() {
+        Teacher teacher = givenTheTeacher(UUID.randomUUID(), true);
 
-        assertThrows(ApiException.class, () -> teacherService.update("otro", UUID.randomUUID(),
-                new UpdateTeacherRequest("Ana", "Lopez", LocalDate.of(1985, 3, 1), Sex.FEMALE)));
+        teacherService.changePassword("ana", teacher.getId(),
+                new ChangePasswordRequest("contrasena-nueva"));
 
-        verify(teacherRepository, never()).findById(any());
+        verify(userService).changePasswordOf(PERSON, "contrasena-nueva");
     }
 
     @Test
-    void reading_a_teacher_that_does_not_exist_is_a_404() {
-        UUID unknown = UUID.randomUUID();
-        when(teacherRepository.findById(unknown)).thenReturn(Optional.empty());
-
-        ApiException error =
-                assertThrows(ApiException.class, () -> teacherService.get("ana", unknown));
-
-        assertThat(error.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(error.getCode()).isEqualTo("TCH_NOT_FOUND");
-        assertThat(error.getMessage()).isEqualTo("Docente con id %s no encontrado".formatted(unknown));
-    }
-
-    @Test
-    void the_listing_resolves_the_username_of_every_teacher() {
-        Teacher teacher = aTeacher();
+    void the_listing_joins_each_teacher_with_its_person_and_its_username() {
+        Teacher teacher = Teacher.create(PERSON);
+        ReflectionTestUtils.setField(teacher, "id", UUID.randomUUID());
         when(teacherRepository.findAll(FIRST_PAGE))
                 .thenReturn(new PageImpl<>(List.of(teacher), FIRST_PAGE, 1));
-        givenTheUsernameLookupAnswers(teacher, "docente");
+        when(personService.byIds(List.of(PERSON))).thenReturn(Map.of(PERSON, personResponse()));
+        when(userService.usernamesByPersonId(List.of(PERSON)))
+                .thenReturn(Map.of(PERSON, "ana.docente"));
 
         PageResponse<TeacherResponse> page = teacherService.list("ana", null, FIRST_PAGE);
 
-        assertThat(page.content()).singleElement()
-                .satisfies(found -> assertThat(found.username()).isEqualTo("docente"));
+        assertThat(page.content()).singleElement().satisfies(found -> {
+            assertThat(found.username()).isEqualTo("ana.docente");
+            assertThat(found.person().documentNumber()).isEqualTo("45678912");
+        });
     }
 
-    @Test
-    void the_active_filter_narrows_the_listing() {
-        when(teacherRepository.findByActive(eq(false), eq(FIRST_PAGE)))
-                .thenReturn(new PageImpl<>(List.of(), FIRST_PAGE, 0));
-
-        teacherService.list("ana", false, FIRST_PAGE);
-
-        verify(teacherRepository, never()).findAll(any(Pageable.class));
-    }
-
-    private Teacher givenStoredTeacher() {
-        Teacher teacher = aTeacher();
-        when(teacherRepository.findById(teacher.getId())).thenReturn(Optional.of(teacher));
-        return teacher;
-    }
-
-    private Teacher aTeacher() {
-        Teacher teacher = Teacher.create(UUID.randomUUID(), "Juan Carlos", "Perez Gomez",
-                LocalDate.of(1990, 5, 20), Sex.MALE);
-        ReflectionTestUtils.setField(teacher, "id", UUID.randomUUID());
-        return teacher;
-    }
-
-    private void givenTheUsernameLookupAnswers(Teacher teacher, String username) {
-        when(userService.usernamesOf(List.of(teacher.getUserId())))
-                .thenReturn(Map.of(teacher.getUserId(), username));
-    }
-
-    private UserResponse account(String username, boolean active) {
-        return new UserResponse(ACCOUNT_ID, username, Role.TEACHER, active, Instant.EPOCH);
-    }
-
-    private CreateTeacherRequest requestFor(String username) {
-        return new CreateTeacherRequest("Juan Carlos", "Perez Gomez", LocalDate.of(1990, 5, 20),
-                Sex.MALE, username, "contrasena");
-    }
-
-    private void givenTheAccountIsCreatedAs(String username) {
-        when(userService.create(eq("ana"), any(CreateUserRequest.class))).thenReturn(
-                new UserResponse(ACCOUNT_ID, username, Role.TEACHER, true, Instant.EPOCH));
+    private void givenThePersonResolvesTo(UUID personId) {
+        when(personService.resolveOrCreate(personData())).thenReturn(personId);
     }
 
     private void givenTheTeacherIsStored() {
-        when(teacherRepository.save(any(Teacher.class))).thenAnswer(call -> call.getArgument(0));
+        when(teacherRepository.save(any(Teacher.class))).thenAnswer(call -> {
+            Teacher teacher = call.getArgument(0);
+            ReflectionTestUtils.setField(teacher, "id", UUID.randomUUID());
+            return teacher;
+        });
     }
 
-    private CreateUserRequest requestedAccount() {
-        ArgumentCaptor<CreateUserRequest> account = ArgumentCaptor.captor();
-        verify(userService).create(eq("ana"), account.capture());
-        return account.getValue();
+    private Teacher givenTheTeacher(UUID teacherId, boolean active) {
+        Teacher teacher = Teacher.create(PERSON);
+        ReflectionTestUtils.setField(teacher, "id", teacherId);
+        if (!active) {
+            teacher.deactivate();
+        }
+        when(teacherRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
+        return teacher;
     }
 
-    private Teacher storedTeacher() {
-        ArgumentCaptor<Teacher> teacher = ArgumentCaptor.captor();
-        verify(teacherRepository).save(teacher.capture());
-        return teacher.getValue();
+    private void givenTheProfileOf(UUID personId, String username) {
+        when(personService.get(personId)).thenReturn(personResponse());
+        when(userService.usernameOf(personId)).thenReturn(username);
+    }
+
+    private void doesNotManageTeachers(String actorUsername) {
+        when(userService.requireManagerOf(actorUsername, Role.TEACHER))
+                .thenThrow(new RoleOutOfReachException());
+    }
+
+    private static CreateTeacherRequest requestFor(String username) {
+        return new CreateTeacherRequest(personData(),
+                new Credentials(username, "contrasena"));
+    }
+
+    private static PersonData personData() {
+        return new PersonData(DocumentType.DNI, "45678912", "Juan Carlos", "Perez Gomez",
+                BIRTH_DATE, Sex.MALE);
+    }
+
+    private static PersonResponse personResponse() {
+        return new PersonResponse(PERSON, DocumentType.DNI, "45678912", "Juan Carlos",
+                "Perez Gomez", BIRTH_DATE, Sex.MALE);
     }
 }

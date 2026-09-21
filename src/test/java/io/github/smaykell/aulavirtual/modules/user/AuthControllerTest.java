@@ -53,8 +53,9 @@ class AuthControllerTest {
     @Test
     void the_login_is_reachable_without_a_token() throws Exception {
         when(authenticationService.login(any(LoginRequest.class))).thenReturn(
-                new LoginResponse("un.jwt.firmado", "Bearer", 3600, "ana", Role.ADMIN,
-                        List.of("users:read", "users:create")));
+                new LoginResponse("un.jwt.firmado", "Bearer", 3600, "ana",
+                        List.of(Role.ADMIN, Role.TEACHER),
+                        List.of("teachers:read", "teachers:create")));
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -62,7 +63,8 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").value("un.jwt.firmado"))
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.role").value("ADMIN"))
+                .andExpect(jsonPath("$.roles[0]").value("ADMIN"))
+                .andExpect(jsonPath("$.roles[1]").value("TEACHER"))
                 .andExpect(jsonPath("$.permissions", hasSize(2)));
     }
 

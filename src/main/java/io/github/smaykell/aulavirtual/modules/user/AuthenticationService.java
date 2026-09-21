@@ -5,8 +5,9 @@ import io.github.smaykell.aulavirtual.modules.user.dto.LoginResponse;
 import io.github.smaykell.aulavirtual.modules.user.exception.InactiveAccountException;
 import io.github.smaykell.aulavirtual.modules.user.exception.InvalidCredentialsException;
 import io.github.smaykell.aulavirtual.security.JwtService;
-import io.github.smaykell.aulavirtual.security.Permission;
+import io.github.smaykell.aulavirtual.security.PersonRoles;
 import io.github.smaykell.aulavirtual.security.Role;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,30 +21,31 @@ public class AuthenticationService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PersonRoles personRoles;
     private final JwtService jwtService;
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(User.normalizeUsername(request.username()))
+        User account = userRepository.findByUsername(User.normalizeUsername(request.username()))
                 .orElseThrow(InvalidCredentialsException::new);
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.password(), account.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
-        if (!user.isActive()) {
+        Set<Role> roles = personRoles.of(account.getPersonId());
+        if (roles.isEmpty()) {
             throw new InactiveAccountException();
         }
-        return sessionFor(user);
+        return sessionFor(account, roles);
     }
 
-    private LoginResponse sessionFor(User user) {
-        Role role = user.getRole();
+    private LoginResponse sessionFor(User account, Set<Role> roles) {
         return new LoginResponse(
-                jwtService.issueToken(user.getUsername(), role.grantedAuthorities()),
+                jwtService.issueToken(account.getUsername(), Role.grantedAuthoritiesOf(roles)),
                 TOKEN_TYPE,
                 jwtService.tokenLifetime().toSeconds(),
-                user.getUsername(),
-                role,
-                role.permissions().stream().map(Permission::authority).toList());
+                account.getUsername(),
+                Role.sorted(roles),
+                Role.permissionAuthoritiesOf(roles));
     }
 }
