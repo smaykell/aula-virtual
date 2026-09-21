@@ -38,7 +38,14 @@ class RoleTest {
     void the_authorities_carry_the_role_prefixed_and_its_permissions() {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.ADMIN)))
                 .containsExactlyInAnyOrder("ROLE_ADMIN", "teachers:read", "teachers:create",
-                        "teachers:update");
+                        "teachers:update", "courses:read", "courses:create", "courses:update");
+    }
+
+    @Test
+    void a_teacher_only_carries_the_permissions_of_its_own_courses() {
+        assertThat(Role.grantedAuthoritiesOf(Set.of(Role.TEACHER)))
+                .containsExactlyInAnyOrder("ROLE_TEACHER", "courses:read", "courses:create",
+                        "courses:update");
     }
 
     @Test
@@ -51,7 +58,8 @@ class RoleTest {
     void several_roles_carry_the_union_of_their_authorities() {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.ADMIN, Role.TEACHER)))
                 .containsExactlyInAnyOrder("ROLE_ADMIN", "ROLE_TEACHER", "teachers:read",
-                        "teachers:create", "teachers:update");
+                        "teachers:create", "teachers:update", "courses:read", "courses:create",
+                        "courses:update");
     }
 
     @Test

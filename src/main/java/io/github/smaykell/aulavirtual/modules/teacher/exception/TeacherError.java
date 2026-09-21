@@ -6,7 +6,8 @@ import org.springframework.http.HttpStatus;
 public enum TeacherError implements ErrorCode {
 
     NOT_FOUND(HttpStatus.NOT_FOUND, "Docente con id %s no encontrado"),
-    ALREADY_REGISTERED(HttpStatus.CONFLICT, "Esa persona ya está registrada como docente");
+    ALREADY_REGISTERED(HttpStatus.CONFLICT, "Esa persona ya está registrada como docente"),
+    INACTIVE(HttpStatus.CONFLICT, "El docente con id %s está dado de baja");
 
     public static final String PREFIX = "TCH";
 

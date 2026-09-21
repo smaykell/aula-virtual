@@ -49,6 +49,7 @@ variables del entorno del proceso.
 | `DB_POOL_SIZE` | `spring.datasource.hikari.maximum-pool-size` | `10` |
 | `SERVER_PORT` | `server.port` | `8080` |
 | `CORS_ALLOWED_ORIGINS` | `app.cors.allowed-origins` | los tres `localhost` habituales del frontend |
+| `COURSE_INVITATION_BASE_URL` | `app.courses.invitation-base-url` | `http://localhost:5173/join` |
 | `JWT_SECRET` | `app.security.jwt.secret` | solo en `dev`; en cualquier otro perfil es obligatorio |
 | `JWT_ISSUER` | `app.security.jwt.issuer` | `aula-virtual` |
 | `JWT_EXPIRATION` | `app.security.jwt.expiration` | `PT8H` en `dev`, `PT1H` en el resto |
@@ -116,7 +117,8 @@ io.github.smaykell.aulavirtual
     ├── person/        la identidad: documento, nombres, fecha de nacimiento, sexo
     ├── user/          la cuenta: login, credenciales y /me
     ├── teacher/       el perfil de docente
-    └── administrator/ el perfil de administrador
+    ├── administrator/ el perfil de administrador
+    └── course/        el curso, sus unidades y el material de cada unidad
 ```
 
 Una **persona** (`persons`) puede tener varios **perfiles** —docente, estudiante,
@@ -183,6 +185,21 @@ funcionan sin traducción.
 | `POST /api/teachers/{id}/$enable` | `teachers:update` | reactiva el perfil de docente |
 | `POST /api/teachers/{id}/$disable` | `teachers:update` | desactiva el perfil de docente |
 | `POST /api/teachers/{id}/$changePassword` | `teachers:update` | cambia la contraseña de su cuenta y devuelve 204 |
+| `GET /api/courses` | `courses:read` | listado paginado, filtros opcionales `?teacherId=` y `?status=` |
+| `GET /api/courses/{id}` | `courses:read` | un curso |
+| `POST /api/courses` | `courses:create` | crea un curso y devuelve 201 |
+| `PUT /api/courses/{id}` | `courses:update` | cambia sus datos y su docente titular |
+| `POST /api/courses/{id}/$archive` | `courses:update` | archiva el curso |
+| `POST /api/courses/{id}/$activate` | `courses:update` | devuelve el curso a activo |
+| `GET /api/courses/{id}/units` | `courses:read` | las unidades del curso, en orden y con su material |
+| `POST /api/courses/{id}/units` | `courses:update` | añade una unidad al final y devuelve 201 |
+| `POST /api/courses/{id}/units/$reorder` | `courses:update` | reordena las unidades del curso |
+| `GET /api/units/{id}` | `courses:read` | una unidad con su material |
+| `PUT /api/units/{id}` | `courses:update` | cambia el título de la unidad |
+| `DELETE /api/units/{id}` | `courses:update` | borra la unidad y su material, y devuelve 204 |
+| `POST /api/units/{id}/materials` | `courses:update` | publica material en la unidad y devuelve 201 |
+| `PUT /api/materials/{id}` | `courses:update` | reemplaza el material |
+| `DELETE /api/materials/{id}` | `courses:update` | borra el material y devuelve 204 |
 
 Los verbos que no encajan en el CRUD van como sub-recurso con `$`
 (`POST /api/teachers/{id}/$disable`). Así el sustantivo sigue siendo el recurso y no
@@ -202,9 +219,9 @@ activo, y sus permisos son la unión de los de esos roles.
 
 | Rol | Permisos | Administra a |
 |---|---|---|
-| `SUPER_ADMIN` | `administrators:` y `teachers:` | `ADMIN`, `TEACHER`, `STUDENT` |
-| `ADMIN` | `teachers:` | `TEACHER`, `STUDENT` |
-| `TEACHER` | — | — |
+| `SUPER_ADMIN` | `administrators:`, `teachers:` y `courses:` | `ADMIN`, `TEACHER`, `STUDENT` |
+| `ADMIN` | `teachers:` y `courses:` | `TEACHER`, `STUDENT` |
+| `TEACHER` | `courses:` | — |
 | `STUDENT` | — | — |
 
 `Role.manageableRoles()` es la única fuente de la última columna, y de ella salen
@@ -274,6 +291,71 @@ pide la contraseña actual: la cambia quien administra al docente, no él mismo.
 reglas vuelven a salir de `Role.manageableRoles()`, así que un admin no puede cambiar
 la contraseña de otro admin ni la del superadmin.
 
+### Cursos, unidades y material
+
+El curso es un agregado: sus **unidades** (las semanas o temas en que se divide) y el
+**material** de cada unidad no existen fuera de él. Por eso viven en un solo módulo,
+`modules/course/`, con un único catálogo de errores (`CRS`) y un único permiso de
+escritura, `courses:update`, que cubre también unidades y material.
+
+Quién puede tocar un curso lo decide **el docente titular**, no el rol suelto
+(`CourseAccess`):
+
+- quien administra docentes —admin y superadmin— alcanza cualquier curso;
+- un docente alcanza los cursos en los que él es el titular, y ningún otro;
+- todo lo demás responde `CRS_OUT_OF_REACH`.
+
+Esa misma regla resuelve el listado (un docente solo ve los suyos, y pedir
+`?teacherId=` de otro es un 403), la creación (el `teacherId` es opcional: si falta, el
+titular es el propio docente que crea el curso, y un admin que no enseña tiene que
+nombrarlo — `CRS_TEACHER_REQUIRED`) y el traspaso de un curso a otro docente, que solo
+puede hacer quien alcanza a los dos. El titular siempre debe ser un perfil de docente
+activo (`TCH_INACTIVE`).
+
+Un curso no se borra: se archiva (`POST /api/courses/{id}/$archive`), y así no se pierde
+el historial de quien pasó por él. Un curso archivado se sigue leyendo, pero rechaza
+cualquier escritura —suya, de sus unidades o de su material— con `CRS_ARCHIVED` hasta
+que se reactive.
+
+Las unidades llevan un `position` dentro del curso. Una unidad nueva se añade al final;
+el orden se cambia de una vez con `POST /api/courses/{id}/units/$reorder`, que recibe
+todos los ids del curso en el orden deseado y reescribe las posiciones como 1..n. Si la
+lista se deja alguna unidad fuera o repite una, responde `CRS_INVALID_UNIT_ORDER` y no
+toca nada. La unicidad de `(course_id, position)` en la base es `DEFERRABLE INITIALLY
+DEFERRED` justo por esto: el reordenado pasa por estados intermedios con posiciones
+repetidas y solo tiene que cuadrar al hacer commit.
+
+El material es de tipo `PDF`, `VIDEO`, `PPT`, `DOC` o `LINK`, y de ahí sale de dónde
+viene: un `LINK` trae `externalUrl` (`CRS_MATERIAL_NEEDS_URL` si falta) y cualquier otro
+trae `storageKey` (`CRS_MATERIAL_NEEDS_FILE`), nunca los dos. `storageKey` es la clave
+del objeto en el bucket, **nunca una URL completa**: la API todavía no sube ni sirve
+bytes —el almacenamiento entra en otra iteración— así que hoy el cliente manda la clave
+del archivo que ya subió. `publishedAt` permite programar una publicación (si no viene,
+es ahora) y `visible` la controla a mano; ninguno de los dos filtra nada todavía, porque
+quien los mirará es el estudiante y ese módulo aún no existe.
+
+**La invitación viaja de las dos formas.** Al crear el curso se genera un código libre
+de ocho caracteres (sin `I`, `O`, `0` ni `1`: se dicta en voz alta y se teclea a mano) y
+la respuesta lo devuelve junto al enlace que lo lleva dentro:
+
+```json
+"invitation": {
+  "code": "ABCD2345",
+  "url": "http://localhost:5173/join/ABCD2345"
+}
+```
+
+El enlace **no se guarda**: el código es el dato y la URL se compone al responder, con
+la base de `COURSE_INVITATION_BASE_URL` —que apunta al frontend, no a la API—, así que
+cambiar de dominio no obliga a tocar ninguna fila. Las dos formas terminan en el mismo
+sitio: quien pega el código a mano y quien abre el enlace acaban mandando el mismo
+código.
+
+Lo que falta es el otro extremo: **el alta en sí llega con el módulo `student`**, que es
+quien tendrá una persona a la que matricular. Entonces se añaden la tabla `enrollments`
+y la operación que canjea el código; hasta ese día el curso ya sabe repartir su
+invitación, pero nadie puede aceptarla.
+
 ## Errores
 
 Todos los errores comparten el mismo cuerpo:
@@ -322,6 +404,7 @@ HTTP y su mensaje; ese enum es el catálogo. Hay uno global y uno por módulo:
 | `UserError` | `USR` | `modules/user/exception` |
 | `TeacherError` | `TCH` | `modules/teacher/exception` |
 | `AdministratorError` | `ADM` | `modules/administrator/exception` |
+| `CourseError` | `CRS` | `modules/course/exception` |
 
 El código no se escribe a mano: `ErrorCode.code()` lo compone como
 `prefijo + "_" + nombre de la constante`, de modo que `UserError.USERNAME_TAKEN` es

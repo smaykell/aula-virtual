@@ -5,15 +5,20 @@ import io.github.smaykell.aulavirtual.modules.person.PersonService;
 import io.github.smaykell.aulavirtual.modules.person.dto.PersonResponse;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.CreateTeacherRequest;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherResponse;
+import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherSummary;
 import io.github.smaykell.aulavirtual.modules.teacher.dto.UpdateTeacherRequest;
+import io.github.smaykell.aulavirtual.modules.teacher.exception.InactiveTeacherException;
 import io.github.smaykell.aulavirtual.modules.teacher.exception.TeacherAlreadyRegisteredException;
 import io.github.smaykell.aulavirtual.modules.teacher.exception.TeacherNotFoundException;
 import io.github.smaykell.aulavirtual.modules.user.UserService;
 import io.github.smaykell.aulavirtual.modules.user.dto.ChangePasswordRequest;
 import io.github.smaykell.aulavirtual.security.Role;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -97,6 +102,36 @@ public class TeacherService {
 
         userService.requireManagerOf(actorUsername, Role.TEACHER);
         userService.changePasswordOf(existing(teacherId).getPersonId(), request.password());
+    }
+
+    @Transactional(readOnly = true)
+    public void requireActive(UUID teacherId) {
+        if (!existing(teacherId).isActive()) {
+            throw new InactiveTeacherException(teacherId);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<UUID> activeProfileIdOf(UUID personId) {
+        return teacherRepository.findByPersonId(personId)
+                .filter(Teacher::isActive)
+                .map(Teacher::getId);
+    }
+
+    @Transactional(readOnly = true)
+    public TeacherSummary summaryOf(UUID teacherId) {
+        Teacher teacher = existing(teacherId);
+        return TeacherSummary.from(teacher, personService.get(teacher.getPersonId()));
+    }
+
+    @Transactional(readOnly = true)
+    public Map<UUID, TeacherSummary> summariesOf(Collection<UUID> teacherIds) {
+        List<Teacher> teachers = teacherRepository.findAllById(teacherIds);
+        Map<UUID, PersonResponse> persons = personService.byIds(
+                teachers.stream().map(Teacher::getPersonId).toList());
+
+        return teachers.stream().collect(Collectors.toMap(Teacher::getId,
+                teacher -> TeacherSummary.from(teacher, persons.get(teacher.getPersonId()))));
     }
 
     private Teacher existing(UUID teacherId) {

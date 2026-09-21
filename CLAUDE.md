@@ -213,6 +213,37 @@ Dos detalles fáciles de romper:
 `JwtService` recibe el `Clock` por constructor (bean de `ClockConfig`) para que los tests
 controlen el tiempo sin un segundo constructor.
 
+**Cursos.** `modules/course` es un agregado, no tres módulos: el curso, sus unidades
+(`Unit`, la «semana» o tema — «módulo» ya significa otra cosa en este repo) y el
+material de cada unidad comparten paquete, catálogo (`CRS`) y permisos
+(`courses:read`, `courses:create`, `courses:update`; el de escritura cubre también
+unidades y material).
+
+Quien decide el acceso es **el docente titular**, no el rol: `CourseAccess` es la
+única pieza que lo resuelve y todos los servicios del módulo pasan por ella.
+`readable` deja entrar a quien administra docentes (`Role.canManage(TEACHER)`, otra vez
+la misma fuente) y al titular del curso; `writable` añade que el curso no esté
+archivado. De ahí salen sin código extra el listado acotado a los cursos propios, el
+traspaso de curso solo entre quienes alcanzas y el 403 de todo lo demás.
+
+Un curso no se borra, se archiva: `$archive` / `$activate`. Archivado se lee pero no
+se escribe. Las unidades se ordenan con `position` y se reordenan de una vez con
+`POST /courses/{id}/units/$reorder`, que reescribe 1..n; por eso `uk_units_course_position`
+es `DEFERRABLE INITIALLY DEFERRED`, para permitir los estados intermedios de esa
+transacción.
+
+El material no sube archivos todavía: guarda `storageKey` (la key del objeto, nunca
+una URL) o `externalUrl` si es un enlace, y el tipo decide cuál de los dos es
+obligatorio. `publishedAt` y `visible` se guardan pero aún no filtran nada: quien los
+leerá es el estudiante, y ese módulo no existe.
+
+La invitación se reparte de dos formas y solo se guarda una: el `invitation_code` del
+curso es el dato, y `Invitations` compone además la URL al responder, colgando el
+código de `app.courses.invitation-base-url` (apunta al **frontend**). Por eso cambiar de
+dominio no toca la base. Falta el otro extremo —canjear la invitación—, que llega con
+`student` y su tabla de matrículas: hoy el curso sabe repartirla y nadie puede
+aceptarla.
+
 ## Tests
 
 - Ningún test salvo el de contexto necesita base de datos; todos corren siempre.

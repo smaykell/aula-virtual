@@ -10,10 +10,13 @@ public enum Role {
 
     SUPER_ADMIN(Set.of(Permission.ADMINISTRATORS_READ, Permission.ADMINISTRATORS_CREATE,
             Permission.ADMINISTRATORS_UPDATE, Permission.TEACHERS_READ, Permission.TEACHERS_CREATE,
-            Permission.TEACHERS_UPDATE)),
+            Permission.TEACHERS_UPDATE, Permission.COURSES_READ, Permission.COURSES_CREATE,
+            Permission.COURSES_UPDATE)),
     ADMIN(Set.of(Permission.TEACHERS_READ, Permission.TEACHERS_CREATE,
-            Permission.TEACHERS_UPDATE)),
-    TEACHER(Set.of()),
+            Permission.TEACHERS_UPDATE, Permission.COURSES_READ, Permission.COURSES_CREATE,
+            Permission.COURSES_UPDATE)),
+    TEACHER(Set.of(Permission.COURSES_READ, Permission.COURSES_CREATE,
+            Permission.COURSES_UPDATE)),
     STUDENT(Set.of());
 
     private static final String AUTHORITY_PREFIX = "ROLE_";

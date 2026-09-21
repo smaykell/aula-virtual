@@ -1,0 +1,98 @@
+package io.github.smaykell.aulavirtual.modules.course;
+
+import io.github.smaykell.aulavirtual.common.dto.PageResponse;
+import io.github.smaykell.aulavirtual.modules.course.dto.CourseResponse;
+import io.github.smaykell.aulavirtual.modules.course.dto.CreateCourseRequest;
+import io.github.smaykell.aulavirtual.modules.course.dto.InvitationResponse;
+import io.github.smaykell.aulavirtual.modules.course.dto.UpdateCourseRequest;
+import io.github.smaykell.aulavirtual.modules.course.exception.InvalidCourseDatesException;
+import io.github.smaykell.aulavirtual.modules.teacher.TeacherService;
+import io.github.smaykell.aulavirtual.modules.teacher.dto.TeacherSummary;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class CourseService {
+
+    private final CourseRepository courseRepository;
+    private final CourseAccess courseAccess;
+    private final Invitations invitations;
+    private final TeacherService teacherService;
+
+    @Transactional(readOnly = true)
+    public PageResponse<CourseResponse> list(String actorUsername, UUID teacherId,
+            CourseStatus status, Pageable pageable) {
+
+        Page<Course> courses = courseRepository.search(
+                courseAccess.teacherFilterFor(actorUsername, teacherId), status, pageable);
+
+        List<UUID> teacherIds = courses.getContent().stream().map(Course::getTeacherId).toList();
+        Map<UUID, TeacherSummary> teachers = teacherService.summariesOf(teacherIds);
+
+        return PageResponse.of(courses, course -> CourseResponse.from(course,
+                teachers.get(course.getTeacherId()), invitationOf(course)));
+    }
+
+    @Transactional(readOnly = true)
+    public CourseResponse get(String actorUsername, UUID courseId) {
+        return responseFor(courseAccess.readable(actorUsername, courseId));
+    }
+
+    @Transactional
+    public CourseResponse create(String actorUsername, CreateCourseRequest request) {
+        UUID teacherId = courseAccess.resolveTitular(actorUsername, request.teacherId());
+        requireOrderedDates(request.startDate(), request.endDate());
+
+        return responseFor(courseRepository.save(
+                Course.create(request, teacherId, invitations.nextCode())));
+    }
+
+    @Transactional
+    public CourseResponse update(String actorUsername, UUID courseId,
+            UpdateCourseRequest request) {
+
+        Course course = courseAccess.writable(actorUsername, courseId);
+        courseAccess.requireTitular(actorUsername, request.teacherId());
+        requireOrderedDates(request.startDate(), request.endDate());
+
+        course.update(request);
+        return responseFor(course);
+    }
+
+    @Transactional
+    public CourseResponse archive(String actorUsername, UUID courseId) {
+        Course course = courseAccess.readable(actorUsername, courseId);
+        course.archive();
+        return responseFor(course);
+    }
+
+    @Transactional
+    public CourseResponse activate(String actorUsername, UUID courseId) {
+        Course course = courseAccess.readable(actorUsername, courseId);
+        course.activate();
+        return responseFor(course);
+    }
+
+    private CourseResponse responseFor(Course course) {
+        return CourseResponse.from(course, teacherService.summaryOf(course.getTeacherId()),
+                invitationOf(course));
+    }
+
+    private InvitationResponse invitationOf(Course course) {
+        return invitations.of(course.getInvitationCode());
+    }
+
+    private static void requireOrderedDates(LocalDate startDate, LocalDate endDate) {
+        if (endDate.isBefore(startDate)) {
+            throw new InvalidCourseDatesException();
+        }
+    }
+}
