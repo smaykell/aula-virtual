@@ -303,6 +303,24 @@ matriculado entra, pero ve menos—, mientras que `managed` y `writable` siguen 
 solo para el titular y quien administra docentes. `listingScope` hace lo propio con los
 listados: filtro por docente para el staff, por matrícula activa para el estudiante.
 
+**Si alguna vez se plantea sacar la matrícula a módulo propio, leer esto antes.** Hoy no
+se puede *tal cual*: `course` y `enrollment` se necesitan en los dos sentidos.
+
+- `CourseAccess` consulta `EnrollmentRepository` para saber si el actor está
+  matriculado (`enrolledStudentIn`).
+- `EnrollmentService` depende de `CourseAccess` para saber si puede tocar el curso.
+- `CourseRepository.searchEnrolled` hace `join Enrollment e on e.courseId = c.id`, un
+  join entre entidades sin asociación: el acoplamiento está también en SQL, no solo en
+  Java.
+
+Separarlos sin más da una **dependencia circular de beans por constructor**: no arranca.
+Lo que habría que decidir primero es **quién es el dueño de «quién soy en este curso»**
+—hoy repartido entre `CourseAccess.readable` y `CourseService.memberOf`— y a dónde se
+lleva `searchEnrolled`. Mientras `course` sea el único consumidor, partirlo cuesta más
+de lo que aporta; la señal para hacerlo es que aparezca un segundo módulo que necesite
+la misma noción de pertenencia. `assignment` ya la necesitó y le bastó con pedir
+`memberOf`, que es justo la prueba de que hoy no hace falta.
+
 **Tareas y calificaciones.** `assignment` es el primero que **no** vive dentro de
 `course`: tarea, entrega y calificación tienen su propio catálogo (`ASG`) y hablan con el
 módulo de cursos por servicio, que es la regla de slices. El contrato es de tres métodos y
@@ -310,6 +328,16 @@ conviene que no crezca: `UnitService.courseOf`, `CourseService.requireWritable` 
 `CourseService.memberOf`, que devuelve un `CourseMember(courseId, staff, studentId)` —
 **quién eres en este curso**—. Ese record es lo que evita repetir la regla de alcance en
 cada servicio nuevo: si el módulo de exámenes necesita lo mismo, pide `memberOf` y ya.
+
+De esos tres métodos, dos están en la raíz de `course` y el tercero no: `courseOf` vive
+en `course/unit/UnitService`, así que hoy `assignment` **importa un sub-paquete de otro
+módulo**. No incumple la regla de slices —sigue siendo un *service*, y
+`ModuleBoundariesTest` solo prohíbe repositorios y entidades ajenos—, pero significa que
+la superficie pública de `course` no está toda en un sitio. Si al añadir el módulo de
+exámenes ese contrato crece, el momento de arreglarlo es ese: mover `courseOf` a
+`CourseService` como delegación, y que **desde fuera solo se vea `CourseService`**. No se
+hizo antes porque `UnitService` es el dueño natural de esa pregunta y con un solo
+consumidor la delegación era ceremonia.
 
 Una entrega por (tarea, estudiante): reentregar reemplaza la fila, no acumula intentos, y
 se cierra al calificar. El estado (`SUBMITTED`/`LATE`) lo decide la fecha contra
