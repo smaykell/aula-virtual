@@ -56,14 +56,28 @@ variables del entorno del proceso.
 | `NOTIFICATIONS_MAX_ATTEMPTS` | `app.notifications.max-attempts` | `5` |
 | `NOTIFICATIONS_RETRY_DELAY` | `app.notifications.retry-delay` | `PT1M`, y se duplica en cada reintento |
 | `NOTIFICATIONS_FROM` | `app.notifications.from` | `aula-virtual@localhost` |
-| `SPRING_MAIL_HOST` | `spring.mail.host` | sin valor: sin SMTP los correos solo se escriben en el log |
+| `SPRING_MAIL_HOST` | `spring.mail.host` | **sin declarar**: mientras falte, los correos solo se escriben en el log |
+| `SPRING_MAIL_PORT` | `spring.mail.port` | `587` |
+| `SPRING_MAIL_USERNAME` | `spring.mail.username` | vacío |
+| `SPRING_MAIL_PASSWORD` | `spring.mail.password` | vacío |
+| `SPRING_MAIL_AUTH` | `mail.smtp.auth` | `true` |
+| `SPRING_MAIL_STARTTLS` | `mail.smtp.starttls.enable` | `true`; ponlo en `false` si usas el puerto 465 |
+| `SPRING_MAIL_TIMEOUT` | los tres timeouts de `mail.smtp` | `5000` ms |
 | `JWT_SECRET` | `app.security.jwt.secret` | solo en `dev`; en cualquier otro perfil es obligatorio |
 | `JWT_ISSUER` | `app.security.jwt.issuer` | `aula-virtual` |
 | `JWT_EXPIRATION` | `app.security.jwt.expiration` | `PT8H` en `dev`, `PT1H` en el resto |
 
 Una variable definida gana al valor por defecto. **Definida y vacía no es lo mismo que
 ausente**: exportar `JWT_SECRET=` deja la propiedad en blanco, el valor de `dev` no se
-aplica y `@NotBlank` corta el arranque.
+aplica y `@NotBlank` corta el arranque. Por lo mismo `spring.mail.host` no se declara en
+`application.yml`: si estuviera como `${SPRING_MAIL_HOST:}` quedaría definido y vacío, el
+autoconfig de correo arrancaría contra un servidor en blanco y todos los envíos fallarían
+en vez de irse al log.
+
+El envío real se enciende **solo** con `SPRING_MAIL_HOST`. `NOTIFICATIONS_FROM` debe ser
+la misma dirección con la que te autenticas, o el servidor rechazará el correo. Los
+puertos habituales son `587` con STARTTLS (lo que viene por defecto) y `465`, que es SSL
+directo y necesita `SPRING_MAIL_STARTTLS=false`.
 
 Para exportarlas en una sesión:
 

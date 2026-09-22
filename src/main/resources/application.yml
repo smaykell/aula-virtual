@@ -27,6 +27,22 @@ spring:
         max-page-size: 100
   jackson:
     default-property-inclusion: non_null
+  mail:
+    # host no se declara aqui a proposito. Es lo unico que enciende el envio real, y
+    # ${SPRING_MAIL_HOST:} lo dejaria definido y vacio, que para Spring no es lo mismo
+    # que ausente: el autoconfig arrancaria contra un servidor en blanco y todos los
+    # correos fallarian en vez de irse al log.
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      "[mail.smtp.auth]": ${SPRING_MAIL_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${SPRING_MAIL_STARTTLS:true}
+      # El envio es sincrono sobre el hilo del planificador: sin timeouts, un servidor
+      # que no responde deja la cola parada indefinidamente.
+      "[mail.smtp.connectiontimeout]": ${SPRING_MAIL_TIMEOUT:5000}
+      "[mail.smtp.timeout]": ${SPRING_MAIL_TIMEOUT:5000}
+      "[mail.smtp.writetimeout]": ${SPRING_MAIL_TIMEOUT:5000}
   web:
     error:
       include-message: never
