@@ -18,19 +18,19 @@ import org.springframework.web.bind.annotation.RestController;
 // Sin @PreAuthorize y a proposito, como /me/*: son rutas publicas de PUBLIC_PATHS y la
 // condicion la pone SecurityConfig. Quien todavia no tiene cuenta no tiene authorities.
 @RestController
-@RequestMapping("/invitations")
+@RequestMapping("/invitations/{code}")
 @RequiredArgsConstructor
 @SecurityRequirements
 public class InvitationController {
 
     private final SelfEnrollmentService selfEnrollmentService;
 
-    @GetMapping("/{code}")
+    @GetMapping
     public CourseInvitationResponse preview(@PathVariable String code) {
         return selfEnrollmentService.preview(code);
     }
 
-    @PostMapping("/{code}/$register")
+    @PostMapping("/$register")
     @ResponseStatus(HttpStatus.CREATED)
     public SelfRegistrationResponse register(@PathVariable String code,
             @Valid @RequestBody SelfRegistrationRequest request) {
