@@ -55,11 +55,15 @@ class StudentServiceTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private StudentCredentials studentCredentials;
+
     private StudentService studentService;
 
     @BeforeEach
     void setUp() {
-        studentService = new StudentService(studentRepository, personService, userService);
+        studentService = new StudentService(studentRepository, personService, userService,
+                studentCredentials);
     }
 
     @Test
@@ -94,6 +98,7 @@ class StudentServiceTest {
     void a_person_that_already_has_an_account_is_registered_without_credentials() {
         givenThePersonResolvesTo(PERSON);
         when(studentRepository.existsByPersonId(PERSON)).thenReturn(false);
+        when(userService.hasAccount(PERSON)).thenReturn(true);
         givenTheStudentIsStored();
         givenTheProfileOf(PERSON, "ana.estudiante");
 
@@ -102,6 +107,38 @@ class StudentServiceTest {
 
         assertThat(student.username()).isEqualTo("ana.estudiante");
         verify(userService).ensureAccount(PERSON, null);
+        verify(studentCredentials, never()).forNewAccount(any());
+    }
+
+    @Test
+    void a_person_without_credentials_and_without_account_gets_the_ones_the_centre_dictates() {
+        Credentials derived = new Credentials("45678912", "45678912");
+        givenThePersonResolvesTo(PERSON);
+        when(studentRepository.existsByPersonId(PERSON)).thenReturn(false);
+        when(userService.hasAccount(PERSON)).thenReturn(false);
+        when(studentCredentials.forNewAccount(personData())).thenReturn(derived);
+        givenTheStudentIsStored();
+        givenTheProfileOf(PERSON, "45678912");
+
+        studentService.create("ana",
+                new CreateStudentRequest(personData(), "Hospital Regional", null));
+
+        verify(userService).ensureAccount(PERSON, derived);
+    }
+
+    @Test
+    void credentials_written_by_the_administrator_win_over_the_ones_the_centre_dictates() {
+        givenThePersonResolvesTo(PERSON);
+        when(studentRepository.existsByPersonId(PERSON)).thenReturn(false);
+        givenTheStudentIsStored();
+        givenTheProfileOf(PERSON, "ana.estudiante");
+
+        studentService.create("ana", requestFor("ana.estudiante"));
+
+        verify(userService).ensureAccount(PERSON,
+                new Credentials("ana.estudiante", "contrasena"));
+        verify(studentCredentials, never()).forNewAccount(any());
+        verify(userService, never()).hasAccount(any());
     }
 
     @Test

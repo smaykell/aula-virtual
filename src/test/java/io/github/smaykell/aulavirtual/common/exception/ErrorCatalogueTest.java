@@ -7,6 +7,7 @@ import io.github.smaykell.aulavirtual.administrator.exception.AdministratorError
 import io.github.smaykell.aulavirtual.assignment.exception.AssignmentError;
 import io.github.smaykell.aulavirtual.course.exception.CourseError;
 import io.github.smaykell.aulavirtual.person.exception.PersonError;
+import io.github.smaykell.aulavirtual.settings.exception.SettingsError;
 import io.github.smaykell.aulavirtual.student.exception.StudentError;
 import io.github.smaykell.aulavirtual.teacher.exception.TeacherError;
 import io.github.smaykell.aulavirtual.user.exception.UserError;
@@ -31,7 +32,7 @@ class ErrorCatalogueTest {
         assertThat(CATALOGUES)
                 .containsExactlyInAnyOrder(CommonError.class, PersonError.class, UserError.class,
                         TeacherError.class, AdministratorError.class, CourseError.class,
-                        StudentError.class, AssignmentError.class);
+                        StudentError.class, AssignmentError.class, SettingsError.class);
     }
 
     @Test

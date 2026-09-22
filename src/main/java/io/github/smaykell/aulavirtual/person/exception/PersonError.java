@@ -11,6 +11,8 @@ public enum PersonError implements ErrorCode {
     INVALID_DOCUMENT_NUMBER(HttpStatus.BAD_REQUEST,
             "El número de documento no corresponde al tipo de documento elegido"),
     DOCUMENT_TAKEN(HttpStatus.CONFLICT, "Ya existe otra persona con ese documento"),
+    EMAIL_REQUIRED(HttpStatus.BAD_REQUEST,
+            "El correo es obligatorio para poder identificarte con el"),
     EMAIL_TAKEN(HttpStatus.CONFLICT, "Ya existe otra persona con ese correo");
 
     public static final String PREFIX = "PRS";

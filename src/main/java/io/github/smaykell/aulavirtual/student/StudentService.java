@@ -13,6 +13,7 @@ import io.github.smaykell.aulavirtual.student.exception.StudentAlreadyRegistered
 import io.github.smaykell.aulavirtual.student.exception.StudentNotFoundException;
 import io.github.smaykell.aulavirtual.user.UserService;
 import io.github.smaykell.aulavirtual.user.dto.ChangePasswordRequest;
+import io.github.smaykell.aulavirtual.user.dto.Credentials;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ public class StudentService {
     private final StudentRepository studentRepository;
     private final PersonService personService;
     private final UserService userService;
+    private final StudentCredentials studentCredentials;
 
     @Transactional(readOnly = true)
     public PageResponse<StudentResponse> list(String actorUsername, Boolean active,
@@ -63,7 +65,7 @@ public class StudentService {
         if (studentRepository.existsByPersonId(personId)) {
             throw new StudentAlreadyRegisteredException();
         }
-        userService.ensureAccount(personId, request.credentials());
+        userService.ensureAccount(personId, credentialsFor(personId, request));
 
         return responseFor(studentRepository.save(
                 Student.create(personId, request.workplace())));
@@ -126,6 +128,13 @@ public class StudentService {
 
         return students.stream().collect(Collectors.toMap(Student::getId,
                 student -> StudentSummary.from(student, persons.get(student.getPersonId()))));
+    }
+
+    private Credentials credentialsFor(UUID personId, CreateStudentRequest request) {
+        if (request.credentials() != null || userService.hasAccount(personId)) {
+            return request.credentials();
+        }
+        return studentCredentials.forNewAccount(request.person());
     }
 
     private Student existing(UUID studentId) {

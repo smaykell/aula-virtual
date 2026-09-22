@@ -73,7 +73,7 @@ public class PersonService {
     }
 
     private void requireFreeEmail(PersonData data, UUID owner) {
-        String email = Person.normalizeEmail(data.email());
+        String email = data.normalizedEmail();
         if (email == null) {
             return;
         }

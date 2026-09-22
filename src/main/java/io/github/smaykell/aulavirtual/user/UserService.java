@@ -49,6 +49,11 @@ public class UserService {
         return actor;
     }
 
+    @Transactional(readOnly = true)
+    public boolean hasAccount(UUID personId) {
+        return userRepository.existsByPersonId(personId);
+    }
+
     @Transactional
     public void ensureAccount(UUID personId, Credentials credentials) {
         if (userRepository.existsByPersonId(personId)) {

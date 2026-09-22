@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import java.util.Locale;
 
 public record PersonData(
         @NotNull(message = PersonConstraints.DOCUMENT_TYPE_REQUIRED)
@@ -36,4 +37,11 @@ public record PersonData(
         @Email(message = PersonConstraints.EMAIL_MALFORMED)
         @Size(max = PersonConstraints.EMAIL_MAX, message = PersonConstraints.EMAIL_TOO_LONG)
         String email) {
+
+    public String normalizedEmail() {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
 }
