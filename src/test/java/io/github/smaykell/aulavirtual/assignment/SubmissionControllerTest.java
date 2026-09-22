@@ -159,7 +159,7 @@ class SubmissionControllerTest {
                 "Buen trabajo", Instant.EPOCH);
 
         return new SubmissionResponse(id, ASSIGNMENT,
-                new StudentSummary(UUID.randomUUID(), "Ana Maria", "Quispe Rojas", true),
+                new StudentSummary(UUID.randomUUID(), "Ana Maria", "Quispe Rojas", "Hospital Regional", true),
                 null, "Mi respuesta", Instant.EPOCH, status, grade);
     }
 

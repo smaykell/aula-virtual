@@ -286,8 +286,8 @@ class StudentControllerTest {
     private StudentResponse aStudent(boolean active) {
         return new StudentResponse(UUID.randomUUID(),
                 new PersonResponse(UUID.randomUUID(), DocumentType.DNI, "45678912", "Juan Carlos",
-                        "Perez Gomez", LocalDate.of(1990, 5, 20), Sex.MALE),
-                "nuevo.docente", active, Instant.EPOCH);
+                        "Perez Gomez", LocalDate.of(1990, 5, 20), Sex.MALE, null),
+                "nuevo.docente", "Hospital Regional", active, Instant.EPOCH);
     }
 
     private String passwordBody(String password) {

@@ -53,7 +53,7 @@ class StudentProfileProviderTest {
     }
 
     private void givenStudent(boolean active) {
-        Student student = Student.create(PERSON);
+        Student student = Student.create(PERSON, "Hospital Regional");
         ReflectionTestUtils.setField(student, "id", PROFILE);
         if (!active) {
             student.deactivate();

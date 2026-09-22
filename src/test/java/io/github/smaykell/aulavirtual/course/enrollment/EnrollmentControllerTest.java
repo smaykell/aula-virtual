@@ -176,7 +176,7 @@ class EnrollmentControllerTest {
     private EnrollmentResponse anEnrollment(EnrollmentStatus status) {
         return new EnrollmentResponse(UUID.randomUUID(),
                 new CourseSummary(COURSE, "Algebra Lineal", CourseStatus.ACTIVE),
-                new StudentSummary(UUID.randomUUID(), "Ana Maria", "Quispe Rojas", true),
+                new StudentSummary(UUID.randomUUID(), "Ana Maria", "Quispe Rojas", "Hospital Regional", true),
                 status, Instant.EPOCH, null);
     }
 

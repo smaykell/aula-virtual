@@ -8,4 +8,6 @@ public interface PersonRepository extends JpaRepository<Person, UUID> {
 
     Optional<Person> findByDocumentTypeAndDocumentNumber(DocumentType documentType,
             String documentNumber);
+
+    Optional<Person> findByEmail(String email);
 }

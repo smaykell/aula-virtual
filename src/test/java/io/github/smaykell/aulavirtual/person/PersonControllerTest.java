@@ -108,7 +108,7 @@ class PersonControllerTest {
 
     private PersonResponse person() {
         return new PersonResponse(PERSON, DocumentType.DNI, "45678912", "Ana Maria", "Lopez Diaz",
-                LocalDate.of(1990, 5, 20), Sex.FEMALE);
+                LocalDate.of(1990, 5, 20), Sex.FEMALE, null);
     }
 
     private String bearerFor(Role role) {

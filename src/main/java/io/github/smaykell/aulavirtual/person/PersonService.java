@@ -3,6 +3,7 @@ package io.github.smaykell.aulavirtual.person;
 import io.github.smaykell.aulavirtual.person.dto.PersonData;
 import io.github.smaykell.aulavirtual.person.dto.PersonResponse;
 import io.github.smaykell.aulavirtual.person.exception.DocumentTakenException;
+import io.github.smaykell.aulavirtual.person.exception.EmailTakenException;
 import io.github.smaykell.aulavirtual.person.exception.InvalidDocumentNumberException;
 import io.github.smaykell.aulavirtual.person.exception.PersonNotFoundException;
 import java.util.Collection;
@@ -30,11 +31,8 @@ public class PersonService {
     @Transactional
     public PersonResponse update(UUID personId, PersonData data) {
         Person person = existing(personId);
-        findEntityByDocument(data)
-                .filter(owner -> !owner.getId().equals(personId))
-                .ifPresent(owner -> {
-                    throw new DocumentTakenException();
-                });
+        requireFreeDocument(data, personId);
+        requireFreeEmail(data, personId);
         requireValidDocument(data);
         person.update(data);
         return PersonResponse.from(person);
@@ -62,7 +60,28 @@ public class PersonService {
 
     private Person create(PersonData data) {
         requireValidDocument(data);
+        requireFreeEmail(data, null);
         return personRepository.save(Person.create(data));
+    }
+
+    private void requireFreeDocument(PersonData data, UUID owner) {
+        findEntityByDocument(data)
+                .filter(other -> !other.getId().equals(owner))
+                .ifPresent(other -> {
+                    throw new DocumentTakenException();
+                });
+    }
+
+    private void requireFreeEmail(PersonData data, UUID owner) {
+        String email = Person.normalizeEmail(data.email());
+        if (email == null) {
+            return;
+        }
+        personRepository.findByEmail(email)
+                .filter(other -> !other.getId().equals(owner))
+                .ifPresent(other -> {
+                    throw new EmailTakenException();
+                });
     }
 
     private Optional<Person> findEntityByDocument(PersonData data) {

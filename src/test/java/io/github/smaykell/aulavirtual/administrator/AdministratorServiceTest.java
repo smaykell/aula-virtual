@@ -172,11 +172,11 @@ class AdministratorServiceTest {
 
     private static PersonData personData() {
         return new PersonData(DocumentType.DNI, "45678912", "Ana Maria", "Lopez Diaz",
-                BIRTH_DATE, Sex.FEMALE);
+                BIRTH_DATE, Sex.FEMALE, null);
     }
 
     private static PersonResponse personResponse() {
         return new PersonResponse(PERSON, DocumentType.DNI, "45678912", "Ana Maria", "Lopez Diaz",
-                BIRTH_DATE, Sex.FEMALE);
+                BIRTH_DATE, Sex.FEMALE, null);
     }
 }

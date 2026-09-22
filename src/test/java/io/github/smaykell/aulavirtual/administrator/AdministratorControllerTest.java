@@ -133,7 +133,7 @@ class AdministratorControllerTest {
     private AdministratorResponse anAdministrator(boolean active) {
         return new AdministratorResponse(UUID.randomUUID(),
                 new PersonResponse(UUID.randomUUID(), DocumentType.DNI, "45678912", "Ana Maria",
-                        "Lopez Diaz", LocalDate.of(1990, 5, 20), Sex.FEMALE),
+                        "Lopez Diaz", LocalDate.of(1990, 5, 20), Sex.FEMALE, null),
                 "nuevo.admin", Role.ADMIN, active, Instant.EPOCH);
     }
 

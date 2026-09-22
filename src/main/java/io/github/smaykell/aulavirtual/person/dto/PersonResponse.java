@@ -13,11 +13,12 @@ public record PersonResponse(
         String firstName,
         String lastName,
         LocalDate birthDate,
-        Sex sex) {
+        Sex sex,
+        String email) {
 
     public static PersonResponse from(Person person) {
         return new PersonResponse(person.getId(), person.getDocumentType(),
                 person.getDocumentNumber(), person.getFirstName(), person.getLastName(),
-                person.getBirthDate(), person.getSex());
+                person.getBirthDate(), person.getSex(), person.getEmail());
     }
 }

@@ -124,12 +124,66 @@ class PersonServiceTest {
         givenTheStoredPersonGetsTheId(UUID.randomUUID());
 
         personService.resolveOrCreate(new PersonData(DocumentType.DNI, " 45678912 ",
-                "  Juan   Carlos ", " Perez  Gomez ", BIRTH_DATE, Sex.MALE));
+                "  Juan   Carlos ", " Perez  Gomez ", BIRTH_DATE, Sex.MALE, null));
 
         verify(personRepository).save(argThat(person ->
                 person.getFirstName().equals("Juan Carlos")
                         && person.getLastName().equals("Perez Gomez")
                         && person.getDocumentNumber().equals("45678912")));
+    }
+
+    @Test
+    void an_email_that_belongs_to_somebody_else_is_rejected() {
+        givenNobodyHasTheDocument("45678912");
+        givenTheEmailBelongsTo("ana@escuela.pe", UUID.randomUUID());
+
+        ApiException error = assertThrows(ApiException.class, () -> personService
+                .resolveOrCreate(dataWithEmail("45678912", " Ana@Escuela.PE ")));
+
+        assertThat(error.getCode()).isEqualTo("PRS_EMAIL_TAKEN");
+        verify(personRepository, never()).save(any(Person.class));
+    }
+
+    @Test
+    void keeping_your_own_email_while_updating_is_not_taking_it_from_anybody() {
+        UUID personId = UUID.randomUUID();
+        Person stored = givenTheDocumentBelongsTo("45678912", personId, "Ana Maria");
+        when(personRepository.findById(personId)).thenReturn(Optional.of(stored));
+        when(personRepository.findByEmail("ana@escuela.pe")).thenReturn(Optional.of(stored));
+
+        PersonResponse updated = personService.update(personId,
+                dataWithEmail("45678912", "ana@escuela.pe"));
+
+        assertThat(updated.email()).isEqualTo("ana@escuela.pe");
+    }
+
+    @Test
+    void the_email_is_stored_lowercase_and_trimmed() {
+        givenNobodyHasTheDocument("45678912");
+        when(personRepository.findByEmail("ana@escuela.pe")).thenReturn(Optional.empty());
+        givenTheStoredPersonGetsTheId(UUID.randomUUID());
+
+        personService.resolveOrCreate(dataWithEmail("45678912", "  Ana@Escuela.PE  "));
+
+        verify(personRepository).save(argThat(person ->
+                person.getEmail().equals("ana@escuela.pe")));
+    }
+
+    @Test
+    void a_person_without_email_does_not_collide_with_another_one_without_email() {
+        givenNobodyHasTheDocument("45678912");
+        givenTheStoredPersonGetsTheId(UUID.randomUUID());
+
+        personService.resolveOrCreate(dataOf("45678912", "Juan Carlos"));
+
+        verify(personRepository, never()).findByEmail(any());
+        verify(personRepository).save(argThat(person -> person.getEmail() == null));
+    }
+
+    private void givenTheEmailBelongsTo(String email, UUID personId) {
+        Person owner = Person.create(dataWithEmail("99999999", email));
+        ReflectionTestUtils.setField(owner, "id", personId);
+        when(personRepository.findByEmail(email)).thenReturn(Optional.of(owner));
     }
 
     private void givenTheStoredPersonGetsTheId(UUID personId) {
@@ -157,6 +211,11 @@ class PersonServiceTest {
 
     private static PersonData dataOf(String documentNumber, String firstName) {
         return new PersonData(DocumentType.DNI, documentNumber, firstName, "Perez Gomez",
-                BIRTH_DATE, Sex.MALE);
+                BIRTH_DATE, Sex.MALE, null);
+    }
+
+    private static PersonData dataWithEmail(String documentNumber, String email) {
+        return new PersonData(DocumentType.DNI, documentNumber, "Ana Maria", "Perez Gomez",
+                BIRTH_DATE, Sex.MALE, email);
     }
 }

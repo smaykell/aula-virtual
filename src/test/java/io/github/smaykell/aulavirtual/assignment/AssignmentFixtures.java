@@ -46,7 +46,7 @@ final class AssignmentFixtures {
     }
 
     static StudentSummary student(UUID studentId) {
-        return new StudentSummary(studentId, "Ana Maria", "Quispe Rojas", true);
+        return new StudentSummary(studentId, "Ana Maria", "Quispe Rojas", "Hospital Regional", true);
     }
 
     private static <T> T withId(T entity, UUID id) {

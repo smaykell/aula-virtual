@@ -4,6 +4,7 @@ public final class PersonConstraints {
 
     public static final int NAME_MAX = 100;
     public static final int DOCUMENT_NUMBER_MAX = 20;
+    public static final int EMAIL_MAX = 160;
     public static final String NAME_TOO_LONG = "no puede superar los 100 caracteres";
     public static final String FIRST_NAME_REQUIRED = "los nombres son obligatorios";
     public static final String LAST_NAME_REQUIRED = "los apellidos son obligatorios";
@@ -14,6 +15,8 @@ public final class PersonConstraints {
     public static final String DOCUMENT_NUMBER_REQUIRED = "el número de documento es obligatorio";
     public static final String DOCUMENT_NUMBER_TOO_LONG =
             "no puede superar los 20 caracteres";
+    public static final String EMAIL_MALFORMED = "no parece un correo válido";
+    public static final String EMAIL_TOO_LONG = "no puede superar los 160 caracteres";
 
     private PersonConstraints() {
     }

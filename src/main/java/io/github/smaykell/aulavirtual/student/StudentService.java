@@ -65,7 +65,8 @@ public class StudentService {
         }
         userService.ensureAccount(personId, request.credentials());
 
-        return responseFor(studentRepository.save(Student.create(personId)));
+        return responseFor(studentRepository.save(
+                Student.create(personId, request.workplace())));
     }
 
     @Transactional
@@ -75,6 +76,7 @@ public class StudentService {
         userService.requireManagerOf(actorUsername, Role.STUDENT);
         Student student = existing(studentId);
         PersonResponse person = personService.update(student.getPersonId(), request.person());
+        student.update(request.workplace());
         return StudentResponse.from(student, person,
                 userService.usernameOf(student.getPersonId()));
     }

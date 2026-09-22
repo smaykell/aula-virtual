@@ -149,7 +149,7 @@ class MeControllerTest {
 
     private PersonResponse person() {
         return new PersonResponse(UUID.randomUUID(), DocumentType.DNI, "45678912", "Ana Maria",
-                "Lopez Diaz", LocalDate.of(1990, 5, 20), Sex.FEMALE);
+                "Lopez Diaz", LocalDate.of(1990, 5, 20), Sex.FEMALE, null);
     }
 
     private String personBody(String birthDate) {

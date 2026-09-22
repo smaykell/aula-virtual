@@ -8,10 +8,11 @@ public record StudentSummary(
         UUID id,
         String firstName,
         String lastName,
+        String workplace,
         boolean active) {
 
     public static StudentSummary from(Student student, PersonResponse person) {
         return new StudentSummary(student.getId(), person.firstName(), person.lastName(),
-                student.isActive());
+                student.getWorkplace(), student.isActive());
     }
 }

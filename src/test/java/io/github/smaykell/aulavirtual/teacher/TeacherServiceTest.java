@@ -246,11 +246,11 @@ class TeacherServiceTest {
 
     private static PersonData personData() {
         return new PersonData(DocumentType.DNI, "45678912", "Juan Carlos", "Perez Gomez",
-                BIRTH_DATE, Sex.MALE);
+                BIRTH_DATE, Sex.MALE, null);
     }
 
     private static PersonResponse personResponse() {
         return new PersonResponse(PERSON, DocumentType.DNI, "45678912", "Juan Carlos",
-                "Perez Gomez", BIRTH_DATE, Sex.MALE);
+                "Perez Gomez", BIRTH_DATE, Sex.MALE, null);
     }
 }

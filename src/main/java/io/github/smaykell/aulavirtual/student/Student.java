@@ -21,13 +21,21 @@ public class Student extends BaseEntity {
     @Column(name = "active", nullable = false)
     private boolean active;
 
-    private Student(UUID personId) {
+    @Column(name = "workplace", length = 160)
+    private String workplace;
+
+    private Student(UUID personId, String workplace) {
         this.personId = personId;
+        this.workplace = normalizeWorkplace(workplace);
         this.active = true;
     }
 
-    public static Student create(UUID personId) {
-        return new Student(personId);
+    public static Student create(UUID personId, String workplace) {
+        return new Student(personId, workplace);
+    }
+
+    public void update(String workplace) {
+        this.workplace = normalizeWorkplace(workplace);
     }
 
     public void activate() {
@@ -36,5 +44,12 @@ public class Student extends BaseEntity {
 
     public void deactivate() {
         this.active = false;
+    }
+
+    private static String normalizeWorkplace(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim().replaceAll("\s+", " ");
     }
 }

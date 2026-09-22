@@ -286,7 +286,7 @@ class TeacherControllerTest {
     private TeacherResponse aTeacher(boolean active) {
         return new TeacherResponse(UUID.randomUUID(),
                 new PersonResponse(UUID.randomUUID(), DocumentType.DNI, "45678912", "Juan Carlos",
-                        "Perez Gomez", LocalDate.of(1990, 5, 20), Sex.MALE),
+                        "Perez Gomez", LocalDate.of(1990, 5, 20), Sex.MALE, null),
                 "nuevo.docente", active, Instant.EPOCH);
     }
 

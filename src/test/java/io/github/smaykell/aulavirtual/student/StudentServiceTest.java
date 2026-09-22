@@ -98,7 +98,7 @@ class StudentServiceTest {
         givenTheProfileOf(PERSON, "ana.estudiante");
 
         StudentResponse student = studentService.create("ana",
-                new CreateStudentRequest(personData(), null));
+                new CreateStudentRequest(personData(), "Hospital Regional", null));
 
         assertThat(student.username()).isEqualTo("ana.estudiante");
         verify(userService).ensureAccount(PERSON, null);
@@ -151,7 +151,7 @@ class StudentServiceTest {
         when(userService.usernameOf(PERSON)).thenReturn("ana.docente");
 
         StudentResponse updated = studentService.update("ana", student.getId(),
-                new UpdateStudentRequest(personData()));
+                new UpdateStudentRequest(personData(), "Hospital Regional"));
 
         assertThat(updated.person().lastName()).isEqualTo("Perez Gomez");
         verify(personService).update(PERSON, personData());
@@ -169,7 +169,7 @@ class StudentServiceTest {
 
     @Test
     void the_listing_joins_each_student_with_its_person_and_its_username() {
-        Student student = Student.create(PERSON);
+        Student student = Student.create(PERSON, "Hospital Regional");
         ReflectionTestUtils.setField(student, "id", UUID.randomUUID());
         when(studentRepository.findAll(FIRST_PAGE))
                 .thenReturn(new PageImpl<>(List.of(student), FIRST_PAGE, 1));
@@ -220,7 +220,7 @@ class StudentServiceTest {
     }
 
     private Student givenTheStudent(UUID studentId, boolean active) {
-        Student student = Student.create(PERSON);
+        Student student = Student.create(PERSON, "Hospital Regional");
         ReflectionTestUtils.setField(student, "id", studentId);
         if (!active) {
             student.deactivate();
@@ -240,17 +240,17 @@ class StudentServiceTest {
     }
 
     private static CreateStudentRequest requestFor(String username) {
-        return new CreateStudentRequest(personData(),
+        return new CreateStudentRequest(personData(), "Hospital Regional",
                 new Credentials(username, "contrasena"));
     }
 
     private static PersonData personData() {
         return new PersonData(DocumentType.DNI, "45678912", "Juan Carlos", "Perez Gomez",
-                BIRTH_DATE, Sex.MALE);
+                BIRTH_DATE, Sex.MALE, null);
     }
 
     private static PersonResponse personResponse() {
         return new PersonResponse(PERSON, DocumentType.DNI, "45678912", "Juan Carlos",
-                "Perez Gomez", BIRTH_DATE, Sex.MALE);
+                "Perez Gomez", BIRTH_DATE, Sex.MALE, null);
     }
 }
