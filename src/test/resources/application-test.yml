@@ -15,6 +15,10 @@ logging:
     io.github.smaykell.aulavirtual: INFO
 
 app:
+  notifications:
+    # Apagado en los tests: el contexto completo no debe arrancar un hilo que
+    # sondee la base y siga vivo cuando el contexto ya se ha cerrado.
+    enabled: false
   security:
     jwt:
       # Secreto fijo para que los tests sean reproducibles. No sale de src/test.

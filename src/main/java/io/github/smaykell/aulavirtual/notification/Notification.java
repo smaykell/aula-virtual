@@ -62,4 +62,24 @@ public class Notification extends BaseEntity {
 
         return new Notification(type, recipient, subject, body, moment);
     }
+
+    void attempted(Instant nextTry) {
+        this.attempts++;
+        this.availableAt = nextTry;
+    }
+
+    void sent(Instant moment) {
+        this.status = NotificationStatus.SENT;
+        this.sentAt = moment;
+        this.lastError = null;
+    }
+
+    void retryLater(String error) {
+        this.lastError = error;
+    }
+
+    void givenUp(String error) {
+        this.status = NotificationStatus.FAILED;
+        this.lastError = error;
+    }
 }

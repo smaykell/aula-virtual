@@ -50,6 +50,13 @@ variables del entorno del proceso.
 | `SERVER_PORT` | `server.port` | `8080` |
 | `CORS_ALLOWED_ORIGINS` | `app.cors.allowed-origins` | los tres `localhost` habituales del frontend |
 | `COURSE_INVITATION_BASE_URL` | `app.courses.invitation-base-url` | `http://localhost:5173/join` |
+| `NOTIFICATIONS_ENABLED` | `app.notifications.enabled` | `true`; en `false` no se consume la cola |
+| `NOTIFICATIONS_POLL_INTERVAL` | `app.notifications.poll-interval` | `PT30S` |
+| `NOTIFICATIONS_BATCH_SIZE` | `app.notifications.batch-size` | `50` |
+| `NOTIFICATIONS_MAX_ATTEMPTS` | `app.notifications.max-attempts` | `5` |
+| `NOTIFICATIONS_RETRY_DELAY` | `app.notifications.retry-delay` | `PT1M`, y se duplica en cada reintento |
+| `NOTIFICATIONS_FROM` | `app.notifications.from` | `aula-virtual@localhost` |
+| `SPRING_MAIL_HOST` | `spring.mail.host` | sin valor: sin SMTP los correos solo se escriben en el log |
 | `JWT_SECRET` | `app.security.jwt.secret` | solo en `dev`; en cualquier otro perfil es obligatorio |
 | `JWT_ISSUER` | `app.security.jwt.issuer` | `aula-virtual` |
 | `JWT_EXPIRATION` | `app.security.jwt.expiration` | `PT8H` en `dev`, `PT1H` en el resto |
