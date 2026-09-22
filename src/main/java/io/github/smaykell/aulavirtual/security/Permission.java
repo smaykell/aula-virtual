@@ -20,7 +20,9 @@ public enum Permission {
     ASSIGNMENTS_READ(Name.ASSIGNMENTS_READ),
     ASSIGNMENTS_CREATE(Name.ASSIGNMENTS_CREATE),
     ASSIGNMENTS_UPDATE(Name.ASSIGNMENTS_UPDATE),
-    SUBMISSIONS_CREATE(Name.SUBMISSIONS_CREATE);
+    SUBMISSIONS_CREATE(Name.SUBMISSIONS_CREATE),
+    SETTINGS_READ(Name.SETTINGS_READ),
+    SETTINGS_UPDATE(Name.SETTINGS_UPDATE);
 
     private final String authority;
 
@@ -53,6 +55,8 @@ public enum Permission {
         public static final String ASSIGNMENTS_CREATE = "assignments:create";
         public static final String ASSIGNMENTS_UPDATE = "assignments:update";
         public static final String SUBMISSIONS_CREATE = "submissions:create";
+        public static final String SETTINGS_READ = "settings:read";
+        public static final String SETTINGS_UPDATE = "settings:update";
 
         private Name() {
         }

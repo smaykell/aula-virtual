@@ -41,7 +41,7 @@ class RoleTest {
                         "teachers:update", "students:read", "students:create", "students:update",
                         "courses:read", "courses:create", "courses:update", "enrollments:read",
                         "enrollments:update", "assignments:read", "assignments:create",
-                        "assignments:update");
+                        "assignments:update", "settings:read");
     }
 
     @Test
@@ -66,7 +66,7 @@ class RoleTest {
                         "teachers:create", "teachers:update", "students:read", "students:create",
                         "students:update", "courses:read", "courses:create", "courses:update",
                         "enrollments:read", "enrollments:update", "assignments:read",
-                        "assignments:create", "assignments:update");
+                        "assignments:create", "assignments:update", "settings:read");
     }
 
     @Test
