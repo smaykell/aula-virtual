@@ -2,9 +2,12 @@ package io.github.smaykell.aulavirtual.student;
 
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.person.PersonService;
+import io.github.smaykell.aulavirtual.person.dto.PersonData;
 import io.github.smaykell.aulavirtual.person.dto.PersonResponse;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.student.dto.CreateStudentRequest;
+import io.github.smaykell.aulavirtual.student.dto.RegisteredStudent;
+import io.github.smaykell.aulavirtual.student.dto.StudentContact;
 import io.github.smaykell.aulavirtual.student.dto.StudentResponse;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import io.github.smaykell.aulavirtual.student.dto.UpdateStudentRequest;
@@ -69,6 +72,24 @@ public class StudentService {
 
         return responseFor(studentRepository.save(
                 Student.create(personId, request.workplace())));
+    }
+
+    @Transactional
+    public RegisteredStudent register(PersonData person, String workplace) {
+        UUID personId = personService.resolveOrCreate(person);
+        if (studentRepository.existsByPersonId(personId)) {
+            throw new StudentAlreadyRegisteredException();
+        }
+        Credentials credentials = studentCredentials.forNewAccount(person);
+        userService.ensureAccount(personId, credentials);
+
+        Student student = studentRepository.save(Student.create(personId, workplace));
+        return new RegisteredStudent(student.getId(), credentials.username());
+    }
+
+    @Transactional(readOnly = true)
+    public StudentContact contactOf(UUID studentId) {
+        return StudentContact.from(personService.get(existing(studentId).getPersonId()));
     }
 
     @Transactional

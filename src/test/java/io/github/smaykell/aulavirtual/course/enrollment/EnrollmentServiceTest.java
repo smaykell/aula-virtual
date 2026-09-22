@@ -3,6 +3,7 @@ package io.github.smaykell.aulavirtual.course.enrollment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,7 +15,10 @@ import io.github.smaykell.aulavirtual.course.CourseFixtures;
 import io.github.smaykell.aulavirtual.course.CourseRepository;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.EnrollmentResponse;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.JoinCourseRequest;
+import io.github.smaykell.aulavirtual.notification.NotificationService;
+import io.github.smaykell.aulavirtual.notification.NotificationType;
 import io.github.smaykell.aulavirtual.student.StudentService;
+import io.github.smaykell.aulavirtual.student.dto.StudentContact;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -46,6 +50,9 @@ class EnrollmentServiceTest {
     @Mock
     private StudentService studentService;
 
+    @Mock
+    private NotificationService notificationService;
+
     private EnrollmentService enrollmentService;
 
     private Course managedCourse;
@@ -53,7 +60,8 @@ class EnrollmentServiceTest {
     @BeforeEach
     void setUp() {
         enrollmentService = new EnrollmentService(enrollmentRepository, courseRepository,
-                courseAccess, studentService, Clock.fixed(NOW, ZoneOffset.UTC));
+                courseAccess, studentService, notificationService,
+                Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -61,6 +69,7 @@ class EnrollmentServiceTest {
         Course course = givenTheCourseIsJoinable(EnrollmentPolicy.AUTOMATIC);
         givenNoPreviousEnrollment(course);
         givenTheEnrollmentIsStored();
+        givenTheStudentCanBeReached();
 
         EnrollmentResponse enrollment = enrollmentService.join("ana.estudiante", joinRequest());
 
@@ -68,6 +77,8 @@ class EnrollmentServiceTest {
         assertThat(enrollment.requestedAt()).isEqualTo(NOW);
         assertThat(enrollment.decidedAt()).isEqualTo(NOW);
         assertThat(enrollment.course().name()).isEqualTo("Algebra Lineal");
+        verify(notificationService).enqueue(eq(NotificationType.ENROLLMENT_ACTIVE),
+                eq("ana@escuela.pe"), any());
     }
 
     @Test
@@ -75,11 +86,14 @@ class EnrollmentServiceTest {
         Course course = givenTheCourseIsJoinable(EnrollmentPolicy.ON_REQUEST);
         givenNoPreviousEnrollment(course);
         givenTheEnrollmentIsStored();
+        givenTheStudentCanBeReached();
 
         EnrollmentResponse enrollment = enrollmentService.join("ana.estudiante", joinRequest());
 
         assertThat(enrollment.status()).isEqualTo(EnrollmentStatus.PENDING);
         assertThat(enrollment.decidedAt()).isNull();
+        verify(notificationService).enqueue(eq(NotificationType.ENROLLMENT_REQUESTED),
+                eq("ana@escuela.pe"), any());
     }
 
     @Test
@@ -101,7 +115,7 @@ class EnrollmentServiceTest {
         ApiException error = assertThrows(ApiException.class,
                 () -> enrollmentService.join("ana.estudiante", joinRequest()));
 
-        assertThat(error.getCode()).isEqualTo("CRS_ARCHIVED");
+        assertThat(error.getCode()).isEqualTo("CRS_COURSE_NOT_OPEN");
         verify(enrollmentRepository, never()).save(any(Enrollment.class));
     }
 
@@ -132,6 +146,7 @@ class EnrollmentServiceTest {
         Course course = givenTheCourseIsJoinable(EnrollmentPolicy.ON_REQUEST);
         Enrollment enrollment = givenThePreviousEnrollment(course, EnrollmentStatus.REJECTED);
         givenTheSummaryOfTheStudent();
+        givenTheStudentCanBeReached();
 
         EnrollmentResponse response = enrollmentService.join("ana.estudiante", joinRequest());
 
@@ -143,11 +158,14 @@ class EnrollmentServiceTest {
     @Test
     void accepting_a_request_turns_it_into_an_active_enrollment() {
         Enrollment enrollment = givenTheManagedEnrollmentWithItsStudent(EnrollmentStatus.PENDING);
+        givenTheStudentCanBeReached();
 
         EnrollmentResponse accepted = enrollmentService.accept("juan", enrollment.getId());
 
         assertThat(accepted.status()).isEqualTo(EnrollmentStatus.ACTIVE);
         assertThat(accepted.decidedAt()).isEqualTo(NOW);
+        verify(notificationService).enqueue(eq(NotificationType.ENROLLMENT_ACTIVE),
+                eq("ana@escuela.pe"), any());
     }
 
     @Test
@@ -190,6 +208,7 @@ class EnrollmentServiceTest {
     void resolving_a_request_reuses_the_course_that_the_check_already_read() {
         Enrollment enrollment =
                 givenTheManagedEnrollmentWithItsStudent(EnrollmentStatus.PENDING);
+        givenTheStudentCanBeReached();
 
         enrollmentService.accept("juan", enrollment.getId());
 
@@ -246,6 +265,11 @@ class EnrollmentServiceTest {
         Enrollment enrollment = givenTheManagedEnrollment(status);
         givenTheSummaryOfTheStudent();
         return enrollment;
+    }
+
+    private void givenTheStudentCanBeReached() {
+        when(studentService.contactOf(STUDENT))
+                .thenReturn(new StudentContact("Ana Maria", "ana@escuela.pe"));
     }
 
     private void givenTheSummaryOfTheStudent() {

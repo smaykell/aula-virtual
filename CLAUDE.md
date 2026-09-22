@@ -230,13 +230,17 @@ solo para estudiantes: quien no lo sea recibe `CRS_STUDENT_REQUIRED` desde
 cosas — partiría la regla entre la anotación y el servicio, y cambiaría un código de
 error que el front sabe leer por un 403 genérico. No hay ningún permiso que encaje:
 `enrollments:read` es de admin y docente, justo de quien **no** usa este endpoint.
-Así que al auditar la superficie de la API, los `@PreAuthorize` la describen entera
-**salvo `/me/*`**.
+Lo mismo vale para `/invitations/*`, por la razón opuesta: son **públicas**, y quien
+todavía no tiene cuenta no tiene ninguna authority que exigirle. Así que al auditar la
+superficie de la API, los `@PreAuthorize` la describen entera **salvo `/me/*` y
+`/invitations/*`**.
 
 Dos detalles fáciles de romper:
 
 - Las rutas de `SecurityConfig.PUBLIC_PATHS` se escriben **sin** el context-path `/api`;
-  Spring Security las evalúa relativas al contexto.
+  Spring Security las evalúa relativas al contexto. Y se escriben **una a una**
+  (`/invitations/*`, `/invitations/*/$register`), nunca con `/**`: un comodín abriría
+  cualquier sub-ruta que el controlador gane mañana.
 - `JwtAuthenticationFilter` nunca corta la cadena: un token ausente o inválido deja la
   petición sin autenticar y es `SecurityConfig` quien decide 401 o acceso público.
 
@@ -362,6 +366,64 @@ nulo significa corrección automática.
   en lugar de fallar**, para que el build funcione en una máquina recién clonada. Un
   `BUILD SUCCESSFUL` con ese test omitido **no** demuestra que el esquema valide; para eso
   hay que crear la base.
+
+## Configuración del centro, auto-registro y notificaciones
+
+**`settings` es una tabla de una sola fila** y eso lo garantiza la base, no una convención:
+un `UNIQUE` sobre una columna que un `CHECK` obliga a ser `TRUE` no admite una segunda. La
+fila la siembra `V12`, así que `SettingsService.current()` es una lectura y no una rama
+crear-o-actualizar, y el valor por defecto está escrito en un solo sitio. La columna
+centinela **no se mapea en la entidad** a propósito: es un invariante de la base, y no
+mapearla impide además que Java intente insertar otra fila.
+
+`studentIdentifier` decide de dónde sale el usuario de un estudiante nuevo
+(`DOCUMENT_NUMBER`, `EMAIL` o `MANUAL`), y quien lo aplica es **`student/StudentCredentials`,
+el único sitio**. Se usa solo cuando no vienen credenciales explícitas **y** la persona no
+tiene cuenta todavía: ese orden es lo que conserva los dos comportamientos de
+`UserService.ensureAccount` —el 409 `USR_ACCOUNT_ALREADY_EXISTS` y el reuso silencioso de
+una cuenta existente—. La contraseña inicial siempre es el número de documento.
+
+**El auto-registro por enlace** vive en `course/enrollment/SelfEnrollmentService` y es la
+única vía por la que se crea una cuenta sin actor (`StudentService.register`, el único
+método del módulo que no empieza por `requireManagerOf`). Tres cosas que no son obvias:
+
+- Solo acepta **DNI y carné de extranjería**. Un pasaporte puede tener 6 caracteres, por
+  debajo de `PASSWORD_MIN`, y `User.normalizeUsername` pasa a minúsculas mientras la
+  búsqueda por documento distingue mayúsculas: «tu usuario es tu documento» dejaría de ser
+  cierto.
+- Documento repetido, correo repetido, username tomado y perfil ya existente responden
+  **todos** `CRS_ACCOUNT_ALREADY_REGISTERED`. Códigos distintos convertirían una ruta
+  pública en un oráculo de quién tiene cuenta en el centro.
+- `selfRegistrationEnabled` nace en `FALSE` y es la ventana que abre y cierra la dirección.
+  Es la mitigación principal contra el alta masiva de cuentas por un enlace filtrado: el
+  código de invitación no caduca ni se puede rotar.
+
+`CRS_COURSE_NOT_OPEN` sustituye a `CRS_ARCHIVED` en todo lo que lee un estudiante;
+`ARCHIVED` se queda para el staff, porque su mensaje dice «actívalo para poder
+modificarlo» y quien se inscribe no puede activar nada.
+
+**La cola de notificaciones es una tabla y no un broker**: la fila se escribe en la misma
+transacción que el hecho que la provoca, así que una matrícula que hace rollback no deja un
+correo prometido. Un broker no da esa garantía por sí solo. El día que haga falta, el sitio
+donde enchufarlo es `NotificationDispatcher`.
+
+El consumidor **no envuelve el lote en una transacción**, y son tres pasos: reclamar con
+`FOR UPDATE SKIP LOCKED` y soltar el bloqueo, enviar fuera de toda transacción, y marcar
+cada resultado por separado. Envolverlo retendría el bloqueo y su conexión durante el viaje
+SMTP, un fallo desharía el `SENT` de los anteriores, y como `MailException` es
+`RuntimeException` el `FAILED` no sobreviviría al `rollback-only` y el contador de intentos
+no subiría nunca. Los intentos se cuentan **al reclamar**, no al fallar: una caída en medio
+cuesta un reintento tardío en vez de una fila atascada.
+
+`last_error` se recorta en Java. Si desbordara la columna, el `UPDATE` que marca `FAILED`
+haría rollback y la fila se reenviaría en bucle.
+
+Un destinatario en blanco **no encola**: `persons.email` es opcional y `recipient` es
+`NOT NULL`, así que sin esa guarda aceptar la matrícula de alguien sin correo reventaría
+dentro de su propia transacción.
+
+En `test` el consumidor está apagado (`app.notifications.enabled: false`) para que el
+contexto no deje un hilo sondeando la base después de cerrarse.
 
 ## Perfiles
 

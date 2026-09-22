@@ -126,7 +126,9 @@ io.github.smaykell.aulavirtual
 ├── administrator/     el perfil de administrador
 ├── student/           el perfil de estudiante
 ├── course/            el curso, sus unidades, su material y sus matrículas
-└── assignment/        las tareas, sus entregas y las calificaciones
+├── assignment/        las tareas, sus entregas y las calificaciones
+├── settings/          la configuración del centro: cómo se identifican los estudiantes
+└── notification/      la cola de correos y quien la consume
 ```
 
 Los módulos de dominio cuelgan del paquete raíz, al mismo nivel que las zonas
@@ -204,6 +206,10 @@ funcionan sin traducción.
 | `POST /api/students/{id}/$enable` | `students:update` | reactiva el perfil |
 | `POST /api/students/{id}/$disable` | `students:update` | desactiva el perfil |
 | `POST /api/students/{id}/$changePassword` | `students:update` | cambia su contraseña y devuelve 204 |
+| `GET /api/settings` | `settings:read` | cómo se identifican los estudiantes y si el enlace admite inscripciones |
+| `PUT /api/settings` | `settings:update` | solo el superadmin |
+| `GET /api/invitations/{code}` | **pública** | nombre del curso y del docente, para la pantalla de inscripción |
+| `POST /api/invitations/{code}/$register` | **pública** | el estudiante se da de alta y queda matriculado; devuelve 201 |
 | `GET /api/courses` | `courses:read` | listado paginado, filtros opcionales `?teacherId=` y `?status=` |
 | `GET /api/courses/{id}` | `courses:read` | un curso |
 | `POST /api/courses` | `courses:create` | crea un curso y devuelve 201 |
@@ -393,6 +399,40 @@ código.
 La invitación solo se le enseña al **staff** del curso —su docente titular y los
 administradores—: un estudiante que lee su curso recibe la misma ficha sin el bloque
 `invitation`, para que repartir el acceso siga siendo decisión del docente.
+
+### Cómo se identifican los estudiantes
+
+`GET`/`PUT /api/settings` guardan una configuración global —una sola fila, garantizada
+por la base— con dos cosas: de dónde sale el usuario de un estudiante nuevo
+(`DOCUMENT_NUMBER`, `EMAIL` o `MANUAL`) y si el enlace de invitación admite
+inscripciones. Con `DOCUMENT_NUMBER`, que es el valor por defecto, dar de alta a un
+estudiante sin escribirle credenciales le deja **el número de documento como usuario y
+como contraseña inicial**. Un administrador puede seguir tecleando otras si quiere: las
+explícitas siempre ganan.
+
+### Inscribirse por el enlace
+
+El docente comparte la URL de la invitación y el estudiante se da de alta solo, sin
+cuenta previa: documento, apellidos, nombres, fecha de nacimiento, sexo, correo y lugar
+de trabajo. Queda matriculado según la política del curso y recibe un correo con su
+usuario.
+
+`selfRegistrationEnabled` **nace apagado**. Mientras lo esté, `$register` responde
+`CRS_SELF_REGISTRATION_CLOSED`: el enlace no debe quedar abierto desde el día del
+despliegue, porque el código de invitación no caduca ni se puede rotar, y quien lo tenga
+podría dar de alta cuentas sin límite.
+
+Solo acepta DNI y carné de extranjería; con pasaporte hay que pedir la cuenta al centro.
+Si el documento o el correo ya están registrados responde `CRS_ACCOUNT_ALREADY_REGISTERED`
+—el mismo código para los dos, para no convertir una ruta pública en un oráculo de quién
+tiene cuenta aquí— y el estudiante entra con `POST /api/courses/$join`.
+
+### Notificaciones
+
+Inscribirse encola un correo; no se envía dentro de la petición. La cola es la tabla
+`notifications`, escrita en la misma transacción que la matrícula, y un proceso
+programado la consume cada `NOTIFICATIONS_POLL_INTERVAL`. Sin `SPRING_MAIL_HOST` los
+correos solo se escriben en el log, que es lo que pasa en `dev`.
 
 ### Estudiantes y matrícula
 

@@ -26,7 +26,15 @@ public enum CourseError implements ErrorCode {
             "Ya enviaste una solicitud a este curso y sigue pendiente"),
     ENROLLMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Matrícula con id %s no encontrada"),
     ENROLLMENT_NOT_PENDING(HttpStatus.CONFLICT, "Esa solicitud ya fue resuelta"),
-    ENROLLMENT_NOT_ACTIVE(HttpStatus.CONFLICT, "Esa matrícula no está activa");
+    ENROLLMENT_NOT_ACTIVE(HttpStatus.CONFLICT, "Esa matrícula no está activa"),
+    COURSE_NOT_OPEN(HttpStatus.CONFLICT, "Este curso ya no admite inscripciones"),
+    SELF_REGISTRATION_CLOSED(HttpStatus.CONFLICT,
+            "Las inscripciones por enlace están cerradas"),
+    SELF_REGISTRATION_DOCUMENT(HttpStatus.BAD_REQUEST,
+            "Para inscribirte por el enlace necesitas tu DNI o tu carné de extranjería; "
+                    + "con pasaporte, pide tu cuenta al centro"),
+    ACCOUNT_ALREADY_REGISTERED(HttpStatus.CONFLICT,
+            "Ya tienes una cuenta. Inicia sesión y únete al curso con el código de invitación.");
 
     public static final String PREFIX = "CRS";
 

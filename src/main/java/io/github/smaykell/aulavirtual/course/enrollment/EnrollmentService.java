@@ -8,13 +8,16 @@ import io.github.smaykell.aulavirtual.course.dto.CourseSummary;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.EnrollmentResponse;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.JoinCourseRequest;
 import io.github.smaykell.aulavirtual.course.exception.AlreadyEnrolledException;
-import io.github.smaykell.aulavirtual.course.exception.ArchivedCourseException;
+import io.github.smaykell.aulavirtual.course.exception.CourseNotOpenException;
 import io.github.smaykell.aulavirtual.course.exception.EnrollmentNotActiveException;
 import io.github.smaykell.aulavirtual.course.exception.EnrollmentNotFoundException;
 import io.github.smaykell.aulavirtual.course.exception.EnrollmentNotPendingException;
 import io.github.smaykell.aulavirtual.course.exception.EnrollmentPendingException;
 import io.github.smaykell.aulavirtual.course.exception.InvalidInvitationException;
+import io.github.smaykell.aulavirtual.notification.NotificationService;
+import io.github.smaykell.aulavirtual.notification.NotificationType;
 import io.github.smaykell.aulavirtual.student.StudentService;
+import io.github.smaykell.aulavirtual.student.dto.StudentContact;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import java.time.Clock;
 import java.util.List;
@@ -35,6 +38,7 @@ public class EnrollmentService {
     private final CourseRepository courseRepository;
     private final CourseAccess courseAccess;
     private final StudentService studentService;
+    private final NotificationService notificationService;
     private final Clock clock;
 
     private record Managed(Enrollment enrollment, Course course) {
@@ -46,15 +50,19 @@ public class EnrollmentService {
         Course course = courseRepository.findByInvitationCode(request.code().trim())
                 .orElseThrow(InvalidInvitationException::new);
         if (course.isArchived()) {
-            throw new ArchivedCourseException();
+            throw new CourseNotOpenException();
         }
 
-        return responseFor(enrollmentRepository
+        Enrollment enrollment = enrollmentRepository
                 .findByCourseIdAndStudentId(course.getId(), studentId)
-                .map(enrollment -> askAgain(enrollment, course))
+                .map(existing -> askAgain(existing, course))
                 .orElseGet(() -> enrollmentRepository.save(Enrollment.request(course.getId(),
-                        studentId, course.getEnrollmentPolicy(), clock.instant()))),
-                course);
+                        studentId, course.getEnrollmentPolicy(), clock.instant())));
+
+        announce(enrollment.isPending()
+                ? NotificationType.ENROLLMENT_REQUESTED
+                : NotificationType.ENROLLMENT_ACTIVE, studentId, course);
+        return responseFor(enrollment, course);
     }
 
     @Transactional(readOnly = true)
@@ -94,6 +102,7 @@ public class EnrollmentService {
         Enrollment enrollment = managed.enrollment();
         requirePending(enrollment);
         enrollment.accept(clock.instant());
+        announce(NotificationType.ENROLLMENT_ACTIVE, enrollment.getStudentId(), managed.course());
         return responseFor(enrollment, managed.course());
     }
 
@@ -115,6 +124,12 @@ public class EnrollmentService {
         }
         enrollment.withdraw(clock.instant());
         return responseFor(enrollment, managed.course());
+    }
+
+    private void announce(NotificationType type, UUID studentId, Course course) {
+        StudentContact student = studentService.contactOf(studentId);
+        notificationService.enqueue(type, student.email(),
+                Map.of("firstName", student.firstName(), "courseName", course.getName()));
     }
 
     private Enrollment askAgain(Enrollment enrollment, Course course) {

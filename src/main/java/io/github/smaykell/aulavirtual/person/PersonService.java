@@ -53,6 +53,11 @@ public class PersonService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<PersonResponse> findByEmail(String email) {
+        return personRepository.findByEmail(email).map(PersonResponse::from);
+    }
+
+    @Transactional(readOnly = true)
     public Map<UUID, PersonResponse> byIds(Collection<UUID> personIds) {
         return personRepository.findAllById(personIds).stream()
                 .collect(Collectors.toMap(Person::getId, PersonResponse::from));
