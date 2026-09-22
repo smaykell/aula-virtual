@@ -34,7 +34,7 @@ public enum CourseError implements ErrorCode {
             "Para inscribirte por el enlace necesitas tu DNI o tu carné de extranjería; "
                     + "con pasaporte, pide tu cuenta al centro"),
     ACCOUNT_ALREADY_REGISTERED(HttpStatus.CONFLICT,
-            "Ya tienes una cuenta. Inicia sesión y únete al curso con el código de invitación.");
+            "Ya tienes una cuenta en el aula virtual. Inicia sesión para unirte al curso.");
 
     public static final String PREFIX = "CRS";
 

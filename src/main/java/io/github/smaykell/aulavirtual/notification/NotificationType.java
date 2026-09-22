@@ -31,6 +31,20 @@ public enum NotificationType {
 
             Ya estás inscrito en el curso «{courseName}». Entra al aula virtual
             para ver el material y las tareas.
+            """),
+
+    PASSWORD_RESET("Cambia tu contraseña del aula virtual", """
+            Hola {firstName}:
+
+            Alguien pidió cambiar la contraseña de tu cuenta del aula virtual.
+            Tu usuario es: {username}
+
+            Para elegir una contraseña nueva, abre este enlace:
+
+              {link}
+
+            El enlace sirve una sola vez y caduca en {minutes} minutos. Si no
+            lo pediste tú, ignora este correo: tu contraseña no cambia.
             """);
 
     private final String subject;

@@ -19,7 +19,9 @@ public enum UserError implements ErrorCode {
             "La persona aún no tiene cuenta: indica un usuario y una contraseña"),
     ACCOUNT_ALREADY_EXISTS(HttpStatus.CONFLICT,
             "La persona ya tiene una cuenta y seguirá usando la misma"),
-    USERNAME_TAKEN(HttpStatus.CONFLICT, "Ya existe un usuario con ese nombre");
+    USERNAME_TAKEN(HttpStatus.CONFLICT, "Ya existe un usuario con ese nombre"),
+    INVALID_PASSWORD_RESET(HttpStatus.BAD_REQUEST,
+            "Este enlace para cambiar tu contraseña ya no sirve. Pide uno nuevo.");
 
     public static final String PREFIX = "USR";
 

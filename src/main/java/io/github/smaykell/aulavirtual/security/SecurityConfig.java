@@ -26,6 +26,8 @@ public class SecurityConfig {
     // Rutas relativas al contexto: no llevan el context-path /api.
     private static final String[] PUBLIC_PATHS = {
         "/auth/login",
+        "/auth/password-reset",
+        "/auth/password-reset/$complete",
         "/invitations/*",
         "/invitations/*/$register",
         "/actuator/health",

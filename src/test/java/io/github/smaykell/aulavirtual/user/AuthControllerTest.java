@@ -2,6 +2,7 @@ package io.github.smaykell.aulavirtual.user;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,7 +22,10 @@ import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.security.SecurityConfig;
 import io.github.smaykell.aulavirtual.user.dto.LoginRequest;
 import io.github.smaykell.aulavirtual.user.dto.LoginResponse;
+import io.github.smaykell.aulavirtual.user.dto.PasswordResetCompletion;
+import io.github.smaykell.aulavirtual.user.dto.PasswordResetRequest;
 import io.github.smaykell.aulavirtual.user.exception.InvalidCredentialsException;
+import io.github.smaykell.aulavirtual.user.exception.InvalidPasswordResetException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +53,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthenticationService authenticationService;
+
+    @MockitoBean
+    private PasswordResetService passwordResetService;
 
     @Test
     void the_login_is_reachable_without_a_token() throws Exception {
@@ -91,6 +98,59 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.errors[0].field").value("password"));
 
         verify(authenticationService, never()).login(any());
+    }
+
+    @Test
+    void asking_for_a_reset_link_needs_no_token_and_says_nothing_about_the_account()
+            throws Exception {
+        mockMvc.perform(post("/auth/password-reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"identifier": "12345678"}
+                                """))
+                .andExpect(status().isAccepted());
+
+        verify(passwordResetService).request(new PasswordResetRequest("12345678"));
+    }
+
+    @Test
+    void completing_the_reset_needs_no_token_either() throws Exception {
+        mockMvc.perform(post("/auth/password-reset/$complete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(completionBody("un-token", "nueva-clave")))
+                .andExpect(status().isNoContent());
+
+        verify(passwordResetService)
+                .complete(new PasswordResetCompletion("un-token", "nueva-clave"));
+    }
+
+    @Test
+    void a_dead_link_answers_its_own_code() throws Exception {
+        doThrow(new InvalidPasswordResetException())
+                .when(passwordResetService).complete(any(PasswordResetCompletion.class));
+
+        mockMvc.perform(post("/auth/password-reset/$complete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(completionBody("caducado", "nueva-clave")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("USR_INVALID_PASSWORD_RESET"));
+    }
+
+    @Test
+    void a_short_new_password_never_reaches_the_service() throws Exception {
+        mockMvc.perform(post("/auth/password-reset/$complete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(completionBody("un-token", "corta")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("newPassword"));
+
+        verify(passwordResetService, never()).complete(any());
+    }
+
+    private String completionBody(String token, String newPassword) {
+        return """
+                {"token": "%s", "newPassword": "%s"}
+                """.formatted(token, newPassword);
     }
 
     private String loginBody(String username, String password) {

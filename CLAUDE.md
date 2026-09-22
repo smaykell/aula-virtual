@@ -86,7 +86,7 @@ depende de `common` y `config`; si dos módulos necesitan hablarse lo hacen a tr
 
 **Esa regla ya no es solo prosa**: `ModuleBoundariesTest` lee las fuentes de `src/main` y
 falla si un módulo importa el repositorio o la entidad de otro. Va acompañado de tres
-comprobaciones contra sí mismo —que el escaneo encuentra los 12 repositorios, las 12
+comprobaciones contra sí mismo —que el escaneo encuentra los 15 repositorios, las 15
 entidades y que no confunde `BaseEntity` con una— porque un test que busca en ficheros
 pasa igual de verde si deja de mirar donde debe. No arregla nada hoy: impide retroceder
 mañana. Los sub-paquetes de un módulo son el mismo módulo, así que `course/enrollment`
@@ -401,6 +401,17 @@ método del módulo que no empieza por `requireManagerOf`). Tres cosas que no so
 `CRS_COURSE_NOT_OPEN` sustituye a `CRS_ARCHIVED` en todo lo que lee un estudiante;
 `ARCHIVED` se queda para el staff, porque su mensaje dice «actívalo para poder
 modificarlo» y quien se inscribe no puede activar nada.
+
+**Recuperar la contraseña** vive en `user/PasswordResetService` y tiene dos rutas
+públicas (`/auth/password-reset` y su `$complete`). La primera responde 202 exista o no la
+cuenta —la misma regla anti-oráculo que `CRS_ACCOUNT_ALREADY_REGISTERED`— y no manda un
+segundo enlace a la misma cuenta dentro de `password-reset-cooldown`, que es lo único que
+hoy impide inundar un buzón desde fuera. Se guarda el hash del token, nunca el token; el
+enlace sirve una vez y al usarse cierra los demás abiertos de esa cuenta. El correo
+incluye el **usuario**, porque quien olvida la contraseña a menudo olvidó también eso.
+
+`CRS_ACCOUNT_ALREADY_REGISTERED` no es un callejón sin salida: el front lo convierte en
+«ya tienes cuenta» con el login y la recuperación a mano, y el login vuelve al enlace.
 
 **La cola de notificaciones es una tabla y no un broker**: la fila se escribe en la misma
 transacción que el hecho que la provoca, así que una matrícula que hace rollback no deja un

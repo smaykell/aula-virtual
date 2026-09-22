@@ -50,6 +50,9 @@ variables del entorno del proceso.
 | `SERVER_PORT` | `server.port` | `8080` |
 | `CORS_ALLOWED_ORIGINS` | `app.cors.allowed-origins` | los tres `localhost` habituales del frontend |
 | `COURSE_INVITATION_BASE_URL` | `app.courses.invitation-base-url` | `http://localhost:5173/join` |
+| `PASSWORD_RESET_URL` | `app.accounts.password-reset-url` | `http://localhost:5173/reset-password`; apunta al **frontend** |
+| `PASSWORD_RESET_LIFETIME` | `app.accounts.password-reset-lifetime` | `PT30M` |
+| `PASSWORD_RESET_COOLDOWN` | `app.accounts.password-reset-cooldown` | `PT2M` entre dos enlaces a la misma cuenta |
 | `NOTIFICATIONS_ENABLED` | `app.notifications.enabled` | `true`; en `false` no se consume la cola |
 | `NOTIFICATIONS_POLL_INTERVAL` | `app.notifications.poll-interval` | `PT30S` |
 | `NOTIFICATIONS_BATCH_SIZE` | `app.notifications.batch-size` | `50` |
@@ -195,6 +198,8 @@ funcionan sin traducción.
 | Endpoint | Quién | Qué |
 |---|---|---|
 | `POST /api/auth/login` | público | devuelve el token y los permisos de la sesión |
+| `POST /api/auth/password-reset` | público | recibe `{"identifier"}` (usuario o correo) y responde 202 siempre |
+| `POST /api/auth/password-reset/$complete` | público | recibe `{"token", "newPassword"}` y devuelve 204 |
 | `GET /api/me` | autenticado | mis datos, mis roles y mis permisos |
 | `PUT /api/me` | autenticado | cambia mis datos de persona |
 | `POST /api/me/$changePassword` | autenticado | pide la contraseña actual y devuelve 204 |
@@ -439,7 +444,26 @@ podría dar de alta cuentas sin límite.
 Solo acepta DNI y carné de extranjería; con pasaporte hay que pedir la cuenta al centro.
 Si el documento o el correo ya están registrados responde `CRS_ACCOUNT_ALREADY_REGISTERED`
 —el mismo código para los dos, para no convertir una ruta pública en un oráculo de quién
-tiene cuenta aquí— y el estudiante entra con `POST /api/courses/$join`.
+tiene cuenta aquí—. El front no lo muestra como un error: lleva al login con la vuelta
+al enlace ya puesta, y desde ahí a recuperar la contraseña si hace falta.
+
+### Recuperar la contraseña
+
+`POST /api/auth/password-reset` busca la cuenta por usuario y, si no, por correo, y
+encola un correo con el usuario y un enlace de un solo uso a `PASSWORD_RESET_URL`
+(`?token=...`). **Responde 202 siempre**, exista o no la cuenta, por la misma razón que
+el código único del auto-registro. Sin correo en la persona no hay a dónde mandarlo y
+no pasa nada: el centro sigue pudiendo cambiarla con `$changePassword`.
+
+La tabla `password_resets` guarda el hash SHA-256 del token, nunca el token. El enlace
+caduca a los `PASSWORD_RESET_LIFETIME`, sirve una vez, y usarlo cierra también los demás
+enlaces abiertos de esa cuenta. Entre dos enlaces a la misma cuenta pasan al menos
+`PASSWORD_RESET_COOLDOWN`: es lo que impide usar la ruta pública para inundar el correo
+de alguien, a falta de una limitación de tasa general.
+
+Dos límites asumidos: el cuerpo del correo, con el enlace dentro, se queda en
+`notifications` hasta que caduca; y cambiar la contraseña no revoca los JWT ya emitidos,
+que siguen valiendo hasta su expiración.
 
 ### Notificaciones
 

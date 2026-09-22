@@ -85,6 +85,10 @@ app:
     allowed-headers: "*"
     allow-credentials: true
     max-age: 3600
+  accounts:
+    password-reset-url: ${PASSWORD_RESET_URL:http://localhost:5173/reset-password}
+    password-reset-lifetime: ${PASSWORD_RESET_LIFETIME:PT30M}
+    password-reset-cooldown: ${PASSWORD_RESET_COOLDOWN:PT2M}
   courses:
     invitation-base-url: ${COURSE_INVITATION_BASE_URL:http://localhost:5173/join}
   security:
