@@ -114,7 +114,7 @@ class GlobalExceptionHandlerTest {
     @Test
     void an_upload_over_the_limit_answers_413_with_its_own_message() throws Exception {
         mockMvc.perform(authenticated(get("/items/too-large")))
-                .andExpect(status().isPayloadTooLarge())
+                .andExpect(status().isContentTooLarge())
                 .andExpect(jsonPath("$.status").value(413))
                 .andExpect(jsonPath("$.message")
                         .value("La petición excede el tamaño máximo permitido"));
