@@ -341,6 +341,9 @@ listados: filtro por docente para el staff, por matrícula activa para el estudi
 **En el curso donde estás matriculado, eres alumno**, aunque administres docentes: la
 matrícula activa le gana al alcance de admin (`CourseAccess.staffIn`). Sin eso, un admin
 que además es estudiante sería staff en todos los cursos y no podría entregar nada.
+`CourseResponse.staff` lleva esa misma respuesta al front, curso a curso, también en el
+listado (`CourseAccess.attendedAmong`, una sola consulta por página): la pantalla del
+curso decide qué enseñar con ese campo y no con los permisos del rol elegido.
 La otra mitad la cierra el titular: no puede inscribirse en su curso
 (`CRS_TITULAR_CANNOT_ENROLL`) ni recibir en traspaso uno donde tiene matrícula pendiente
 o activa (`CRS_TITULAR_IS_ENROLLED`). Entre las dos, nadie es staff y alumno del mismo

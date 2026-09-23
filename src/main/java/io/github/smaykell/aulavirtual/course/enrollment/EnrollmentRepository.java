@@ -3,10 +3,13 @@ package io.github.smaykell.aulavirtual.course.enrollment;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
 
@@ -17,6 +20,16 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
 
     boolean existsByCourseIdAndStudentIdAndStatusIn(UUID courseId, UUID studentId,
             Collection<EnrollmentStatus> statuses);
+
+    @Query("""
+            select e.courseId from Enrollment e
+            where e.studentId = :studentId
+              and e.status = :status
+              and e.courseId in :courseIds
+            """)
+    Set<UUID> findCourseIdsAmong(@Param("studentId") UUID studentId,
+            @Param("status") EnrollmentStatus status,
+            @Param("courseIds") Collection<UUID> courseIds);
 
     Page<Enrollment> findByCourseId(UUID courseId, Pageable pageable);
 

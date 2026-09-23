@@ -14,6 +14,7 @@ import io.github.smaykell.aulavirtual.security.PersonProfiles;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.user.UserService;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -97,6 +98,13 @@ public class CourseAccess {
             return new Scope(ownTeacher, null);
         }
         return new Scope(null, ownStudentProfile(actor));
+    }
+
+    public Set<UUID> attendedAmong(String actorUsername, Collection<UUID> courseIds) {
+        return userService.actor(actorUsername).profileId(Role.STUDENT)
+                .map(studentId -> enrollmentRepository.findCourseIdsAmong(studentId,
+                        EnrollmentStatus.ACTIVE, courseIds))
+                .orElse(Set.of());
     }
 
     public UUID requireStudent(String actorUsername) {

@@ -14,21 +14,28 @@ public record CourseResponse(
         String description,
         TeacherSummary teacher,
         InvitationResponse invitation,
+        boolean staff,
         CourseStatus status,
         EnrollmentPolicy enrollmentPolicy,
         LocalDate startDate,
         LocalDate endDate,
         Instant createdAt) {
 
-    public static CourseResponse from(Course course, TeacherSummary teacher,
+    public static CourseResponse forStaff(Course course, TeacherSummary teacher,
             InvitationResponse invitation) {
 
-        return new CourseResponse(course.getId(), course.getName(), course.getDescription(),
-                teacher, invitation, course.getStatus(), course.getEnrollmentPolicy(),
-                course.getStartDate(), course.getEndDate(), course.getCreatedAt());
+        return of(course, teacher, invitation, true);
     }
 
-    public static CourseResponse withoutInvitation(Course course, TeacherSummary teacher) {
-        return from(course, teacher, null);
+    public static CourseResponse forStudent(Course course, TeacherSummary teacher) {
+        return of(course, teacher, null, false);
+    }
+
+    private static CourseResponse of(Course course, TeacherSummary teacher,
+            InvitationResponse invitation, boolean staff) {
+
+        return new CourseResponse(course.getId(), course.getName(), course.getDescription(),
+                teacher, invitation, staff, course.getStatus(), course.getEnrollmentPolicy(),
+                course.getStartDate(), course.getEndDate(), course.getCreatedAt());
     }
 }

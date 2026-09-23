@@ -17,6 +17,7 @@ import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -128,8 +129,47 @@ class CourseServiceTest {
         PageResponse<CourseResponse> page = courseService.list("juan", null,
                 CourseStatus.ACTIVE, FIRST_PAGE);
 
-        assertThat(page.content()).singleElement().satisfies(found ->
-                assertThat(found.teacher().lastName()).isEqualTo("Perez Gomez"));
+        assertThat(page.content()).singleElement().satisfies(found -> {
+            assertThat(found.teacher().lastName()).isEqualTo("Perez Gomez");
+            assertThat(found.staff()).isTrue();
+        });
+    }
+
+    @Test
+    void a_staff_listing_shows_as_a_student_the_courses_the_actor_attends() {
+        Course taught = CourseFixtures.course(TITULAR);
+        Course attended = CourseFixtures.course(TITULAR);
+        when(courseAccess.listingScope("ana", null))
+                .thenReturn(new CourseAccess.Scope(null, null));
+        when(courseRepository.search(null, null, FIRST_PAGE))
+                .thenReturn(new PageImpl<>(List.of(taught, attended), FIRST_PAGE, 2));
+        when(teacherService.summariesOf(List.of(TITULAR, TITULAR)))
+                .thenReturn(Map.of(TITULAR, CourseFixtures.teacher(TITULAR)));
+        when(courseAccess.attendedAmong("ana", List.of(taught.getId(), attended.getId())))
+                .thenReturn(Set.of(attended.getId()));
+        when(invitations.of(CourseFixtures.INVITATION_CODE))
+                .thenReturn(CourseFixtures.invitation());
+
+        List<CourseResponse> content = courseService.list("ana", null, null, FIRST_PAGE)
+                .content();
+
+        assertThat(content.get(0).staff()).isTrue();
+        assertThat(content.get(0).invitation()).isNotNull();
+        assertThat(content.get(1).staff()).isFalse();
+        assertThat(content.get(1).invitation()).isNull();
+    }
+
+    @Test
+    void whoever_attends_a_course_reads_it_as_a_student_and_without_invitation() {
+        Course course = CourseFixtures.course(TITULAR);
+        when(courseAccess.readable("ana", course.getId()))
+                .thenReturn(new CourseAccess.Reader(course, false, UUID.randomUUID()));
+        when(teacherService.summaryOf(TITULAR)).thenReturn(CourseFixtures.teacher(TITULAR));
+
+        CourseResponse found = courseService.get("ana", course.getId());
+
+        assertThat(found.staff()).isFalse();
+        assertThat(found.invitation()).isNull();
     }
 
     private Course givenTheCourse() {

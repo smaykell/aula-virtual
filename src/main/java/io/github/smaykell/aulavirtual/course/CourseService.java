@@ -12,6 +12,7 @@ import io.github.smaykell.aulavirtual.teacher.dto.TeacherSummary;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -38,20 +39,23 @@ public class CourseService {
         List<UUID> teacherIds = courses.getContent().stream().map(Course::getTeacherId).toList();
         Map<UUID, TeacherSummary> teachers = teacherService.summariesOf(teacherIds);
 
-        if (scope.staff()) {
-            return PageResponse.of(courses, course -> CourseResponse.from(course,
-                    teachers.get(course.getTeacherId()),
-                    invitations.of(course.getInvitationCode())));
+        if (!scope.staff()) {
+            return PageResponse.of(courses, course -> CourseResponse.forStudent(course,
+                    teachers.get(course.getTeacherId())));
         }
-        return PageResponse.of(courses, course -> CourseResponse.withoutInvitation(course,
-                teachers.get(course.getTeacherId())));
+        Set<UUID> attended = courseAccess.attendedAmong(actorUsername,
+                courses.getContent().stream().map(Course::getId).toList());
+        return PageResponse.of(courses, course -> attended.contains(course.getId())
+                ? CourseResponse.forStudent(course, teachers.get(course.getTeacherId()))
+                : CourseResponse.forStaff(course, teachers.get(course.getTeacherId()),
+                        invitations.of(course.getInvitationCode())));
     }
 
     @Transactional(readOnly = true)
     public CourseResponse get(String actorUsername, UUID courseId) {
         CourseAccess.Reader reader = courseAccess.readable(actorUsername, courseId);
         return reader.staff() ? responseFor(reader.course())
-                : withoutInvitation(reader.course());
+                : CourseResponse.forStudent(reader.course(), teacherOf(reader.course()));
     }
 
     @Transactional
@@ -110,12 +114,8 @@ public class CourseService {
     }
 
     private CourseResponse responseFor(Course course) {
-        return CourseResponse.from(course, teacherOf(course),
+        return CourseResponse.forStaff(course, teacherOf(course),
                 invitations.of(course.getInvitationCode()));
-    }
-
-    private CourseResponse withoutInvitation(Course course) {
-        return CourseResponse.withoutInvitation(course, teacherOf(course));
     }
 
     private TeacherSummary teacherOf(Course course) {

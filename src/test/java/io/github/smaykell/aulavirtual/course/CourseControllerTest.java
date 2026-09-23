@@ -173,7 +173,7 @@ class CourseControllerTest {
     private CourseResponse aCourse(CourseStatus status) {
         return new CourseResponse(UUID.randomUUID(), "Algebra Lineal", "Curso del primer ciclo",
                 new TeacherSummary(UUID.randomUUID(), "Juan Carlos", "Perez Gomez", true),
-                new InvitationResponse("ABCD2345", "https://aula.example/join/ABCD2345"),
+                new InvitationResponse("ABCD2345", "https://aula.example/join/ABCD2345"), true,
                 status, EnrollmentPolicy.ON_REQUEST, LocalDate.of(2026, 3, 1),
                 LocalDate.of(2026, 7, 15), Instant.EPOCH);
     }
