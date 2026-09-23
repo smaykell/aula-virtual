@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Comandos
 
 ```bash
+docker compose up -d                               # Postgres 18 + MinIO (S3 local)
 ./gradlew build                                    # compila + tests
 ./gradlew test                                     # solo tests
 ./gradlew test --tests '*JwtServiceTest'           # una clase
@@ -365,7 +366,7 @@ nulo significa corrección automática.
   (`aula_virtual_test`). Está anotado con `@EnabledIf`: si no hay base accesible **se omite
   en lugar de fallar**, para que el build funcione en una máquina recién clonada. Un
   `BUILD SUCCESSFUL` con ese test omitido **no** demuestra que el esquema valide; para eso
-  hay que crear la base.
+  hay que levantar `docker compose up -d`, que crea las dos bases.
 
 ## Configuración del centro, auto-registro y notificaciones
 

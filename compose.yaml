@@ -1,0 +1,51 @@
+name: aula-virtual
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: aula_virtual
+      POSTGRES_PASSWORD: aula_virtual
+      POSTGRES_DB: aula_virtual
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aula_virtual -d aula_virtual"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: aula_virtual
+      MINIO_ROOT_PASSWORD: aula_virtual
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:5173,http://localhost:4200,http://localhost:3000
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio-setup:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./docker/minio:/setup:ro
+    entrypoint: ["/bin/sh", "/setup/create-bucket.sh"]
+    restart: "no"
+
+volumes:
+  postgres-data:
+  minio-data:

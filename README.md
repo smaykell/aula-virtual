@@ -8,32 +8,43 @@ API sobre HTTP.
 | Java | 21 |
 | Spring Boot | 4.1.1 |
 | Build | Gradle (wrapper 9.7.1) |
-| Base de datos | PostgreSQL 13+ |
+| Base de datos | PostgreSQL 18 |
 | Migraciones | Flyway |
 | Documentación | OpenAPI / Swagger UI |
 | Autenticación | JWT (HS256), sin estado |
 
 ## Puesta en marcha
 
-### 1. Crear el usuario y las bases de datos
+### 1. Levantar la base de datos y el almacenamiento
 
-El script crea el rol `aula_virtual` y sus dos bases: la de trabajo y la que usan los
-tests de integración. Pide la contraseña del superusuario de Postgres y es idempotente:
-si ya existen, solo reajusta la contraseña y el propietario.
-
-```powershell
-.\scripts\db-bootstrap.ps1
-```
+El entorno local vive en Docker (`compose.yaml`): PostgreSQL 18 y un MinIO que hace de
+S3 para el material de los cursos.
 
 ```bash
-./scripts/db-bootstrap.sh
+docker compose up -d
 ```
 
-Las credenciales por defecto son genéricas a propósito — usuario `aula_virtual`,
-contraseña `aula_virtual`, en `localhost:5432` — para que nadie tenga que inventarse
-las suyas ni acabe con las personales escritas en el repositorio. Para cambiarlas, pasa
-parámetros (`-AppUser`, `-AppPassword`) o variables de entorno (`APP_USER`,
-`APP_PASSWORD`) y exporta las mismas como `DB_USER` y `DB_PASSWORD` al arrancar.
+Deja listos:
+
+| Servicio | Dirección | Credenciales |
+|---|---|---|
+| PostgreSQL, bases `aula_virtual` y `aula_virtual_test` | `localhost:5432` | `aula_virtual` / `aula_virtual` |
+| MinIO, API S3 con el bucket `aula-virtual` | `http://localhost:9000` | `aula_virtual` / `aula_virtual` |
+| Consola de MinIO | http://localhost:9001 | las mismas |
+
+Las credenciales son genéricas a propósito y coinciden con los valores por defecto de
+`application.yml`, así que no hay nada que exportar. La base de pruebas la crea
+`docker/postgres/init` y el bucket, con su regla de caducidad para subidas sin confirmar,
+el servicio de un solo uso `minio-setup`; los dos solo actúan la primera vez, sobre
+volúmenes vacíos. `docker compose down -v` borra los volúmenes y deja empezar de cero.
+
+Si en la máquina hay un PostgreSQL instalado de forma nativa escuchando en el 5432, hay
+que pararlo: Docker publica el puerto igualmente, pero las conexiones a `localhost` las
+atiende el nativo y la aplicación acabaría en otra base. En Windows, desde una consola de
+administrador: `Stop-Service postgresql-x64-16` (o el nombre de tu versión).
+
+La imagen de MinIO sale de `quay.io` con un tag fijo: la edición comunitaria dejó de
+publicarse en Docker Hub. Para desarrollo basta; para producción se usa un S3 de verdad.
 
 ### 2. Configurar el entorno
 
@@ -641,8 +652,8 @@ Los unitarios (`JwtServiceTest`, `RoleTest`, `PersonProfilesTest`, `PersonServic
 
 `AulaVirtualApplicationTests` levanta el contexto completo y necesita Postgres
 (base `aula_virtual_test`). Si no hay base accesible, **se omite en lugar de
-fallar**, para que el build funcione en una máquina recién clonada. Ejecuta
-`scripts/db-bootstrap.sh` (o `.ps1`) y volverá a ejecutarse de verdad.
+fallar**, para que el build funcione en una máquina recién clonada. Con
+`docker compose up -d` vuelve a ejecutarse de verdad.
 
 ## Perfiles
 
