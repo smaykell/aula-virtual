@@ -195,7 +195,8 @@ preguntárselo al módulo del perfil**: el actor ya viene resuelto de la base.
 `Role.manageableRoles()` sigue siendo la **única** fuente de quién administra a quién —
 el superadmin administra admins, docentes y estudiantes; un admin solo docentes y
 estudiantes; nadie administra a un `SUPER_ADMIN`, que solo nace de la semilla de
-`V2__create_users.sql`. De ahí salen sin código extra las dos reglas del enunciado: entre
+`V2__create_users.sql`. Tampoco puede tener otros perfiles: `UserService.ensureAccount`, por donde
+pasa el alta de todo perfil, se niega a prestar su cuenta (`USR_SUPER_ADMIN_EXCLUSIVE`). De ahí salen sin código extra las dos reglas del enunciado: entre
 admins no se tocan y el listado solo muestra los roles que el solicitante administra.
 
 Los literales de `@PreAuthorize` salen de `Permission.Name`, no de cadenas sueltas: así un

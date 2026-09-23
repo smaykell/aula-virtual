@@ -21,7 +21,9 @@ public enum UserError implements ErrorCode {
             "La persona ya tiene una cuenta y seguirá usando la misma"),
     USERNAME_TAKEN(HttpStatus.CONFLICT, "Ya existe un usuario con ese nombre"),
     INVALID_PASSWORD_RESET(HttpStatus.BAD_REQUEST,
-            "Este enlace para cambiar tu contraseña ya no sirve. Pide uno nuevo.");
+            "Este enlace para cambiar tu contraseña ya no sirve. Pide uno nuevo."),
+    SUPER_ADMIN_EXCLUSIVE(HttpStatus.CONFLICT,
+            "Esa persona es el superadministrador y no puede tener otros perfiles");
 
     public static final String PREFIX = "USR";
 

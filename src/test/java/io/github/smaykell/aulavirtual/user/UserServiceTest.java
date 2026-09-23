@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
@@ -149,6 +150,17 @@ class UserServiceTest {
 
         assertThat(error.getCode()).isEqualTo("USR_ACCOUNT_ALREADY_EXISTS");
         assertThat(error.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void the_super_admin_does_not_lend_its_account_to_another_profile() {
+        when(userRepository.existsByPersonId(PERSON)).thenReturn(true);
+        when(personProfiles.rolesOf(PERSON)).thenReturn(Set.of(Role.SUPER_ADMIN));
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> userService.ensureAccount(PERSON, null));
+
+        assertThat(error.getCode()).isEqualTo("USR_SUPER_ADMIN_EXCLUSIVE");
     }
 
     @Test

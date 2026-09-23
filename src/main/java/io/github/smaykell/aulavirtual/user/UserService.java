@@ -11,6 +11,7 @@ import io.github.smaykell.aulavirtual.user.exception.CredentialsRequiredExceptio
 import io.github.smaykell.aulavirtual.user.exception.CurrentPasswordMismatchException;
 import io.github.smaykell.aulavirtual.user.exception.InactiveActorException;
 import io.github.smaykell.aulavirtual.user.exception.RoleOutOfReachException;
+import io.github.smaykell.aulavirtual.user.exception.SuperAdminExclusiveException;
 import io.github.smaykell.aulavirtual.user.exception.UnknownActorException;
 import io.github.smaykell.aulavirtual.user.exception.UsernameTakenException;
 import java.util.Collection;
@@ -57,6 +58,7 @@ public class UserService {
     @Transactional
     public void ensureAccount(UUID personId, Credentials credentials) {
         if (userRepository.existsByPersonId(personId)) {
+            requireNotSuperAdmin(personId);
             if (credentials != null) {
                 throw new AccountAlreadyExistsException();
             }
@@ -106,5 +108,11 @@ public class UserService {
     private User accountOf(UUID personId) {
         return userRepository.findByPersonId(personId)
                 .orElseThrow(AccountNotFoundException::new);
+    }
+
+    private void requireNotSuperAdmin(UUID personId) {
+        if (personProfiles.rolesOf(personId).contains(Role.SUPER_ADMIN)) {
+            throw new SuperAdminExclusiveException();
+        }
     }
 }
