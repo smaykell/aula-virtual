@@ -53,7 +53,9 @@ public class MaterialService {
     public MaterialResponse create(String actorUsername, UUID unitId, MaterialData data) {
         Unit unit = unitService.writable(actorUsername, unitId);
         requireMatchingSource(data);
-        claimNewFile(unit, null, data);
+        if (!data.type().isLink()) {
+            claimNewFile(unit, data);
+        }
 
         return MaterialResponse.from(materialRepository.save(
                 Material.create(unit.getId(), data, publicationOf(data))));
@@ -65,7 +67,9 @@ public class MaterialService {
         Unit unit = unitService.writable(actorUsername, material.getUnitId());
         requireMatchingSource(data);
         Optional<String> previousFile = material.file();
-        claimNewFile(unit, material.getStorageKey(), data);
+        if (!data.type().isLink()) {
+            acceptFileChange(unit, material, data);
+        }
 
         material.update(data, publicationOf(data));
         previousFile.filter(key -> !key.equals(material.getStorageKey()))
@@ -110,17 +114,29 @@ public class MaterialService {
                 .build();
     }
 
-    private void claimNewFile(Unit unit, String currentKey, MaterialData data) {
-        if (data.type().isLink() || data.storageKey().trim().equals(currentKey)) {
-            return;
+    private void acceptFileChange(Unit unit, Material material, MaterialData data) {
+        if (!keyOf(data).equals(material.getStorageKey())) {
+            claimNewFile(unit, data);
+        } else if (data.type() != material.getType()) {
+            requireStoredFileFits(keyOf(data), data.type());
         }
-        String key = data.storageKey().trim();
-        requireOwnFile(unit, key);
+    }
 
+    private void claimNewFile(Unit unit, MaterialData data) {
+        String key = keyOf(data);
+        requireOwnFile(unit, key);
+        requireStoredFileFits(key, data.type());
+        fileStorage.claim(key);
+    }
+
+    private void requireStoredFileFits(String key, MaterialType type) {
         StoredObject stored = fileStorage.describe(key)
                 .orElseThrow(FileNotUploadedException::new);
-        requireAcceptedFile(data.type(), stored.contentType(), stored.size());
-        fileStorage.claim(key);
+        requireAcceptedFile(type, stored.contentType(), stored.size());
+    }
+
+    private static String keyOf(MaterialData data) {
+        return data.storageKey().trim();
     }
 
     private void requireOwnFile(Unit unit, String key) {

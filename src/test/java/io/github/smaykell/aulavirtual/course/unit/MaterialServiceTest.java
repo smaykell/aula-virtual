@@ -276,6 +276,20 @@ class MaterialServiceTest {
     }
 
     @Test
+    void relabelling_a_kept_file_as_another_type_checks_the_file_again() {
+        Material material = givenAnExistingPdf();
+        givenTheFileWasUploaded("application/pdf", ONE_MEGABYTE);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> materialService.update("juan", material.getId(),
+                        new MaterialData("Tema 1", MaterialType.VIDEO, KEY, null, null, true)));
+
+        assertThat(error.getCode()).isEqualTo("CRS_FILE_TYPE_NOT_ALLOWED");
+        assertThat(material.getType()).isEqualTo(MaterialType.PDF);
+        verify(fileStorage, never()).claim(anyString());
+    }
+
+    @Test
     void replacing_the_file_of_a_material_releases_the_previous_one() {
         Material material = givenAnExistingPdf();
         String newKey = "courses/" + COURSE + "/materials/" + UUID.randomUUID() + "/tema-1b.pdf";
