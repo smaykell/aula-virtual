@@ -15,7 +15,8 @@ public enum AssignmentError implements ErrorCode {
             "La fecha límite ya pasó y esta tarea no admite entregas tardías"),
     ALREADY_GRADED(HttpStatus.CONFLICT,
             "La entrega ya fue calificada y no admite cambios"),
-    SCORE_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "La nota debe estar entre 0 y %s");
+    SCORE_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "La nota debe estar entre 0 y %s"),
+    OWN_GRADE(HttpStatus.FORBIDDEN, "No puedes calificar tu propia entrega");
 
     public static final String PREFIX = "ASG";
 

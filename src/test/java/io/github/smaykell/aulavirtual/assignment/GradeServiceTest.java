@@ -1,11 +1,14 @@
 package io.github.smaykell.aulavirtual.assignment;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.assignment.dto.GradeResponse;
+import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.security.Actor;
@@ -94,6 +97,19 @@ class GradeServiceTest {
         assertThat(recorded.getGradedBy()).isEqualTo(TEACHER_PERSON);
         assertThat(recorded.getGradedAt()).isEqualTo(AssignmentFixtures.NOW);
         verify(gradeRepository, never()).save(existing);
+    }
+
+    @Test
+    void nobody_grades_its_own_submission() {
+        when(userService.actor("ana")).thenReturn(new Actor(TEACHER_PERSON, "ana",
+                Map.of(Role.ADMIN, UUID.randomUUID(), Role.STUDENT, STUDENT)));
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> gradeService.record("ana", GradeSource.ASSIGNMENT, UUID.randomUUID(),
+                        STUDENT, COURSE, new BigDecimal("20.00"), null));
+
+        assertThat(error.getCode()).isEqualTo("ASG_OWN_GRADE");
+        verifyNoInteractions(gradeRepository);
     }
 
     private Grade grade(BigDecimal score) {

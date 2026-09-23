@@ -383,7 +383,8 @@ se cierra al calificar. El estado (`SUBMITTED`/`LATE`) lo decide la fecha contra
 `Grade` es polimórfica a propósito (`sourceType`/`sourceId`) y con `courseId`
 desnormalizado: es lo que permite que el consolidado del curso salga de una consulta y que
 el examen se enchufe reusando `GradeService.record(...)` sin migración nueva. `gradedBy`
-nulo significa corrección automática.
+nulo significa corrección automática. Nadie califica una entrega propia (`ASG_OWN_GRADE`), y la
+guarda vive en `GradeService.record` para que el examen la herede sin repetirla.
 
 ## Tests
 
