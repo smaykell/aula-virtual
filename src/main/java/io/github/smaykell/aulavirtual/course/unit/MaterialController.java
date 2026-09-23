@@ -2,6 +2,8 @@ package io.github.smaykell.aulavirtual.course.unit;
 
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialData;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialResponse;
+import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadRequest;
+import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadResponse;
 import io.github.smaykell.aulavirtual.security.Permission;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -30,6 +32,14 @@ public class MaterialController {
             @Valid @RequestBody MaterialData request) {
 
         return materialService.create(authentication.getName(), unitId, request);
+    }
+
+    @PostMapping("/units/{unitId}/materials/$upload")
+    @PreAuthorize("hasAuthority('" + Permission.Name.COURSES_UPDATE + "')")
+    public MaterialUploadResponse prepareUpload(Authentication authentication,
+            @PathVariable UUID unitId, @Valid @RequestBody MaterialUploadRequest request) {
+
+        return materialService.prepareUpload(authentication.getName(), unitId, request);
     }
 
     @PutMapping("/materials/{id}")

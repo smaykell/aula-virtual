@@ -11,5 +11,7 @@ public interface MaterialRepository extends JpaRepository<Material, UUID> {
 
     List<Material> findByUnitIdInOrderByPublishedAt(Collection<UUID> unitIds);
 
+    boolean existsByStorageKey(String storageKey);
+
     void deleteByUnitId(UUID unitId);
 }

@@ -16,6 +16,8 @@ import io.github.smaykell.aulavirtual.config.ClockConfig;
 import io.github.smaykell.aulavirtual.config.CorsProperties;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialData;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialResponse;
+import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadRequest;
+import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadResponse;
 import io.github.smaykell.aulavirtual.security.JwtAuthenticationFilter;
 import io.github.smaykell.aulavirtual.security.JwtProperties;
 import io.github.smaykell.aulavirtual.security.JwtService;
@@ -24,6 +26,7 @@ import io.github.smaykell.aulavirtual.security.RestAuthenticationEntryPoint;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.security.SecurityConfig;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -122,6 +125,46 @@ class MaterialControllerTest {
     }
 
     @Test
+    void a_teacher_gets_where_to_upload_a_file() throws Exception {
+        when(materialService.prepareUpload(eq("ana"), eq(UNIT), any(MaterialUploadRequest.class)))
+                .thenReturn(new MaterialUploadResponse("courses/algebra/materials/x/tema-1.pdf",
+                        "https://s3/upload", "PUT", Map.of("content-type", "application/pdf"),
+                        Instant.EPOCH));
+
+        mockMvc.perform(post("/units/{unitId}/materials/$upload", UNIT)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(uploadBody(2048)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.uploadUrl").value("https://s3/upload"))
+                .andExpect(jsonPath("$.method").value("PUT"))
+                .andExpect(jsonPath("$.headers['content-type']").value("application/pdf"));
+    }
+
+    @Test
+    void a_student_cannot_upload_material() throws Exception {
+        mockMvc.perform(post("/units/{unitId}/materials/$upload", UNIT)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(uploadBody(2048)))
+                .andExpect(status().isForbidden());
+
+        verify(materialService, never()).prepareUpload(any(), any(), any());
+    }
+
+    @Test
+    void an_empty_file_does_not_reach_the_service() throws Exception {
+        mockMvc.perform(post("/units/{unitId}/materials/$upload", UNIT)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(uploadBody(0)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("size"));
+
+        verify(materialService, never()).prepareUpload(any(), any(), any());
+    }
+
+    @Test
     void a_teacher_replaces_the_material_of_a_unit() throws Exception {
         UUID materialId = UUID.randomUUID();
         when(materialService.update(eq("ana"), eq(materialId), any(MaterialData.class)))
@@ -156,6 +199,13 @@ class MaterialControllerTest {
                 {"title": "Tema 1", "type": "%s",
                  "storageKey": "courses/algebra/tema-1.pdf", "visible": true}
                 """.formatted(type);
+    }
+
+    private String uploadBody(long size) {
+        return """
+                {"type": "PDF", "fileName": "tema-1.pdf", "contentType": "application/pdf",
+                 "size": %d}
+                """.formatted(size);
     }
 
     private String bearerFor(Role role) {

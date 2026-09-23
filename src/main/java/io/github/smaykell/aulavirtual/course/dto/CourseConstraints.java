@@ -6,6 +6,8 @@ public final class CourseConstraints {
     public static final int DESCRIPTION_MAX = 4000;
     public static final int STORAGE_KEY_MAX = 255;
     public static final int EXTERNAL_URL_MAX = 2048;
+    public static final int FILE_NAME_MAX = 255;
+    public static final int CONTENT_TYPE_MAX = 255;
     public static final String NAME_REQUIRED = "el nombre es obligatorio";
     public static final String NAME_TOO_LONG = "no puede superar los 150 caracteres";
     public static final String DESCRIPTION_TOO_LONG = "no puede superar los 4000 caracteres";
@@ -17,6 +19,12 @@ public final class CourseConstraints {
     public static final String VISIBILITY_REQUIRED = "la visibilidad es obligatoria";
     public static final String STORAGE_KEY_TOO_LONG = "no puede superar los 255 caracteres";
     public static final String EXTERNAL_URL_TOO_LONG = "no puede superar los 2048 caracteres";
+    public static final String FILE_NAME_REQUIRED = "el nombre del archivo es obligatorio";
+    public static final String FILE_NAME_TOO_LONG = "no puede superar los 255 caracteres";
+    public static final String CONTENT_TYPE_REQUIRED = "el tipo de archivo es obligatorio";
+    public static final String CONTENT_TYPE_TOO_LONG = "no puede superar los 255 caracteres";
+    public static final String SIZE_REQUIRED = "el tamaño del archivo es obligatorio";
+    public static final String SIZE_POSITIVE = "el archivo no puede estar vacío";
     public static final String POLICY_REQUIRED =
             "hay que decidir si el curso acepta las inscripciones o las revisa";
     public static final String INVITATION_CODE_REQUIRED = "el código de invitación es obligatorio";
