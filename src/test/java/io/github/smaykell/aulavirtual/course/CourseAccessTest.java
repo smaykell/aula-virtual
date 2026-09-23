@@ -4,18 +4,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentRepository;
 import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
 import io.github.smaykell.aulavirtual.security.Actor;
+import io.github.smaykell.aulavirtual.security.PersonProfiles;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.teacher.exception.InactiveTeacherException;
 import io.github.smaykell.aulavirtual.user.UserService;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,12 +48,15 @@ class CourseAccessTest {
     @Mock
     private TeacherService teacherService;
 
+    @Mock
+    private PersonProfiles personProfiles;
+
     private CourseAccess courseAccess;
 
     @BeforeEach
     void setUp() {
         courseAccess = new CourseAccess(courseRepository, enrollmentRepository, userService,
-                teacherService);
+                teacherService, personProfiles);
     }
 
     @Test
@@ -198,8 +204,10 @@ class CourseAccessTest {
     void a_teacher_cannot_hand_its_course_to_another_teacher() {
         givenTheTeacher("juan", TITULAR);
 
+        Course course = CourseFixtures.course(TITULAR);
+
         ApiException error = assertThrows(ApiException.class,
-                () -> courseAccess.requireTitular("juan", OTHER_TEACHER));
+                () -> courseAccess.requireTitular("juan", course, OTHER_TEACHER));
 
         assertThat(error.getCode()).isEqualTo("CRS_OUT_OF_REACH");
     }
@@ -207,12 +215,67 @@ class CourseAccessTest {
     @Test
     void a_titular_that_is_no_longer_active_is_rejected() {
         givenTheAdmin("ana");
+        Course course = CourseFixtures.course(TITULAR);
         doThrow(new InactiveTeacherException(TITULAR)).when(teacherService).requireActive(TITULAR);
 
         ApiException error = assertThrows(ApiException.class,
-                () -> courseAccess.requireTitular("ana", TITULAR));
+                () -> courseAccess.requireTitular("ana", course, TITULAR));
 
         assertThat(error.getCode()).isEqualTo("TCH_INACTIVE");
+    }
+
+    @Test
+    void a_course_cannot_be_handed_to_a_teacher_enrolled_in_it() {
+        givenTheAdmin("ana");
+        Course course = CourseFixtures.course(TITULAR);
+        givenTheTeacherAlsoStudies(OTHER_TEACHER);
+        when(enrollmentRepository.existsByCourseIdAndStudentIdAndStatusIn(course.getId(), STUDENT,
+                Set.of(EnrollmentStatus.PENDING, EnrollmentStatus.ACTIVE))).thenReturn(true);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> courseAccess.requireTitular("ana", course, OTHER_TEACHER));
+
+        assertThat(error.getCode()).isEqualTo("CRS_TITULAR_IS_ENROLLED");
+    }
+
+    @Test
+    void a_course_can_be_handed_to_a_teacher_that_studies_elsewhere() {
+        givenTheAdmin("ana");
+        Course course = CourseFixtures.course(TITULAR);
+        givenTheTeacherAlsoStudies(OTHER_TEACHER);
+
+        courseAccess.requireTitular("ana", course, OTHER_TEACHER);
+
+        verify(teacherService).requireActive(OTHER_TEACHER);
+    }
+
+    @Test
+    void keeping_the_titular_does_not_look_at_its_enrollments() {
+        givenTheAdmin("ana");
+        Course course = CourseFixtures.course(TITULAR);
+
+        courseAccess.requireTitular("ana", course, TITULAR);
+
+        verifyNoInteractions(personProfiles, enrollmentRepository);
+    }
+
+    @Test
+    void the_titular_cannot_enroll_in_its_own_course() {
+        givenTheTeacherWhoStudies("juan", TITULAR);
+        Course course = CourseFixtures.course(TITULAR);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> courseAccess.requireEnrollable("juan", course));
+
+        assertThat(error.getCode()).isEqualTo("CRS_TITULAR_CANNOT_ENROLL");
+    }
+
+    @Test
+    void a_teacher_that_studies_enrolls_in_the_course_of_another_teacher() {
+        givenTheTeacherWhoStudies("juan", OTHER_TEACHER);
+        Course course = CourseFixtures.course(TITULAR);
+
+        assertThat(courseAccess.requireEnrollable("juan", course)).isEqualTo(STUDENT);
     }
 
     @Test
@@ -275,6 +338,17 @@ class CourseAccessTest {
     private void givenTheTeacher(String username, UUID teacherId) {
         when(userService.actor(username)).thenReturn(new Actor(TEACHER_PERSON, username,
                 Map.of(Role.TEACHER, teacherId)));
+    }
+
+    private void givenTheTeacherWhoStudies(String username, UUID teacherId) {
+        when(userService.actor(username)).thenReturn(new Actor(TEACHER_PERSON, username,
+                Map.of(Role.TEACHER, teacherId, Role.STUDENT, STUDENT)));
+    }
+
+    private void givenTheTeacherAlsoStudies(UUID teacherId) {
+        when(teacherService.personOf(teacherId)).thenReturn(TEACHER_PERSON);
+        when(personProfiles.of(TEACHER_PERSON))
+                .thenReturn(Map.of(Role.TEACHER, teacherId, Role.STUDENT, STUDENT));
     }
 
     private void givenTheStudent(String username) {

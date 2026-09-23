@@ -254,7 +254,7 @@ curso en la raíz del paquete, las unidades y su material en `unit/` (`Unit` es 
 `enrollment/`. Comparten catálogo (`CRS`) y permisos (`courses:read`, `courses:create`,
 `courses:update`; el de escritura cubre también unidades y material).
 
-**El catálogo de errores no se parte** aunque el paquete sí: los 18 viven juntos en
+**El catálogo de errores no se parte** aunque el paquete sí: todos viven juntos en
 `course/exception/`, porque el enum es la lista legible de todo lo que el módulo puede
 responder y repartirla en tres carpetas la haría ilegible. Los DTOs sí bajan con su
 agregado; `dto/CourseConstraints` se queda arriba porque lo validan los tres.
@@ -335,6 +335,10 @@ listados: filtro por docente para el staff, por matrícula activa para el estudi
 **En el curso donde estás matriculado, eres alumno**, aunque administres docentes: la
 matrícula activa le gana al alcance de admin (`CourseAccess.staffIn`). Sin eso, un admin
 que además es estudiante sería staff en todos los cursos y no podría entregar nada.
+La otra mitad la cierra el titular: no puede inscribirse en su curso
+(`CRS_TITULAR_CANNOT_ENROLL`) ni recibir en traspaso uno donde tiene matrícula pendiente
+o activa (`CRS_TITULAR_IS_ENROLLED`). Entre las dos, nadie es staff y alumno del mismo
+curso a la vez.
 
 **Si alguna vez se plantea sacar la matrícula a módulo propio, leer esto antes.** Hoy no
 se puede *tal cual*: `course` y `enrollment` se necesitan en los dos sentidos.

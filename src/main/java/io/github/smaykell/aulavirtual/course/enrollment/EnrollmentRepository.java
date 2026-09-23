@@ -1,5 +1,6 @@
 package io.github.smaykell.aulavirtual.course.enrollment;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,6 +14,9 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
 
     boolean existsByCourseIdAndStudentIdAndStatus(UUID courseId, UUID studentId,
             EnrollmentStatus status);
+
+    boolean existsByCourseIdAndStudentIdAndStatusIn(UUID courseId, UUID studentId,
+            Collection<EnrollmentStatus> statuses);
 
     Page<Enrollment> findByCourseId(UUID courseId, Pageable pageable);
 

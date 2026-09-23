@@ -98,7 +98,6 @@ class EnrollmentServiceTest {
 
     @Test
     void a_code_that_belongs_to_no_course_is_rejected() {
-        when(courseAccess.requireStudent("ana.estudiante")).thenReturn(STUDENT);
         when(courseRepository.findByInvitationCode("ABCD2345")).thenReturn(Optional.empty());
 
         ApiException error = assertThrows(ApiException.class,
@@ -228,9 +227,9 @@ class EnrollmentServiceTest {
 
     private Course givenTheCourseIsJoinable(EnrollmentPolicy policy) {
         Course course = CourseFixtures.course(TITULAR, policy);
-        when(courseAccess.requireStudent("ana.estudiante")).thenReturn(STUDENT);
         when(courseRepository.findByInvitationCode(CourseFixtures.INVITATION_CODE))
                 .thenReturn(Optional.of(course));
+        when(courseAccess.requireEnrollable("ana.estudiante", course)).thenReturn(STUDENT);
         return course;
     }
 

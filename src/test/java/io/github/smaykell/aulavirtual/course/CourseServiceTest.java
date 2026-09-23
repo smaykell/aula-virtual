@@ -94,7 +94,7 @@ class CourseServiceTest {
                         EnrollmentPolicy.AUTOMATIC, CourseFixtures.START,
                         LocalDate.of(2026, 8, 1)));
 
-        verify(courseAccess).requireTitular("ana", newTitular);
+        verify(courseAccess).requireTitular("ana", course, newTitular);
         assertThat(updated.name()).isEqualTo("Algebra Lineal II");
         assertThat(course.acceptsEnrollmentsWithoutApproval()).isTrue();
         assertThat(course.getTeacherId()).isEqualTo(newTitular);

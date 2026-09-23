@@ -46,9 +46,9 @@ public class EnrollmentService {
 
     @Transactional
     public EnrollmentResponse join(String actorUsername, JoinCourseRequest request) {
-        UUID studentId = courseAccess.requireStudent(actorUsername);
         Course course = courseRepository.findByInvitationCode(request.code().trim())
                 .orElseThrow(InvalidInvitationException::new);
+        UUID studentId = courseAccess.requireEnrollable(actorUsername, course);
         if (course.isArchived()) {
             throw new CourseNotOpenException();
         }

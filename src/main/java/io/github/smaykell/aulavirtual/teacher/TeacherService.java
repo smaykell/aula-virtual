@@ -111,6 +111,11 @@ public class TeacherService {
     }
 
     @Transactional(readOnly = true)
+    public UUID personOf(UUID teacherId) {
+        return existing(teacherId).getPersonId();
+    }
+
+    @Transactional(readOnly = true)
     public TeacherSummary summaryOf(UUID teacherId) {
         Teacher teacher = existing(teacherId);
         return TeacherSummary.from(teacher, personService.get(teacher.getPersonId()));

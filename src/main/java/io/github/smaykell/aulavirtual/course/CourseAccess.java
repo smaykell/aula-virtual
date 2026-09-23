@@ -7,11 +7,15 @@ import io.github.smaykell.aulavirtual.course.exception.CourseNotFoundException;
 import io.github.smaykell.aulavirtual.course.exception.CourseOutOfReachException;
 import io.github.smaykell.aulavirtual.course.exception.StudentRequiredException;
 import io.github.smaykell.aulavirtual.course.exception.TeacherRequiredException;
+import io.github.smaykell.aulavirtual.course.exception.TitularCannotEnrollException;
+import io.github.smaykell.aulavirtual.course.exception.TitularIsEnrolledException;
 import io.github.smaykell.aulavirtual.security.Actor;
+import io.github.smaykell.aulavirtual.security.PersonProfiles;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.user.UserService;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -20,10 +24,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class CourseAccess {
 
+    private static final Set<EnrollmentStatus> OPEN_ENROLLMENT =
+            Set.of(EnrollmentStatus.PENDING, EnrollmentStatus.ACTIVE);
+
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserService userService;
     private final TeacherService teacherService;
+    private final PersonProfiles personProfiles;
 
     public record Reader(Course course, boolean staff, UUID studentId) {
     }
@@ -70,9 +78,12 @@ public class CourseAccess {
         return teacherId;
     }
 
-    public void requireTitular(String actorUsername, UUID teacherId) {
+    public void requireTitular(String actorUsername, Course course, UUID teacherId) {
         requireStaffOver(userService.actor(actorUsername), teacherId);
         teacherService.requireActive(teacherId);
+        if (!teacherId.equals(course.getTeacherId())) {
+            requireNotEnrolled(course, teacherId);
+        }
     }
 
     public Scope listingScope(String actorUsername, UUID requestedTeacherId) {
@@ -90,6 +101,15 @@ public class CourseAccess {
 
     public UUID requireStudent(String actorUsername) {
         return ownStudentProfile(userService.actor(actorUsername));
+    }
+
+    public UUID requireEnrollable(String actorUsername, Course course) {
+        Actor actor = userService.actor(actorUsername);
+        UUID studentId = ownStudentProfile(actor);
+        if (teaches(actor, course.getTeacherId())) {
+            throw new TitularCannotEnrollException();
+        }
+        return studentId;
     }
 
     private boolean staffIn(Actor actor, Course course) {
@@ -115,6 +135,16 @@ public class CourseAccess {
         return actor.profileId(Role.STUDENT)
                 .filter(studentId -> enrollmentRepository.existsByCourseIdAndStudentIdAndStatus(
                         course.getId(), studentId, EnrollmentStatus.ACTIVE));
+    }
+
+    private void requireNotEnrolled(Course course, UUID teacherId) {
+        Optional.ofNullable(personProfiles.of(teacherService.personOf(teacherId))
+                        .get(Role.STUDENT))
+                .filter(studentId -> enrollmentRepository.existsByCourseIdAndStudentIdAndStatusIn(
+                        course.getId(), studentId, OPEN_ENROLLMENT))
+                .ifPresent(studentId -> {
+                    throw new TitularIsEnrolledException();
+                });
     }
 
     private Course existing(UUID courseId) {

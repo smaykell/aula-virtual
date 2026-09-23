@@ -68,7 +68,7 @@ public class CourseService {
             UpdateCourseRequest request) {
 
         Course course = courseAccess.writable(actorUsername, courseId);
-        courseAccess.requireTitular(actorUsername, request.teacherId());
+        courseAccess.requireTitular(actorUsername, course, request.teacherId());
         requireOrderedDates(request.startDate(), request.endDate());
 
         course.update(request);
