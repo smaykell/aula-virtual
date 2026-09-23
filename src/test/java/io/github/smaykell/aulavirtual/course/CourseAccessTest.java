@@ -119,6 +119,39 @@ class CourseAccessTest {
     }
 
     @Test
+    void an_admin_enrolled_in_a_course_reads_it_as_a_student() {
+        givenTheAdminWhoStudies("ana");
+        Course course = givenTheCourse(TITULAR);
+        givenTheEnrollment(course, EnrollmentStatus.ACTIVE);
+
+        CourseAccess.Reader reader = courseAccess.readable("ana", course.getId());
+
+        assertThat(reader.staff()).isFalse();
+        assertThat(reader.studentId()).isEqualTo(STUDENT);
+    }
+
+    @Test
+    void an_admin_enrolled_in_a_course_cannot_write_it() {
+        givenTheAdminWhoStudies("ana");
+        Course course = givenTheCourse(TITULAR);
+        givenTheEnrollment(course, EnrollmentStatus.ACTIVE);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> courseAccess.writable("ana", course.getId()));
+
+        assertThat(error.getCode()).isEqualTo("CRS_OUT_OF_REACH");
+    }
+
+    @Test
+    void an_admin_that_also_studies_manages_the_courses_it_is_not_enrolled_in() {
+        givenTheAdminWhoStudies("ana");
+        Course course = givenTheCourse(TITULAR);
+        givenTheEnrollment(course, EnrollmentStatus.WITHDRAWN);
+
+        assertThat(courseAccess.readable("ana", course.getId()).staff()).isTrue();
+    }
+
+    @Test
     void an_unknown_course_is_not_found() {
         UUID courseId = UUID.randomUUID();
         when(courseRepository.findById(courseId)).thenReturn(Optional.empty());
@@ -232,6 +265,11 @@ class CourseAccessTest {
     private void givenTheAdmin(String username) {
         when(userService.actor(username)).thenReturn(new Actor(ADMIN_PERSON, username,
                 Map.of(Role.ADMIN, UUID.randomUUID())));
+    }
+
+    private void givenTheAdminWhoStudies(String username) {
+        when(userService.actor(username)).thenReturn(new Actor(ADMIN_PERSON, username,
+                Map.of(Role.ADMIN, UUID.randomUUID(), Role.STUDENT, STUDENT)));
     }
 
     private void givenTheTeacher(String username, UUID teacherId) {

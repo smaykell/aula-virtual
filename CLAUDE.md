@@ -332,6 +332,10 @@ matriculado entra, pero ve menos—, mientras que `managed` y `writable` siguen 
 solo para el titular y quien administra docentes. `listingScope` hace lo propio con los
 listados: filtro por docente para el staff, por matrícula activa para el estudiante.
 
+**En el curso donde estás matriculado, eres alumno**, aunque administres docentes: la
+matrícula activa le gana al alcance de admin (`CourseAccess.staffIn`). Sin eso, un admin
+que además es estudiante sería staff en todos los cursos y no podría entregar nada.
+
 **Si alguna vez se plantea sacar la matrícula a módulo propio, leer esto antes.** Hoy no
 se puede *tal cual*: `course` y `enrollment` se necesitan en los dos sentidos.
 

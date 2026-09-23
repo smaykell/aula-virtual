@@ -38,7 +38,7 @@ public class CourseAccess {
     public Reader readable(String actorUsername, UUID courseId) {
         Course course = existing(courseId);
         Actor actor = userService.actor(actorUsername);
-        if (staffOver(actor, course.getTeacherId())) {
+        if (staffIn(actor, course)) {
             return new Reader(course, true, null);
         }
         return new Reader(course, false, enrolledStudentIn(actor, course)
@@ -47,7 +47,9 @@ public class CourseAccess {
 
     public Course managed(String actorUsername, UUID courseId) {
         Course course = existing(courseId);
-        requireStaffOver(userService.actor(actorUsername), course.getTeacherId());
+        if (!staffIn(userService.actor(actorUsername), course)) {
+            throw new CourseOutOfReachException();
+        }
         return course;
     }
 
@@ -90,9 +92,17 @@ public class CourseAccess {
         return ownStudentProfile(userService.actor(actorUsername));
     }
 
+    private boolean staffIn(Actor actor, Course course) {
+        return teaches(actor, course.getTeacherId())
+                || actor.canManage(Role.TEACHER) && enrolledStudentIn(actor, course).isEmpty();
+    }
+
     private static boolean staffOver(Actor actor, UUID teacherId) {
-        return actor.canManage(Role.TEACHER)
-                || actor.profileId(Role.TEACHER).filter(teacherId::equals).isPresent();
+        return actor.canManage(Role.TEACHER) || teaches(actor, teacherId);
+    }
+
+    private static boolean teaches(Actor actor, UUID teacherId) {
+        return actor.profileId(Role.TEACHER).filter(teacherId::equals).isPresent();
     }
 
     private static void requireStaffOver(Actor actor, UUID teacherId) {
