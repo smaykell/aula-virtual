@@ -295,8 +295,10 @@ ven en un solo fichero:
   misma razón que la cola de notificaciones: un rollback no puede deshacer una llamada
   externa. Un fallo solo se registra; un huérfano es más barato que un material roto.
 - **Las URLs firmadas no se guardan nunca**: se firman al pedirlas y caducan en minutos.
-- El presigner lleva `checksumValidationEnabled(false)`; con ella, la URL exige una
-  cabecera de checksum que el navegador no manda.
+- El presigner **no** lleva `checksumValidationEnabled(false)`: está deprecado y no
+  cambia nada en una URL firmada (comprobado con el SDK 2.55.3: misma firma y solo
+  `host` firmado en la descarga, con el flag y sin él). Su reemplazo,
+  `requestChecksumCalculation`, solo existe en `S3Client`, que no firma URLs.
 
 Los límites por tipo viven en `MaterialType`, no en configuración: son dominio.
 

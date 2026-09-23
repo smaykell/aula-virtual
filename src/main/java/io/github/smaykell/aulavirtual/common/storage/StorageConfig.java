@@ -30,8 +30,6 @@ class StorageConfig {
                 .credentialsProvider(credentialsOf(properties))
                 .serviceConfiguration(S3Configuration.builder()
                         .pathStyleAccessEnabled(properties.pathStyle())
-                        // Activo firmaria una cabecera de checksum que el navegador no envia.
-                        .checksumValidationEnabled(false)
                         .build());
         properties.endpointOverride().ifPresent(builder::endpointOverride);
         return builder.build();
