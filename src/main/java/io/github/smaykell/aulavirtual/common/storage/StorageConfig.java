@@ -1,0 +1,44 @@
+package io.github.smaykell.aulavirtual.common.storage;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
+import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+
+@Configuration
+class StorageConfig {
+
+    @Bean
+    S3Client s3Client(StorageProperties properties) {
+        S3ClientBuilder builder = S3Client.builder()
+                .region(Region.of(properties.region()))
+                .credentialsProvider(credentialsOf(properties))
+                .forcePathStyle(properties.pathStyle());
+        properties.endpointOverride().ifPresent(builder::endpointOverride);
+        return builder.build();
+    }
+
+    @Bean
+    S3Presigner s3Presigner(StorageProperties properties) {
+        S3Presigner.Builder builder = S3Presigner.builder()
+                .region(Region.of(properties.region()))
+                .credentialsProvider(credentialsOf(properties))
+                .serviceConfiguration(S3Configuration.builder()
+                        .pathStyleAccessEnabled(properties.pathStyle())
+                        // Activo firmaria una cabecera de checksum que el navegador no envia.
+                        .checksumValidationEnabled(false)
+                        .build());
+        properties.endpointOverride().ifPresent(builder::endpointOverride);
+        return builder.build();
+    }
+
+    private static StaticCredentialsProvider credentialsOf(StorageProperties properties) {
+        return StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(properties.accessKey(), properties.secretKey()));
+    }
+}

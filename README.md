@@ -77,6 +77,14 @@ variables del entorno del proceso.
 | `SPRING_MAIL_AUTH` | `mail.smtp.auth` | `true` |
 | `SPRING_MAIL_STARTTLS` | `mail.smtp.starttls.enable` | `true`; ponlo en `false` si usas el puerto 465 |
 | `SPRING_MAIL_TIMEOUT` | los tres timeouts de `mail.smtp` | `5000` ms |
+| `STORAGE_ENDPOINT` | `app.storage.endpoint` | `http://localhost:9000` (el MinIO de Docker); **definida y vacía** apunta a AWS S3 |
+| `STORAGE_REGION` | `app.storage.region` | `us-east-1` |
+| `STORAGE_BUCKET` | `app.storage.bucket` | `aula-virtual` |
+| `STORAGE_ACCESS_KEY` | `app.storage.access-key` | `aula_virtual`, la del MinIO local |
+| `STORAGE_SECRET_KEY` | `app.storage.secret-key` | `aula_virtual`, la del MinIO local |
+| `STORAGE_PATH_STYLE` | `app.storage.path-style` | `true`, lo que pide MinIO; en AWS, `false` |
+| `STORAGE_UPLOAD_TTL` | `app.storage.upload-ttl` | `PT15M` de vida de un enlace de subida |
+| `STORAGE_DOWNLOAD_TTL` | `app.storage.download-ttl` | `PT10M` de vida de un enlace de descarga |
 | `JWT_SECRET` | `app.security.jwt.secret` | solo en `dev`; en cualquier otro perfil es obligatorio |
 | `JWT_ISSUER` | `app.security.jwt.issuer` | `aula-virtual` |
 | `JWT_EXPIRATION` | `app.security.jwt.expiration` | `PT8H` en `dev`, `PT1H` en el resto |

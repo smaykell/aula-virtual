@@ -89,6 +89,16 @@ app:
     password-reset-url: ${PASSWORD_RESET_URL:http://localhost:5173/reset-password}
     password-reset-lifetime: ${PASSWORD_RESET_LIFETIME:PT30M}
     password-reset-cooldown: ${PASSWORD_RESET_COOLDOWN:PT2M}
+  storage:
+    # En blanco apunta a AWS S3; con valor, a cualquier servicio compatible (MinIO, R2...).
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
+    region: ${STORAGE_REGION:us-east-1}
+    bucket: ${STORAGE_BUCKET:aula-virtual}
+    access-key: ${STORAGE_ACCESS_KEY:aula_virtual}
+    secret-key: ${STORAGE_SECRET_KEY:aula_virtual}
+    path-style: ${STORAGE_PATH_STYLE:true}
+    upload-ttl: ${STORAGE_UPLOAD_TTL:PT15M}
+    download-ttl: ${STORAGE_DOWNLOAD_TTL:PT10M}
   courses:
     invitation-base-url: ${COURSE_INVITATION_BASE_URL:http://localhost:5173/join}
   security:
