@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,6 +16,7 @@ import io.github.smaykell.aulavirtual.common.web.ApiErrorWriter;
 import io.github.smaykell.aulavirtual.config.ClockConfig;
 import io.github.smaykell.aulavirtual.config.CorsProperties;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialData;
+import io.github.smaykell.aulavirtual.course.unit.dto.MaterialDownloadResponse;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialResponse;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadRequest;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadResponse;
@@ -176,6 +178,26 @@ class MaterialControllerTest {
                         .content(fileBody("PDF")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.storageKey").value("courses/algebra/tema-1.pdf"));
+    }
+
+    @Test
+    void a_student_gets_where_to_download_a_file() throws Exception {
+        UUID materialId = UUID.randomUUID();
+        when(materialService.download("ana", materialId))
+                .thenReturn(new MaterialDownloadResponse("https://s3/download", Instant.EPOCH));
+
+        mockMvc.perform(get("/materials/{id}/$download", materialId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.url").value("https://s3/download"));
+    }
+
+    @Test
+    void without_a_token_nothing_is_downloaded() throws Exception {
+        mockMvc.perform(get("/materials/{id}/$download", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+
+        verify(materialService, never()).download(any(), any());
     }
 
     @Test

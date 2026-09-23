@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
+import io.github.smaykell.aulavirtual.common.storage.FileCleanup;
 import io.github.smaykell.aulavirtual.course.Course;
 import io.github.smaykell.aulavirtual.course.CourseAccess;
 import io.github.smaykell.aulavirtual.course.CourseFixtures;
@@ -42,6 +44,9 @@ class UnitServiceTest {
     @Mock
     private CourseAccess courseAccess;
 
+    @Mock
+    private FileCleanup fileCleanup;
+
     private UnitService unitService;
 
     private Course course;
@@ -49,7 +54,7 @@ class UnitServiceTest {
     @BeforeEach
     void setUp() {
         unitService = new UnitService(unitRepository, materialRepository, courseAccess,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                fileCleanup, Clock.fixed(NOW, ZoneOffset.UTC));
         course = CourseFixtures.course(TITULAR);
     }
 
@@ -173,6 +178,49 @@ class UnitServiceTest {
 
         verify(materialRepository).deleteByUnitId(unit.getId());
         verify(unitRepository).delete(unit);
+    }
+
+    @Test
+    void deleting_a_unit_releases_the_files_of_its_material() {
+        Unit unit = CourseFixtures.unit(course.getId(), "Semana 1", 1);
+        when(unitRepository.findById(unit.getId())).thenReturn(Optional.of(unit));
+        when(courseAccess.writable("juan", course.getId())).thenReturn(course);
+        when(materialRepository.findByUnitIdOrderByPublishedAt(unit.getId())).thenReturn(List.of(
+                CourseFixtures.material(unit.getId(),
+                        CourseFixtures.file("Tema 1", MaterialType.PDF), NOW),
+                CourseFixtures.material(unit.getId(), CourseFixtures.link("Clase"), NOW)));
+
+        unitService.delete("juan", unit.getId());
+
+        verify(fileCleanup).deleteAfterCommit("courses/algebra/tema-1.pdf");
+        verifyNoMoreInteractions(fileCleanup);
+    }
+
+    @Test
+    void a_student_cannot_reach_material_that_is_not_published_yet() {
+        Unit unit = CourseFixtures.unit(course.getId(), "Semana 1", 1);
+        Material scheduled = CourseFixtures.material(unit.getId(),
+                CourseFixtures.file("Programado", MaterialType.PDF), NOW.plusSeconds(60));
+        when(unitRepository.findById(unit.getId())).thenReturn(Optional.of(unit));
+        when(courseAccess.readable("ana.estudiante", course.getId()))
+                .thenReturn(new CourseAccess.Reader(course, false, UUID.randomUUID()));
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> unitService.requireVisible("ana.estudiante", scheduled));
+
+        assertThat(error.getCode()).isEqualTo("CRS_MATERIAL_NOT_FOUND");
+    }
+
+    @Test
+    void the_teacher_reaches_material_that_is_not_published_yet() {
+        Unit unit = CourseFixtures.unit(course.getId(), "Semana 1", 1);
+        Material scheduled = CourseFixtures.material(unit.getId(),
+                CourseFixtures.hidden("Borrador", MaterialType.PDF), NOW.plusSeconds(60));
+        when(unitRepository.findById(unit.getId())).thenReturn(Optional.of(unit));
+        when(courseAccess.readable("juan", course.getId()))
+                .thenReturn(new CourseAccess.Reader(course, true, null));
+
+        unitService.requireVisible("juan", scheduled);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package io.github.smaykell.aulavirtual.course.unit;
 
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialData;
+import io.github.smaykell.aulavirtual.course.unit.dto.MaterialDownloadResponse;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialResponse;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadRequest;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadResponse;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -48,6 +50,14 @@ public class MaterialController {
             @Valid @RequestBody MaterialData request) {
 
         return materialService.update(authentication.getName(), id, request);
+    }
+
+    @GetMapping("/materials/{id}/$download")
+    @PreAuthorize("hasAuthority('" + Permission.Name.COURSES_READ + "')")
+    public MaterialDownloadResponse download(Authentication authentication,
+            @PathVariable UUID id) {
+
+        return materialService.download(authentication.getName(), id);
     }
 
     @DeleteMapping("/materials/{id}")

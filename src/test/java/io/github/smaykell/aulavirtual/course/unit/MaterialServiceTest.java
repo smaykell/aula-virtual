@@ -5,17 +5,22 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
+import io.github.smaykell.aulavirtual.common.storage.FileCleanup;
 import io.github.smaykell.aulavirtual.common.storage.FileStorage;
+import io.github.smaykell.aulavirtual.common.storage.PresignedDownload;
 import io.github.smaykell.aulavirtual.common.storage.PresignedUpload;
 import io.github.smaykell.aulavirtual.common.storage.StoredObject;
 import io.github.smaykell.aulavirtual.course.CourseFixtures;
+import io.github.smaykell.aulavirtual.course.exception.MaterialNotFoundException;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialData;
+import io.github.smaykell.aulavirtual.course.unit.dto.MaterialDownloadResponse;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialResponse;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadRequest;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadResponse;
@@ -28,8 +33,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ContentDisposition;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +57,9 @@ class MaterialServiceTest {
     @Mock
     private FileStorage fileStorage;
 
+    @Mock
+    private FileCleanup fileCleanup;
+
     private MaterialService materialService;
 
     private Unit unit;
@@ -57,7 +67,7 @@ class MaterialServiceTest {
     @BeforeEach
     void setUp() {
         materialService = new MaterialService(materialRepository, unitService, fileStorage,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                fileCleanup, Clock.fixed(NOW, ZoneOffset.UTC));
         unit = CourseFixtures.unit(COURSE, "Semana 1", 1);
     }
 
@@ -262,6 +272,104 @@ class MaterialServiceTest {
                 new MaterialData("Tema 1 corregido", MaterialType.PDF, KEY, null, null, true));
 
         assertThat(updated.title()).isEqualTo("Tema 1 corregido");
+        verifyNoInteractions(fileStorage, fileCleanup);
+    }
+
+    @Test
+    void replacing_the_file_of_a_material_releases_the_previous_one() {
+        Material material = givenAnExistingPdf();
+        String newKey = "courses/" + COURSE + "/materials/" + UUID.randomUUID() + "/tema-1b.pdf";
+        when(fileStorage.describe(newKey))
+                .thenReturn(Optional.of(new StoredObject(ONE_MEGABYTE, "application/pdf")));
+
+        materialService.update("juan", material.getId(),
+                new MaterialData("Tema 1", MaterialType.PDF, newKey, null, null, true));
+
+        verify(fileStorage).claim(newKey);
+        verify(fileCleanup).deleteAfterCommit(KEY);
+    }
+
+    @Test
+    void a_file_that_turns_into_a_link_is_released() {
+        Material material = givenAnExistingPdf();
+
+        materialService.update("juan", material.getId(), CourseFixtures.link("Clase grabada"));
+
+        verify(fileCleanup).deleteAfterCommit(KEY);
+    }
+
+    @Test
+    void deleting_a_material_releases_its_file() {
+        Material material = givenAnExistingPdf();
+
+        materialService.delete("juan", material.getId());
+
+        verify(materialRepository).delete(material);
+        verify(fileCleanup).deleteAfterCommit(KEY);
+    }
+
+    @Test
+    void deleting_a_link_has_no_file_to_release() {
+        Material material = CourseFixtures.material(unit.getId(),
+                CourseFixtures.link("Clase grabada"), NOW);
+        when(materialRepository.findById(material.getId())).thenReturn(Optional.of(material));
+        givenTheUnitIsWritable();
+
+        materialService.delete("juan", material.getId());
+
+        verifyNoInteractions(fileCleanup);
+    }
+
+    @Test
+    void a_pdf_is_downloaded_to_open_in_the_browser() {
+        Material material = givenAVisible(pdf());
+        ArgumentCaptor<ContentDisposition> disposition =
+                ArgumentCaptor.forClass(ContentDisposition.class);
+        when(fileStorage.presignDownload(eq(KEY), disposition.capture()))
+                .thenReturn(new PresignedDownload("https://s3/download", NOW));
+
+        MaterialDownloadResponse download = materialService.download("ana", material.getId());
+
+        assertThat(download.url()).isEqualTo("https://s3/download");
+        assertThat(disposition.getValue().isInline()).isTrue();
+        assertThat(disposition.getValue().getFilename()).isEqualTo("tema-1.pdf");
+    }
+
+    @Test
+    void a_document_is_downloaded_as_an_attachment() {
+        Material material = givenAVisible(
+                new MaterialData("Guía", MaterialType.DOC, KEY, null, null, true));
+        ArgumentCaptor<ContentDisposition> disposition =
+                ArgumentCaptor.forClass(ContentDisposition.class);
+        when(fileStorage.presignDownload(eq(KEY), disposition.capture()))
+                .thenReturn(new PresignedDownload("https://s3/download", NOW));
+
+        materialService.download("ana", material.getId());
+
+        assertThat(disposition.getValue().isAttachment()).isTrue();
+    }
+
+    @Test
+    void a_link_has_nothing_to_download() {
+        Material material = givenAVisible(CourseFixtures.link("Clase grabada"));
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> materialService.download("ana", material.getId()));
+
+        assertThat(error.getCode()).isEqualTo("CRS_MATERIAL_WITHOUT_FILE");
+    }
+
+    @Test
+    void material_the_reader_cannot_see_is_not_signed() {
+        Material material = CourseFixtures.material(unit.getId(), pdf(), NOW);
+        when(materialRepository.findById(material.getId())).thenReturn(Optional.of(material));
+        doThrow(new MaterialNotFoundException(material.getId()))
+                .when(unitService).requireVisible("ana", material);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> materialService.download("ana", material.getId()));
+
+        assertThat(error.getCode()).isEqualTo("CRS_MATERIAL_NOT_FOUND");
         verifyNoInteractions(fileStorage);
     }
 
@@ -296,6 +404,12 @@ class MaterialServiceTest {
         Material material = CourseFixtures.material(unit.getId(), pdf(), NOW);
         when(materialRepository.findById(material.getId())).thenReturn(Optional.of(material));
         givenTheUnitIsWritable();
+        return material;
+    }
+
+    private Material givenAVisible(MaterialData data) {
+        Material material = CourseFixtures.material(unit.getId(), data, NOW);
+        when(materialRepository.findById(material.getId())).thenReturn(Optional.of(material));
         return material;
     }
 

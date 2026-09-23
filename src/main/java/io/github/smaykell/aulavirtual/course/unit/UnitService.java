@@ -1,8 +1,10 @@
 package io.github.smaykell.aulavirtual.course.unit;
 
+import io.github.smaykell.aulavirtual.common.storage.FileCleanup;
 import io.github.smaykell.aulavirtual.course.Course;
 import io.github.smaykell.aulavirtual.course.CourseAccess;
 import io.github.smaykell.aulavirtual.course.exception.InvalidUnitOrderException;
+import io.github.smaykell.aulavirtual.course.exception.MaterialNotFoundException;
 import io.github.smaykell.aulavirtual.course.exception.UnitNotFoundException;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialResponse;
 import io.github.smaykell.aulavirtual.course.unit.dto.ReorderUnitsRequest;
@@ -14,6 +16,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -33,6 +36,7 @@ public class UnitService {
     private final UnitRepository unitRepository;
     private final MaterialRepository materialRepository;
     private final CourseAccess courseAccess;
+    private final FileCleanup fileCleanup;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -89,6 +93,7 @@ public class UnitService {
     @Transactional
     public void delete(String actorUsername, UUID unitId) {
         Unit unit = writable(actorUsername, unitId);
+        releaseFilesOf(unit);
         materialRepository.deleteByUnitId(unit.getId());
         unitRepository.delete(unit);
     }
@@ -102,6 +107,21 @@ public class UnitService {
         Unit unit = existing(unitId);
         courseAccess.writable(actorUsername, unit.getCourseId());
         return unit;
+    }
+
+    void requireVisible(String actorUsername, Material material) {
+        Unit unit = existing(material.getUnitId());
+        CourseAccess.Reader reader = courseAccess.readable(actorUsername, unit.getCourseId());
+        if (!visibleTo(reader).test(material)) {
+            throw new MaterialNotFoundException(material.getId());
+        }
+    }
+
+    private void releaseFilesOf(Unit unit) {
+        materialRepository.findByUnitIdOrderByPublishedAt(unit.getId()).stream()
+                .map(Material::file)
+                .flatMap(Optional::stream)
+                .forEach(fileCleanup::deleteAfterCommit);
     }
 
     private Predicate<Material> visibleTo(CourseAccess.Reader reader) {

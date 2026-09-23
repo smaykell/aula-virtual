@@ -272,11 +272,33 @@ se escribe. Las unidades se ordenan con `position` y se reordenan de una vez con
 es `DEFERRABLE INITIALLY DEFERRED`, para permitir los estados intermedios de esa
 transacción.
 
-El material no sube archivos todavía: guarda `storageKey` (la key del objeto, nunca
-una URL) o `externalUrl` si es un enlace, y el tipo decide cuál de los dos es
-obligatorio. `publishedAt` y `visible` sí filtran: `UnitService` elige el predicado una
-vez por lectura —el staff lo ve todo, el estudiante solo lo publicado—, en vez de
-repartir `if` por el mapeo.
+El material guarda `storageKey` (la key del objeto, nunca una URL) o `externalUrl` si
+es un enlace, y el tipo decide cuál de los dos es obligatorio. `publishedAt` y `visible`
+sí filtran: `UnitService` elige el predicado una vez por lectura —el staff lo ve todo, el
+estudiante solo lo publicado—, en vez de repartir `if` por el mapeo. La descarga pasa por
+el mismo predicado (`UnitService.requireVisible`).
+
+**Archivos.** Los bytes nunca pasan por la API: `common/storage/FileStorage` firma
+subidas y descargas contra cualquier servicio compatible con S3, elegido solo por
+variables de entorno (MinIO en local, AWS hoy, R2 o B2 mañana). Cinco reglas que no se
+ven en un solo fichero:
+
+- **La clave la genera el backend** (`MaterialFiles.keyFor`: prefijo del curso, un UUID y
+  el nombre saneado). Al crear o cambiar material se exige que la clave sea del curso y
+  que ningún otro material la use; si no, un docente podría enseñar el archivo de otro
+  curso con solo copiar su clave.
+- **La subida firma tamaño, tipo y la etiqueta `status=pending`.** El tamaño firmado es lo
+  que impide saltarse el límite del tipo; la etiqueta es lo que la regla de ciclo de vida
+  usa para borrar lo que nunca se confirmó. Confirmar (`FileStorage.claim`) quita la
+  etiqueta dentro de la transacción: si falla, no se crea el material.
+- **Borrar el objeto va después del commit** (`FileCleanup.deleteAfterCommit`), por la
+  misma razón que la cola de notificaciones: un rollback no puede deshacer una llamada
+  externa. Un fallo solo se registra; un huérfano es más barato que un material roto.
+- **Las URLs firmadas no se guardan nunca**: se firman al pedirlas y caducan en minutos.
+- El presigner lleva `checksumValidationEnabled(false)`; con ella, la URL exige una
+  cabecera de checksum que el navegador no manda.
+
+Los límites por tipo viven en `MaterialType`, no en configuración: son dominio.
 
 La invitación se reparte de dos formas y solo se guarda una: el `invitation_code` del
 curso es el dato, y `Invitations` compone además la URL al responder, colgando el

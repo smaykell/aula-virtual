@@ -410,12 +410,44 @@ repetidas y solo tiene que cuadrar al hacer commit.
 
 El material es de tipo `PDF`, `VIDEO`, `PPT`, `DOC` o `LINK`, y de ahí sale de dónde
 viene: un `LINK` trae `externalUrl` (`CRS_MATERIAL_NEEDS_URL` si falta) y cualquier otro
-trae `storageKey` (`CRS_MATERIAL_NEEDS_FILE`), nunca los dos. `storageKey` es la clave
-del objeto en el bucket, **nunca una URL completa**: la API todavía no sube ni sirve
-bytes —el almacenamiento entra en otra iteración— así que hoy el cliente manda la clave
-del archivo que ya subió. `publishedAt` permite programar una publicación (si no viene,
-es ahora) y `visible` la controla a mano; ninguno de los dos filtra nada todavía, porque
-quien los mirará es el estudiante y ese módulo aún no existe.
+trae `storageKey` (`CRS_MATERIAL_NEEDS_FILE`), nunca los dos. `publishedAt` permite
+programar una publicación (si no viene, es ahora) y `visible` la controla a mano; el
+estudiante solo ve, y solo descarga, lo que ya está publicado y visible.
+
+**Los archivos no pasan por la API.** El navegador los sube y los descarga directamente
+del almacenamiento (S3 o compatible) con enlaces firmados que reparte el backend, que es
+quien decide la clave y quién tiene acceso. Subir un archivo son tres pasos:
+
+1. `POST /api/units/{id}/materials/$upload` con `{"type", "fileName", "contentType",
+   "size"}`. Responde `{"storageKey", "uploadUrl", "method": "PUT", "headers",
+   "expiresAt"}`.
+2. El navegador hace `PUT` del archivo a `uploadUrl` **con las cabeceras de `headers`**.
+   Van firmadas: si el tamaño o el tipo no coinciden con lo declarado, el almacenamiento
+   rechaza la subida. `content-length` lo pone el navegador solo.
+3. `POST /api/units/{id}/materials` (o `PUT /api/materials/{id}`) con esa `storageKey`.
+   Aquí el backend comprueba que la clave es de ese curso y nadie más la usa
+   (`CRS_FOREIGN_FILE`), que el archivo llegó (`CRS_FILE_NOT_UPLOADED`) y que su tamaño y
+   tipo son los del material; solo entonces lo da por suyo.
+
+| Tipo | Archivos que admite | Tamaño máximo |
+|---|---|---|
+| `PDF` | `application/pdf` | 50 MB |
+| `DOC` | Word (`.doc`, `.docx`) | 50 MB |
+| `PPT` | PowerPoint (`.ppt`, `.pptx`) | 50 MB |
+| `VIDEO` | `video/mp4`, `video/webm` | 500 MB |
+
+Fuera de eso responde `CRS_FILE_TYPE_NOT_ALLOWED` o `CRS_FILE_TOO_LARGE`, ya en el paso 1.
+Para vídeos largos conviene un `LINK` a una plataforma de vídeo: lo que más cuesta del
+almacenamiento es cada descarga, no guardar el archivo.
+
+Descargar es `GET /api/materials/{id}/$download`, que responde `{"url", "expiresAt"}` con
+un enlace de pocos minutos. PDF y vídeo se abren en el navegador; Word y PowerPoint se
+descargan. Un `LINK` no tiene archivo (`CRS_MATERIAL_WITHOUT_FILE`), y a un estudiante un
+material aún no publicado le responde `CRS_MATERIAL_NOT_FOUND`, como si no existiera.
+
+Una subida que nunca se confirma se borra sola al día siguiente (la marca la etiqueta
+`status=pending`), y el archivo de un material borrado o reemplazado se borra en cuanto la
+transacción hace commit.
 
 **La invitación viaja de las dos formas.** Al crear el curso se genera un código libre
 de ocho caracteres (sin `I`, `O`, `0` ni `1`: se dicta en voz alta y se teclea a mano) y
@@ -569,8 +601,48 @@ devuelve todo el curso al docente y solo sus notas al estudiante, con una consul
 importar de dónde salió cada nota. `gradedBy` queda en null cuando la corrección sea
 automática.
 
-Como el material, los archivos de tarea y de entrega viajan hoy como `storageKey`: la API
-todavía no sube ni sirve bytes.
+Los archivos de tarea y de entrega todavía viajan como una `storageKey` que la API no
+comprueba: subirlos y descargarlos como el material es el siguiente paso.
+
+## Almacenamiento en AWS
+
+En local no hay que hacer nada: el MinIO de Docker ya trae el bucket y su regla. En AWS
+hay que preparar cuatro cosas una vez:
+
+1. **Un bucket privado**, con *Block Public Access* activado entero. Nadie lee del bucket
+   sin un enlace firmado.
+2. **CORS**, para que el navegador pueda subir y descargar desde el dominio del front:
+
+   ```json
+   [{
+     "AllowedOrigins": ["https://aula.example.com"],
+     "AllowedMethods": ["GET", "PUT"],
+     "AllowedHeaders": ["content-type", "x-amz-tagging"],
+     "ExposeHeaders": ["ETag"],
+     "MaxAgeSeconds": 3600
+   }]
+   ```
+
+3. **Una regla de ciclo de vida** que borre los objetos con la etiqueta
+   `status=pending` a 1 día: son subidas que nunca se confirmaron.
+4. **Un usuario IAM solo para la aplicación**, con esta política y nada más:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [{
+       "Effect": "Allow",
+       "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject",
+                  "s3:PutObjectTagging", "s3:DeleteObjectTagging"],
+       "Resource": "arn:aws:s3:::<bucket>/*"
+     }]
+   }
+   ```
+
+Luego se exportan `STORAGE_ENDPOINT=` (vacío: apunta a AWS), `STORAGE_REGION`,
+`STORAGE_BUCKET`, `STORAGE_PATH_STYLE=false` y las claves del usuario en
+`STORAGE_ACCESS_KEY` y `STORAGE_SECRET_KEY`. Cambiar a otro proveedor compatible con S3
+(Cloudflare R2, Backblaze B2) es cambiar esas variables, no el código.
 
 ## Errores
 

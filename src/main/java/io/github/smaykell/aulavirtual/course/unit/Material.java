@@ -8,6 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -48,6 +49,10 @@ public class Material extends BaseEntity {
 
     public static Material create(UUID unitId, MaterialData data, Instant publishedAt) {
         return new Material(unitId, data, publishedAt);
+    }
+
+    public Optional<String> file() {
+        return Optional.ofNullable(storageKey);
     }
 
     public boolean isPublishedAt(Instant moment) {

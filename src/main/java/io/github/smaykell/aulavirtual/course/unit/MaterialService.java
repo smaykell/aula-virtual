@@ -1,6 +1,8 @@
 package io.github.smaykell.aulavirtual.course.unit;
 
+import io.github.smaykell.aulavirtual.common.storage.FileCleanup;
 import io.github.smaykell.aulavirtual.common.storage.FileStorage;
+import io.github.smaykell.aulavirtual.common.storage.StorageKeys;
 import io.github.smaykell.aulavirtual.common.storage.StoredObject;
 import io.github.smaykell.aulavirtual.course.exception.FileMaterialWithoutKeyException;
 import io.github.smaykell.aulavirtual.course.exception.FileNotUploadedException;
@@ -9,14 +11,19 @@ import io.github.smaykell.aulavirtual.course.exception.FileTypeNotAllowedExcepti
 import io.github.smaykell.aulavirtual.course.exception.ForeignFileException;
 import io.github.smaykell.aulavirtual.course.exception.LinkMaterialWithoutUrlException;
 import io.github.smaykell.aulavirtual.course.exception.MaterialNotFoundException;
+import io.github.smaykell.aulavirtual.course.exception.MaterialWithoutFileException;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialData;
+import io.github.smaykell.aulavirtual.course.unit.dto.MaterialDownloadResponse;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialResponse;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadRequest;
 import io.github.smaykell.aulavirtual.course.unit.dto.MaterialUploadResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +34,7 @@ public class MaterialService {
     private final MaterialRepository materialRepository;
     private final UnitService unitService;
     private final FileStorage fileStorage;
+    private final FileCleanup fileCleanup;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -56,9 +64,12 @@ public class MaterialService {
         Material material = existing(materialId);
         Unit unit = unitService.writable(actorUsername, material.getUnitId());
         requireMatchingSource(data);
+        Optional<String> previousFile = material.file();
         claimNewFile(unit, material.getStorageKey(), data);
 
         material.update(data, publicationOf(data));
+        previousFile.filter(key -> !key.equals(material.getStorageKey()))
+                .ifPresent(fileCleanup::deleteAfterCommit);
         return MaterialResponse.from(material);
     }
 
@@ -67,6 +78,18 @@ public class MaterialService {
         Material material = existing(materialId);
         unitService.writable(actorUsername, material.getUnitId());
         materialRepository.delete(material);
+        material.file().ifPresent(fileCleanup::deleteAfterCommit);
+    }
+
+    @Transactional(readOnly = true)
+    public MaterialDownloadResponse download(String actorUsername, UUID materialId) {
+        Material material = existing(materialId);
+        unitService.requireVisible(actorUsername, material);
+        if (material.getType().isLink()) {
+            throw new MaterialWithoutFileException();
+        }
+        return MaterialDownloadResponse.from(
+                fileStorage.presignDownload(material.getStorageKey(), dispositionOf(material)));
     }
 
     private Material existing(UUID materialId) {
@@ -76,6 +99,15 @@ public class MaterialService {
 
     private Instant publicationOf(MaterialData data) {
         return data.publishedAt() == null ? clock.instant() : data.publishedAt();
+    }
+
+    private static ContentDisposition dispositionOf(Material material) {
+        ContentDisposition.Builder disposition = material.getType().opensInBrowser()
+                ? ContentDisposition.inline()
+                : ContentDisposition.attachment();
+        return disposition
+                .filename(StorageKeys.fileNameOf(material.getStorageKey()), StandardCharsets.UTF_8)
+                .build();
     }
 
     private void claimNewFile(Unit unit, String currentKey, MaterialData data) {
