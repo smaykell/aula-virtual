@@ -5,6 +5,7 @@ import io.github.smaykell.aulavirtual.security.PersonProfiles;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.user.dto.LoginRequest;
 import io.github.smaykell.aulavirtual.user.dto.LoginResponse;
+import io.github.smaykell.aulavirtual.user.dto.RoleAccess;
 import io.github.smaykell.aulavirtual.user.exception.InactiveAccountException;
 import io.github.smaykell.aulavirtual.user.exception.InvalidCredentialsException;
 import java.util.Set;
@@ -45,7 +46,6 @@ public class AuthenticationService {
                 TOKEN_TYPE,
                 jwtService.tokenLifetime().toSeconds(),
                 account.getUsername(),
-                Role.sorted(roles),
-                Role.permissionAuthoritiesOf(roles));
+                RoleAccess.of(roles));
     }
 }

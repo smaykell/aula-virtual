@@ -170,6 +170,11 @@ Las authorities viajan en el claim `roles` y son dos cosas a la vez: **cada** ro
 prefijo (`ROLE_TEACHER`) y, junto a ellos, la unión de los permisos de esos roles
 (`teachers:read`), de modo que `hasRole(...)` y `hasAuthority(...)` funcionan sin
 traducción. Quien es administrador y docente inicia sesión una vez y lleva los dos.
+El login y `/me` devuelven en cambio los permisos **por rol** (`RoleAccess`), porque el
+front deja elegir con qué rol se trabaja y filtra el menú con los permisos de ese rol.
+Esa elección es solo de vista: el backend sigue autorizando con la unión, y lo que no
+debe mezclarse (ser staff y alumno del mismo curso, calificarse) lo impiden reglas por
+curso, no el rol elegido.
 
 **Roles y permisos.** El catálogo vive en código, no en tablas: `security/Permission`
 enumera los permisos y `security/Role` asigna a cada rol los suyos.

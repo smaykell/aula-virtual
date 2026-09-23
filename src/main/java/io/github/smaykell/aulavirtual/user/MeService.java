@@ -4,9 +4,9 @@ import io.github.smaykell.aulavirtual.person.PersonService;
 import io.github.smaykell.aulavirtual.person.dto.PersonData;
 import io.github.smaykell.aulavirtual.person.dto.PersonResponse;
 import io.github.smaykell.aulavirtual.security.Actor;
-import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.user.dto.ChangeMyPasswordRequest;
 import io.github.smaykell.aulavirtual.user.dto.MeResponse;
+import io.github.smaykell.aulavirtual.user.dto.RoleAccess;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +36,6 @@ public class MeService {
     }
 
     private MeResponse responseFor(Actor actor, PersonResponse person) {
-        return new MeResponse(actor.username(), Role.sorted(actor.roles()),
-                Role.permissionAuthoritiesOf(actor.roles()), person);
+        return new MeResponse(actor.username(), RoleAccess.of(actor.roles()), person);
     }
 }

@@ -11,6 +11,7 @@ import io.github.smaykell.aulavirtual.security.PersonProfiles;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.user.dto.LoginRequest;
 import io.github.smaykell.aulavirtual.user.dto.LoginResponse;
+import io.github.smaykell.aulavirtual.user.dto.RoleAccess;
 import io.jsonwebtoken.Claims;
 import java.time.Clock;
 import java.time.Duration;
@@ -73,8 +74,12 @@ class AuthenticationServiceTest {
 
         LoginResponse session = authenticationService.login(new LoginRequest("ana", PASSWORD));
 
-        assertThat(session.roles()).containsExactly(Role.ADMIN, Role.TEACHER);
-        assertThat(session.permissions()).contains("teachers:read");
+        assertThat(session.roles()).extracting(RoleAccess::role)
+                .containsExactly(Role.ADMIN, Role.TEACHER);
+        assertThat(session.roles().get(0).permissions()).contains("teachers:read")
+                .doesNotContain("administrators:read");
+        assertThat(session.roles().get(1).permissions()).contains("courses:create")
+                .doesNotContain("teachers:read");
         assertThat(jwtService.authoritiesOf(jwtService.verify(session.accessToken()).getPayload()))
                 .contains("ROLE_ADMIN", "ROLE_TEACHER");
     }

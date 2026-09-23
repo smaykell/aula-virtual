@@ -74,10 +74,6 @@ public enum Role {
         return roles.stream().sorted().toList();
     }
 
-    public static List<String> permissionAuthoritiesOf(Collection<Role> roles) {
-        return permissionsOf(roles).stream().map(Permission::authority).sorted().toList();
-    }
-
     public static List<String> grantedAuthoritiesOf(Collection<Role> roles) {
         return Stream.concat(
                 roles.stream().map(Role::authority),

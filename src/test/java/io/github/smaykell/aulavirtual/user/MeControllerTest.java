@@ -27,6 +27,7 @@ import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.security.SecurityConfig;
 import io.github.smaykell.aulavirtual.user.dto.ChangeMyPasswordRequest;
 import io.github.smaykell.aulavirtual.user.dto.MeResponse;
+import io.github.smaykell.aulavirtual.user.dto.RoleAccess;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -77,18 +78,18 @@ class MeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("ana"))
                 .andExpect(jsonPath("$.person.firstName").value("Ana Maria"))
-                .andExpect(jsonPath("$.roles[0]").value("STUDENT"));
+                .andExpect(jsonPath("$.roles[0].role").value("STUDENT"));
     }
 
     @Test
     void a_person_with_two_profiles_sees_both_roles() throws Exception {
         when(meService.get("ana")).thenReturn(new MeResponse("ana",
-                List.of(Role.ADMIN, Role.TEACHER), List.of("teachers:read"), person()));
+                RoleAccess.of(List.of(Role.ADMIN, Role.TEACHER)), person()));
 
         mockMvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.roles[0]").value("ADMIN"))
-                .andExpect(jsonPath("$.roles[1]").value("TEACHER"));
+                .andExpect(jsonPath("$.roles[0].role").value("ADMIN"))
+                .andExpect(jsonPath("$.roles[1].role").value("TEACHER"));
     }
 
     @Test
@@ -144,7 +145,7 @@ class MeControllerTest {
     }
 
     private MeResponse me(Role role) {
-        return new MeResponse("ana", List.of(role), List.of(), person());
+        return new MeResponse("ana", RoleAccess.of(List.of(role)), person());
     }
 
     private PersonResponse person() {
