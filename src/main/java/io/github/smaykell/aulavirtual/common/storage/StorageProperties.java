@@ -14,15 +14,23 @@ public record StorageProperties(
         String endpoint,
         @NotBlank String region,
         @NotBlank String bucket,
-        @NotBlank String accessKey,
-        @NotBlank String secretKey,
+        String accessKey,
+        String secretKey,
         boolean pathStyle,
         @NotNull Duration uploadTtl,
         @NotNull Duration downloadTtl) {
 
     public Optional<URI> endpointOverride() {
-        return endpoint == null || endpoint.isBlank()
-                ? Optional.empty()
-                : Optional.of(URI.create(endpoint));
+        return hasText(endpoint)
+                ? Optional.of(URI.create(endpoint))
+                : Optional.empty();
+    }
+
+    public boolean usesStaticCredentials() {
+        return hasText(accessKey) && hasText(secretKey);
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

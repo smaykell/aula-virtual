@@ -80,8 +80,8 @@ variables del entorno del proceso.
 | `STORAGE_ENDPOINT` | `app.storage.endpoint` | `http://localhost:9000` (el MinIO de Docker); **definida y vacía** apunta a AWS S3 |
 | `STORAGE_REGION` | `app.storage.region` | `us-east-1` |
 | `STORAGE_BUCKET` | `app.storage.bucket` | `aula-virtual` |
-| `STORAGE_ACCESS_KEY` | `app.storage.access-key` | `aula_virtual`, la del MinIO local |
-| `STORAGE_SECRET_KEY` | `app.storage.secret-key` | `aula_virtual`, la del MinIO local |
+| `STORAGE_ACCESS_KEY` | `app.storage.access-key` | `aula_virtual`, la del MinIO local; **definida y vacía** usa la cadena de credenciales de AWS (el rol IAM de la instancia) |
+| `STORAGE_SECRET_KEY` | `app.storage.secret-key` | `aula_virtual`, la del MinIO local; vacía, igual que la anterior |
 | `STORAGE_PATH_STYLE` | `app.storage.path-style` | `true`, lo que pide MinIO; en AWS, `false` |
 | `STORAGE_UPLOAD_TTL` | `app.storage.upload-ttl` | `PT15M` de vida de un enlace de subida |
 | `STORAGE_DOWNLOAD_TTL` | `app.storage.download-ttl` | `PT10M` de vida de un enlace de descarga |
@@ -625,7 +625,8 @@ hay que preparar cuatro cosas una vez:
 
 3. **Una regla de ciclo de vida** que borre los objetos con la etiqueta
    `status=pending` a 1 día: son subidas que nunca se confirmaron.
-4. **Un usuario IAM solo para la aplicación**, con esta política y nada más:
+4. **Un rol IAM para la instancia** (o, fuera de AWS, un usuario IAM solo para la
+   aplicación), con esta política y nada más:
 
    ```json
    {
@@ -640,9 +641,11 @@ hay que preparar cuatro cosas una vez:
    ```
 
 Luego se exportan `STORAGE_ENDPOINT=` (vacío: apunta a AWS), `STORAGE_REGION`,
-`STORAGE_BUCKET`, `STORAGE_PATH_STYLE=false` y las claves del usuario en
-`STORAGE_ACCESS_KEY` y `STORAGE_SECRET_KEY`. Cambiar a otro proveedor compatible con S3
-(Cloudflare R2, Backblaze B2) es cambiar esas variables, no el código.
+`STORAGE_BUCKET` y `STORAGE_PATH_STYLE=false`. Con un rol, `STORAGE_ACCESS_KEY=` y
+`STORAGE_SECRET_KEY=` se dejan **definidas y vacías**: la aplicación toma entonces las
+credenciales temporales del rol y no hay ninguna clave guardada. Con un usuario IAM se
+ponen sus claves ahí. Cambiar a otro proveedor compatible con S3 (Cloudflare R2,
+Backblaze B2) es cambiar esas variables, no el código.
 
 ## Errores
 
