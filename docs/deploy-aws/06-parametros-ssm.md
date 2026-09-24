@@ -37,7 +37,7 @@ Tiene que ser Base64 de al menos 32 bytes, o la app no arranca:
 
 ```powershell
 $bytes = New-Object byte[] 32
-[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
 [Convert]::ToBase64String($bytes)
 ```
 
