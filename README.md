@@ -636,9 +636,17 @@ hay que preparar cuatro cosas una vez:
        "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject",
                   "s3:PutObjectTagging", "s3:DeleteObjectTagging"],
        "Resource": "arn:aws:s3:::<bucket>/*"
+     }, {
+       "Effect": "Allow",
+       "Action": "s3:ListBucket",
+       "Resource": "arn:aws:s3:::<bucket>"
      }]
    }
    ```
+
+   `s3:ListBucket` no se usa para listar nada: sin él, S3 responde 403 en vez de 404 al
+   preguntar por un objeto que no existe, y confirmar un material cuyo archivo nunca se
+   subió daría un 500 en lugar de `CRS_FILE_NOT_UPLOADED`.
 
 Luego se exportan `STORAGE_ENDPOINT=` (vacío: apunta a AWS), `STORAGE_REGION`,
 `STORAGE_BUCKET` y `STORAGE_PATH_STYLE=false`. Con un rol, `STORAGE_ACCESS_KEY=` y
@@ -646,6 +654,9 @@ Luego se exportan `STORAGE_ENDPOINT=` (vacío: apunta a AWS), `STORAGE_REGION`,
 credenciales temporales del rol y no hay ninguna clave guardada. Con un usuario IAM se
 ponen sus claves ahí. Cambiar a otro proveedor compatible con S3 (Cloudflare R2,
 Backblaze B2) es cambiar esas variables, no el código.
+
+El despliegue completo de una demo (EC2, RDS, S3, CloudFront y SES) está explicado paso a
+paso en [`docs/deploy-aws`](docs/deploy-aws/README.md).
 
 ## Errores
 
