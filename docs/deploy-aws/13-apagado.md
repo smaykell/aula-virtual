@@ -15,7 +15,9 @@ Si vas a volver a enseñar la demo en unos días:
 - **RDS → Actions → Stop temporarily**: se para un máximo de **7 días**; después AWS la
   vuelve a encender sola.
 - **El ALB no se puede pausar**: es lo más caro que queda encendido (~0,60 USD/día). Si la
-  pausa va a ser larga, bórralo y vuelve a crearlo (capítulo 08, apartados 8.3 y 8.4).
+  pausa va a ser larga, borra solo el balanceador y vuelve a crearlo (capítulo 08, apartado
+  8.4). El target group y el certificado no cobran: déjalos. Al recrearlo el balanceador
+  tiene otro **DNS name**, así que actualiza también el CNAME `api` (apartado 8.5).
 
 ## Borrar, en este orden
 

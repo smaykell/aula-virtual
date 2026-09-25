@@ -30,7 +30,8 @@ CloudFront…). Por eso el HTTPS termina en el balanceador y no en el servidor.
 
 Con una sola instancia no hay nada que repartir, pero el ALB sigue siendo lo que daría
 HTTPS a varias instancias, y la pieza que verías en cualquier empresa. Es el recurso más
-caro de la demo (~0,60 USD/día): apágalo el primero cuando termines.
+caro de la demo (~0,60 USD/día) y **no se puede apagar ni pausar**: cobra mientras exista.
+Cuando termines, bórralo el primero (capítulo 13).
 
 Tu DNS está **fuera de AWS** (en tu proveedor del `.pe`), así que todos los registros los
 crearás tú a mano allí. Es más trabajo que con Route 53, y también más instructivo: ves
