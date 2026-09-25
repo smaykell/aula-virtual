@@ -194,9 +194,20 @@ curl.exe -sI http://api.<dominio>.pe/api/actuator/health
   `journalctl` en el servidor.
 - **`502 Bad Gateway`** en el navegador: el ALB no tiene ningún target sano. Es el mismo
   problema que los anteriores.
+- **`503 Service Temporarily Unavailable`** en el navegador, con cabecera
+  `Server: awselb/2.0` (`curl.exe -sI`): no es el *[503]* del health check. Lo responde el
+  propio ALB porque no tiene **ningún target registrado** al que mandar la petición. En
+  **Targets**, o la lista está vacía (faltó **Include as pending below** en 8.3) o la
+  instancia sale `unused` porque su zona no está marcada en el balanceador (**Network
+  mapping → Edit subnets**, ver 8.4).
 - **El navegador dice que el certificado no es válido para `api…`**: el CNAME apunta al
   balanceador, pero el certificado no incluye ese nombre. Revisa el paso 8.1.
 - **`curl` no resuelve el nombre**: el DNS tarda en propagarse. Prueba con
   `Resolve-DnsName api.<dominio>.pe` hasta que devuelva el nombre del ALB.
+- **`DNS_PROBE_FINISHED_NXDOMAIN` en el navegador, pero
+  `Resolve-DnsName api.<dominio>.pe -Server 8.8.8.8` sí responde**: el registro está bien.
+  El DNS de tu proveedor de internet preguntó antes de que existiera y guardó el «no
+  existe» durante el tiempo que marca el último número del SOA (7200 s = 2 horas). Espera,
+  o pon `8.8.8.8` y `1.1.1.1` como DNS de tu conexión, y luego `ipconfig /flushdns`.
 
 Siguiente: [09 · Correo con SES](09-correo-ses.md)
