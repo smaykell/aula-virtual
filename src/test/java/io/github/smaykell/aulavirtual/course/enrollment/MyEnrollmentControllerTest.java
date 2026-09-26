@@ -75,6 +75,18 @@ class MyEnrollmentControllerTest {
                 .andExpect(jsonPath("$[0].course.name").value("Algebra Lineal"));
     }
 
+    @Test
+    void the_invitation_code_narrows_my_enrollments_to_that_course() throws Exception {
+        when(enrollmentService.mineIn("ana", "ABCD2345")).thenReturn(List.of(anEnrollment()));
+
+        mockMvc.perform(get("/me/enrollments").param("code", "ABCD2345")
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].course.name").value("Algebra Lineal"));
+
+        verify(enrollmentService, never()).mine(any());
+    }
+
     private EnrollmentResponse anEnrollment() {
         return new EnrollmentResponse(UUID.randomUUID(),
                 new CourseSummary(UUID.randomUUID(), "Algebra Lineal", CourseStatus.ACTIVE),

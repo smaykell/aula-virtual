@@ -265,6 +265,7 @@ funcionan sin traducción.
 | `DELETE /api/materials/{id}` | `courses:update` | borra el material y devuelve 204 |
 | `POST /api/courses/$join` | `enrollments:create` | el estudiante se inscribe con el código y devuelve 201 |
 | `GET /api/me/enrollments` | autenticado, solo estudiantes | mis matrículas y el estado de cada una; quien no sea estudiante activo recibe `CRS_STUDENT_REQUIRED` |
+| `GET /api/me/enrollments?code={code}` | autenticado, solo estudiantes | mi matrícula en el curso de esa invitación, o una lista vacía; la pantalla del enlace la usa para saber si ya estoy dentro antes de pedir entrar |
 | `GET /api/courses/{id}/enrollments` | `enrollments:read` | el aula del curso, filtro opcional `?status=` |
 | `POST /api/enrollments/{id}/$accept` | `enrollments:update` | acepta una solicitud pendiente |
 | `POST /api/enrollments/{id}/$reject` | `enrollments:update` | rechaza una solicitud pendiente |
