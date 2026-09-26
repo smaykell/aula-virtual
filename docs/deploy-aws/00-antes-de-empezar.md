@@ -40,7 +40,7 @@ Precios aproximados en us-east-1, **por día** con todo encendido:
 | RDS PostgreSQL | `db.t4g.micro`, 20 GB | 0,45 |
 | Application Load Balancer | 1, poco tráfico | 0,60 |
 | IPv4 públicas | la de la EC2 y las del ALB (~3) | 0,36 |
-| S3, CloudFront, SES, Parameter Store | uso de demo | ~0 |
+| S3, CloudFront, Parameter Store | uso de demo | ~0 |
 | **Total** | | **~1,8 USD/día** |
 
 Unos cinco días de demo cuestan entre 10 y 15 USD. Lo más caro es lo que está **encendido

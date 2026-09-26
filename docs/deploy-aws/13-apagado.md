@@ -36,14 +36,11 @@ certificado enganchado a un balanceador.
       cada uno referencia al anterior).
 - [ ] **Parameter Store**: selecciona los de `/aula-virtual/demo/` → **Delete**.
 - [ ] **Certificate Manager**: el certificado → **Delete**.
-- [ ] **SES**: las identidades (dominio y correos).
-- [ ] **IAM**: el rol `aula-virtual-demo-ec2`, la política `aula-virtual-demo-ec2` y el
-      usuario SMTP que creó SES (`ses-smtp-user.…`). **Borra ese usuario sí o sí**: tiene
-      claves permanentes.
+- [ ] **IAM**: el rol `aula-virtual-demo-ec2` y la política `aula-virtual-demo-ec2`. Si
+      seguiste la versión antigua del capítulo 09, comprueba que ya no existe el usuario `ses-smtp-user.…`.
 - [ ] **WAF**: si al borrar CloudFront quedó una *Web ACL* suelta en **WAF & Shield**
       (región *Global*), bórrala.
-- [ ] **Tu proveedor DNS**: los CNAME de `aula`, `api`, los de validación de ACM, los de
-      DKIM y el `_dmarc`. Si vas a hacer el capítulo 12 enseguida, puedes dejarlos.
+- [ ] **Tu proveedor DNS**: los CNAME de `aula`, `api`, y los de validación de ACM. Si vas a hacer el capítulo 12 enseguida, puedes dejarlos.
 
 ## Comprueba que no queda nada
 
@@ -61,7 +58,6 @@ Espera un día y mira:
 
 Si llegaste hasta aquí, has manejado de verdad: IAM (usuarios, roles, políticas y el
 mínimo privilegio), VPC y Security Groups, EC2 con Session Manager y systemd, RDS, S3 con
-URLs firmadas, CORS y ciclo de vida, Parameter Store, ACM, ALB, CloudFront con OAC, SES con
-DKIM, Budgets y la CLI. Es prácticamente el temario de la certificación **AWS Certified
+URLs firmadas, CORS y ciclo de vida, Parameter Store, ACM, ALB, CloudFront con OAC, Budgets y la CLI. Es prácticamente el temario de la certificación **AWS Certified
 Cloud Practitioner** en su parte práctica, y buena parte de la de **Solutions Architect –
 Associate**.

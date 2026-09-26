@@ -211,4 +211,4 @@ curl.exe -sI http://api.<dominio>.pe/api/actuator/health
   existe» durante el tiempo que marca el último número del SOA (7200 s = 2 horas). Espera,
   o pon `8.8.8.8` y `1.1.1.1` como DNS de tu conexión, y luego `ipconfig /flushdns`.
 
-Siguiente: [09 · Correo con SES](09-correo-ses.md)
+Siguiente: [09 · Correo con tu servidor SMTP](09-correo-smtp.md)

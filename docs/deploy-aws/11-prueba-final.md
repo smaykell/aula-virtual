@@ -19,13 +19,13 @@ sudo journalctl -u aula-virtual -f
       contraseña (capítulo 08), hazlo **ahora** desde **Mi perfil**.
 - [ ] En **Mi perfil**, corrige sus datos: la migración los dejó como `Pendiente` con un
       documento que no pasa la validación (explicado en el README, «El primer
-      superadmin»). Pon **tu correo verificado en SES** (capítulo 09).
+      superadmin»). Pon **tu correo**.
 
 *Pruebas:* CloudFront → ALB → EC2 → RDS; CORS de la API.
 
 ### 11.2 Docente, curso y material
 
-- [ ] Crea un docente (con otro correo verificado en SES, si tienes).
+- [ ] Crea un docente (con otro correo tuyo, si tienes).
 - [ ] Crea un curso con ese docente como titular y la política de matrícula **Automática**.
 - [ ] Añade una unidad y **sube un PDF** como material.
 
@@ -42,15 +42,14 @@ quitó la confirmación).
 - [ ] Como superadmin, en **Configuración**, activa **inscripción por enlace**.
 - [ ] Copia el **enlace de invitación** del curso.
 - [ ] Ábrelo en una **ventana de incógnito** y regístrate como estudiante con un DNI de
-      prueba y **otro correo verificado**.
+      prueba y **otro correo tuyo**.
 
 > Un correo solo puede pertenecer a una persona: si repites el del superadmin, la app
 > responde «ya tienes cuenta». Con Gmail puedes usar `tucorreo+alumno@gmail.com`, que llega
-> al mismo buzón, pero para SES es otra dirección: **verifícala** también (capítulo 09,
-> apartado 9.2).
+> al mismo buzón.
 
 *Pruebas:* la ruta del SPA `/join/<código>` servida por CloudFront al abrirla directamente;
-una ruta **pública** de la API; la **cola de notificaciones** y **SES**: en ~30 segundos te
+una ruta **pública** de la API; la **cola de notificaciones** y **tu servidor SMTP**: en ~30 segundos te
 llega el correo de bienvenida.
 
 ### 11.4 El estudiante lee el material
@@ -68,7 +67,7 @@ vuelve a abrirla; S3 responde `Request has expired`).
 - [ ] Abre el correo y sigue el enlace: lleva a `https://aula.<dominio>.pe/reset-password?token=…`.
 - [ ] Cambia la contraseña y entra con la nueva.
 
-*Pruebas:* `PASSWORD_RESET_URL` apunta bien al front; SES; la ruta del SPA.
+*Pruebas:* `PASSWORD_RESET_URL` apunta bien al front; el correo; la ruta del SPA.
 
 ### 11.6 Cierra la ventana
 
@@ -85,7 +84,6 @@ Unos minutos para ver los servicios con datos reales:
       hasta 10).
 - [ ] **CloudFront → Reports & analytics**: peticiones servidas desde caché frente a las
       que fueron al bucket.
-- [ ] **SES → Account dashboard**: correos enviados, rebotes y quejas.
 - [ ] **Billing → Bills** (o **Cost Explorer**): lo que llevas gastado, por servicio. Aparece
       con unas horas de retraso.
 
@@ -99,7 +97,7 @@ Unos minutos para ver los servicios con datos reales:
 | Error con un `code` (`CRS_…`, `USR_…`) | la app, a propósito | es una regla de negocio, no un fallo de AWS |
 | Error `500` | la app | `journalctl`, busca el `traceId` del error |
 | La subida de un archivo falla | CORS del bucket o rol | F12 → Network; capítulos 03 y 05 |
-| No llega un correo | SES, sandbox | log con `grep -i mail`; capítulo 09 |
+| No llega un correo | parámetros `SPRING_MAIL_*`, puerto 587 | log con `grep -i mail`; capítulo 09 |
 
 El `traceId` que devuelve cada error de la API también se escribe en el log del servidor:
 
