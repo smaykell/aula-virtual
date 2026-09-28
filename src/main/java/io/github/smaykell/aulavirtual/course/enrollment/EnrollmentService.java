@@ -96,6 +96,17 @@ public class EnrollmentService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<EnrollmentResponse> mineIn(String actorUsername, String invitationCode) {
+        UUID studentId = courseAccess.requireStudent(actorUsername);
+        return courseRepository.findByInvitationCode(invitationCode.trim())
+                .flatMap(course -> enrollmentRepository
+                        .findByCourseIdAndStudentId(course.getId(), studentId)
+                        .map(enrollment -> responseFor(enrollment, course)))
+                .stream()
+                .toList();
+    }
+
     @Transactional
     public EnrollmentResponse accept(String actorUsername, UUID enrollmentId) {
         Managed managed = manageable(actorUsername, enrollmentId);

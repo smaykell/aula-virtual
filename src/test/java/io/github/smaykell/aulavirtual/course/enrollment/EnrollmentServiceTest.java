@@ -22,6 +22,7 @@ import io.github.smaykell.aulavirtual.student.dto.StudentContact;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -223,6 +224,32 @@ class EnrollmentServiceTest {
                 () -> enrollmentService.accept("juan", enrollmentId));
 
         assertThat(error.getCode()).isEqualTo("CRS_ENROLLMENT_NOT_FOUND");
+    }
+
+    @Test
+    void a_student_finds_its_own_enrollment_through_the_invitation_code() {
+        Course course = CourseFixtures.course(TITULAR, EnrollmentPolicy.ON_REQUEST);
+        when(courseRepository.findByInvitationCode(CourseFixtures.INVITATION_CODE))
+                .thenReturn(Optional.of(course));
+        when(courseAccess.requireStudent("ana.estudiante")).thenReturn(STUDENT);
+        givenThePreviousEnrollment(course, EnrollmentStatus.PENDING);
+        givenTheSummaryOfTheStudent();
+
+        List<EnrollmentResponse> mine =
+                enrollmentService.mineIn("ana.estudiante", CourseFixtures.INVITATION_CODE);
+
+        assertThat(mine).singleElement().satisfies(enrollment -> {
+            assertThat(enrollment.status()).isEqualTo(EnrollmentStatus.PENDING);
+            assertThat(enrollment.course().id()).isEqualTo(course.getId());
+        });
+    }
+
+    @Test
+    void a_code_that_leads_nowhere_finds_no_enrollment() {
+        when(courseAccess.requireStudent("ana.estudiante")).thenReturn(STUDENT);
+        when(courseRepository.findByInvitationCode("ZZZZ9999")).thenReturn(Optional.empty());
+
+        assertThat(enrollmentService.mineIn("ana.estudiante", "ZZZZ9999")).isEmpty();
     }
 
     private Course givenTheCourseIsJoinable(EnrollmentPolicy policy) {
