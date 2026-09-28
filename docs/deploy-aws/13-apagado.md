@@ -38,6 +38,12 @@ certificado enganchado a un balanceador.
 - [ ] **Certificate Manager**: el certificado → **Delete**.
 - [ ] **IAM**: el rol `aula-virtual-demo-ec2` y la política `aula-virtual-demo-ec2`. Si
       seguiste la versión antigua del capítulo 09, comprueba que ya no existe el usuario `ses-smtp-user.…`.
+- [ ] **Si hiciste el capítulo 14**: en IAM, los roles y las políticas
+      `aula-virtual-demo-gha-api` y `aula-virtual-demo-gha-web`, y el proveedor
+      `token.actions.githubusercontent.com` en **Identity providers**; en **Systems Manager →
+      Documents → Owned by me**, `aula-virtual-deploy`. En GitHub, borra el entorno `demo` de
+      los dos repos: sin él, un **Run workflow** falla enseguida en vez de intentar entrar en
+      una cuenta vacía.
 - [ ] **WAF**: si al borrar CloudFront quedó una *Web ACL* suelta en **WAF & Shield**
       (región *Global*), bórrala.
 - [ ] **Tu proveedor DNS**: los CNAME de `aula`, `api`, y los de validación de ACM. Si vas a hacer el capítulo 12 enseguida, puedes dejarlos.

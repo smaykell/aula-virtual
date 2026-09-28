@@ -49,6 +49,10 @@ quién por la red), **Parameter Store** (los secretos) y **ACM** (los certificad
 | 11 | [Prueba de punta a punta](11-prueba-final.md) | depurar un sistema entero | 30 min |
 | 12 | [Infraestructura como código](12-infraestructura-como-codigo.md) | Terraform o CDK | a tu ritmo |
 | 13 | [Apagarlo todo](13-apagado.md) | no pagar lo que no usas | 20 min |
+| 14 | [Despliegue continuo con GitHub Actions](14-despliegue-continuo.md) | OIDC, SSM Run Command, CI/CD | 60 min |
+
+El 14 va al final porque es opcional, pero se hace **antes** de apagar: en cuanto el 11
+pase entero.
 
 ## Cómo está escrito cada capítulo
 

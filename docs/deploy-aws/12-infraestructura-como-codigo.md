@@ -46,6 +46,7 @@ cada `apply`:
 | 08 | `aws_acm_certificate`, `aws_lb`, `aws_lb_target_group`, `aws_lb_listener` |
 | 09 | `aws_sesv2_email_identity` |
 | 10 | `aws_cloudfront_origin_access_control`, `aws_cloudfront_distribution`, `aws_s3_bucket_policy` |
+| 14 | `aws_iam_openid_connect_provider`, `aws_ssm_document` y los dos roles de GitHub. Los entornos de GitHub, con el proveedor `integrations/github` (`github_repository_environment`, `github_actions_environment_variable`) |
 
 Tres cosas que el código **no** puede hacer solo, porque tu DNS está fuera de AWS:
 
