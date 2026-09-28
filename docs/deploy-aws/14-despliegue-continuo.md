@@ -213,8 +213,25 @@ Lo que no es obvio:
 | `RunOnlyTheDeployDocument` | `SendCommand` necesita permiso **sobre las dos cosas**: el documento que ejecuta y la instancia donde lo ejecuta. Como solo nombra `aula-virtual-deploy`, no puede usar `AWS-RunShellScript`, el documento de AWS que ejecuta cualquier comando. |
 | `ReadCommandResult` | leer si el comando terminó y qué imprimió. Esta acción no admite restringir por recurso: el `*` es obligatorio, y solo sirve para leer. |
 
+Antes del rol, averigua **cómo firma GitHub el `sub` de tu repo**, porque tiene dos formatos:
+
+```powershell
+gh api repos/smaykell/aula-virtual/actions/oidc/customization/sub
+```
+
+Mira el campo `sub_claim_prefix`:
+
+| Si dice | Tu `<prefijo-sub>` es |
+|---|---|
+| `repo:smaykell@55010754/aula-virtual@1376177519` (con `@` y números) | ese mismo texto. Es el formato **inmutable**: lleva el ID del dueño y el del repo. |
+| no aparece, o `repo:smaykell/aula-virtual` | `repo:smaykell/aula-virtual`, el formato clásico. |
+
+> **¿Por qué hay dos?** Con el nombre solo, si borras o renombras el repo y alguien crea otro
+> con el mismo nombre, sus workflows cumplirían tu *trust policy*. Los IDs numéricos no se
+> reutilizan nunca. Si tu repo usa el inmutable, déjalo así: es más seguro.
+
 - [ ] **IAM** → **Roles** → **Create role** → **Trusted entity type**: **Custom trust policy**,
-      y pega (con tu `<cuenta>`):
+      y pega (con tu `<cuenta>` y tu `<prefijo-sub>`):
 
 ```json
 {
@@ -228,7 +245,7 @@ Lo que no es obvio:
     "Condition": {
       "StringEquals": {
         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-        "token.actions.githubusercontent.com:sub": "repo:smaykell/aula-virtual:environment:demo"
+        "token.actions.githubusercontent.com:sub": "<prefijo-sub>:environment:demo"
       }
     }
   }]
@@ -280,8 +297,9 @@ Lo que no es obvio:
 `aws s3 sync` necesita **listar** para saber qué ha cambiado y qué sobra (`--delete`). El
 ARN de CloudFront no lleva región, porque CloudFront es un servicio global.
 
-- [ ] Rol `aula-virtual-demo-gha-web`: la misma *trust policy* del 14.4 con
-      `"repo:smaykell/aula-virtual-web:environment:demo"` y esta política. Anota su **ARN**.
+- [ ] Rol `aula-virtual-demo-gha-web`: la misma *trust policy* del 14.4, con el
+      `<prefijo-sub>` **de `aula-virtual-web`** (el mismo `gh api …` con ese repo; su ID es
+      distinto) y esta política. Anota su **ARN**.
 
 ### 14.6 El entorno `demo` en cada repo
 
@@ -562,8 +580,11 @@ front no guarda versiones: para volver atrás, `git revert` y otro **Run workflo
 ## Si algo falla
 
 - **`Could not assume role with OIDC: Not authorized to perform sts:AssumeRoleWithWebIdentity`**:
-  el `sub` de la *trust policy* no coincide con el token. Revisa, letra a letra, el dueño y
-  el nombre del repo, que diga `environment:demo` y que el job lleve `environment: demo`.
+  el `sub` de la *trust policy* no coincide con el token. Lo más probable es el formato: si
+  `gh api repos/<dueño>/<repo>/actions/oidc/customization/sub` devuelve un
+  `sub_claim_prefix` con `@` y números, el `sub` tiene que llevarlos (apartado 14.4); con
+  `repo:smaykell/aula-virtual:…` no coincide. Si el formato está bien, revisa letra a
+  letra que diga `:environment:demo` y que el job lleve `environment: demo`.
 - **`Retry validateCredentials: attempt N of 12 failed: Credentials could not be loaded … from
   any providers`**: la acción no recibió ningún rol. Mira el bloque `with:` del paso en el
   log: si no aparece `role-to-assume`, `vars.AWS_ROLE_ARN` llegó vacía. Casi siempre es que
