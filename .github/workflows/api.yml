@@ -1,0 +1,93 @@
+name: API
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: aula_virtual
+          POSTGRES_PASSWORD: aula_virtual
+          POSTGRES_DB: aula_virtual_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aula_virtual -d aula_virtual_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - run: ./gradlew build
+      - name: El test de contexto corrio contra Postgres
+        run: grep -q 'skipped="0"' build/test-results/test/TEST-io.github.smaykell.aulavirtual.AulaVirtualApplicationTests.xml
+      - if: github.event_name == 'workflow_dispatch'
+        run: cp build/libs/*-SNAPSHOT.jar aula-virtual.jar
+      - if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: jar
+          path: aula-virtual.jar
+          retention-days: 1
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: demo
+    concurrency: deploy-demo-api
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      KEY: releases/${{ github.sha }}.jar
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: jar
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Sube el jar
+        run: aws s3 cp aula-virtual.jar "s3://${{ vars.DEPLOY_BUCKET }}/$KEY"
+      - name: Despliega en el servidor
+        env:
+          INSTANCE_ID: ${{ vars.INSTANCE_ID }}
+        run: |
+          id=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name aula-virtual-deploy \
+            --parameters "key=$KEY" \
+            --comment "aula-virtual ${GITHUB_SHA::7}" \
+            --query Command.CommandId --output text)
+          status=Pending
+          for _ in $(seq 1 60); do
+            sleep 5
+            status=$(aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$status" in Success|Failed|Cancelled|TimedOut) break ;; esac
+          done
+          aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE_ID" \
+            --query '[StandardOutputContent,StandardErrorContent]' --output text
+          test "$status" = Success
+      - name: Responde a traves del balanceador
+        run: |
+          for _ in $(seq 1 12); do
+            curl -sf "${{ vars.API_URL }}/actuator/health" && exit 0
+            sleep 10
+          done
+          exit 1
