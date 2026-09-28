@@ -564,7 +564,13 @@ front no guarda versiones: para volver atrás, `git revert` y otro **Run workflo
 - **`Could not assume role with OIDC: Not authorized to perform sts:AssumeRoleWithWebIdentity`**:
   el `sub` de la *trust policy* no coincide con el token. Revisa, letra a letra, el dueño y
   el nombre del repo, que diga `environment:demo` y que el job lleve `environment: demo`.
-  Si falta `id-token: write`, el error es otro: *Credentials could not be loaded*.
+- **`Retry validateCredentials: attempt N of 12 failed: Credentials could not be loaded … from
+  any providers`**: la acción no recibió ningún rol. Mira el bloque `with:` del paso en el
+  log: si no aparece `role-to-assume`, `vars.AWS_ROLE_ARN` llegó vacía. Casi siempre es que
+  se creó en **Environment secrets** en lugar de **Environment variables** (están en la
+  misma página y los botones se parecen). `vars.` no ve los *secrets*: créalas como
+  variables y borra los *secrets*. Si `role-to-assume` sí aparece, lo que falta es
+  `id-token: write` en el job.
 - **`./gradlew: Permission denied`**: falta el `git update-index --chmod=+x gradlew` del
   apartado 14.7.
 - **El paso *El test de contexto corrio contra Postgres* falla**: el test se omitió. Casi
