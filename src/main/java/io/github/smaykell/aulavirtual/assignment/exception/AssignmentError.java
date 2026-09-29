@@ -12,7 +12,7 @@ public enum AssignmentError implements ErrorCode {
     DEADLINE_PASSED(HttpStatus.CONFLICT,
             "La fecha límite ya pasó y esta tarea no admite entregas tardías"),
     ALREADY_GRADED(HttpStatus.CONFLICT,
-            "La entrega ya fue calificada y no admite cambios"),
+            "La nota de esta entrega ya se devolvió y la entrega no admite cambios"),
     HAS_WORK(HttpStatus.CONFLICT,
             "La tarea ya tiene entregas o notas y no se puede eliminar");
 

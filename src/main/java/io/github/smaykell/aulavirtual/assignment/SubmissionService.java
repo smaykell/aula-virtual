@@ -39,7 +39,8 @@ public class SubmissionService {
             SubmissionData data) {
 
         Assignment assignment = assignmentService.existing(assignmentId);
-        UUID studentId = studentSubmitting(actorUsername, assignment);
+        CourseMember student = studentSubmitting(actorUsername, assignment);
+        UUID studentId = student.studentId();
         requireSomethingToHandIn(data);
 
         Instant now = clock.instant();
@@ -47,7 +48,7 @@ public class SubmissionService {
             throw new DeadlinePassedException();
         }
 
-        return responseFor(submissionRepository
+        return responseFor(student, submissionRepository
                 .findByAssignmentIdAndStudentId(assignmentId, studentId)
                 .map(submission -> handInAgain(submission, data, assignment, now))
                 .orElseGet(() -> submissionRepository.save(Submission.of(assignmentId, studentId,
@@ -66,8 +67,8 @@ public class SubmissionService {
                 .map(Submission::getStudentId)
                 .toList();
         Map<UUID, StudentSummary> students = studentService.summariesOf(studentIds);
-        Map<UUID, GradeResponse> grades = gradeService.ofStudents(GradeSource.ASSIGNMENT,
-                assignmentId, studentIds);
+        Map<UUID, GradeResponse> grades = gradeService.visibleTo(member,
+                GradeSource.ASSIGNMENT, assignmentId, studentIds);
 
         return PageResponse.of(submissions, submission -> SubmissionResponse.from(submission,
                 students.get(submission.getStudentId()), grades.get(submission.getStudentId())));
@@ -83,12 +84,12 @@ public class SubmissionService {
         return submission;
     }
 
-    private UUID studentSubmitting(String actorUsername, Assignment assignment) {
+    private CourseMember studentSubmitting(String actorUsername, Assignment assignment) {
         CourseMember member = assignmentService.memberFor(actorUsername, assignment);
         if (member.studentId() == null) {
             throw new OnlyStudentsSubmitException();
         }
-        return member.studentId();
+        return member;
     }
 
     private Page<Submission> submissionsFor(CourseMember member, UUID assignmentId,
@@ -103,11 +104,11 @@ public class SubmissionService {
                 : submissionRepository.findByAssignmentIdAndStatus(assignmentId, status, pageable);
     }
 
-    private SubmissionResponse responseFor(Submission submission) {
+    private SubmissionResponse responseFor(CourseMember member, Submission submission) {
         UUID studentId = submission.getStudentId();
         return SubmissionResponse.from(submission, studentService.summaryOf(studentId),
-                gradeService.ofStudents(GradeSource.ASSIGNMENT, submission.getAssignmentId(),
-                        List.of(studentId)).get(studentId));
+                gradeService.visibleTo(member, GradeSource.ASSIGNMENT,
+                        submission.getAssignmentId(), List.of(studentId)).get(studentId));
     }
 
     private static SubmissionStatus statusAt(Assignment assignment, Instant moment) {

@@ -81,7 +81,7 @@ class GradeControllerTest {
         return new GradeResponse(UUID.randomUUID(), GradeSource.ASSIGNMENT, UUID.randomUUID(),
                 UUID.randomUUID(), COURSE, new BigDecimal("18.00"), new BigDecimal("20.00"),
                 "Buen trabajo",
-                Instant.EPOCH);
+                Instant.EPOCH, Instant.EPOCH);
     }
 
     private String bearerFor(Role role) {

@@ -15,11 +15,12 @@ public record GradeResponse(
         BigDecimal score,
         BigDecimal maxScore,
         String feedback,
-        Instant gradedAt) {
+        Instant gradedAt,
+        Instant returnedAt) {
 
     public static GradeResponse from(Grade grade) {
         return new GradeResponse(grade.getId(), grade.getSourceType(), grade.getSourceId(),
                 grade.getStudentId(), grade.getCourseId(), grade.getScore(), grade.getMaxScore(),
-                grade.getFeedback(), grade.getGradedAt());
+                grade.getFeedback(), grade.getGradedAt(), grade.getReturnedAt());
     }
 }

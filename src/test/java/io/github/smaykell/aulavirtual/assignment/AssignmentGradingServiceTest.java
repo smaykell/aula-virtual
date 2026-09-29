@@ -7,9 +7,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.assignment.dto.GradeData;
+import io.github.smaykell.aulavirtual.assignment.dto.HandBackRequest;
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.exception.StudentNotEnrolledException;
@@ -19,7 +21,7 @@ import io.github.smaykell.aulavirtual.gradebook.dto.GradeEntry;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradeResponse;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,24 +59,8 @@ class AssignmentGradingServiceTest {
     }
 
     @Test
-    void grading_a_submission_leaves_it_graded() {
-        Assignment assignment = givenTheWritableAssignment();
-        Submission submission = AssignmentFixtures.submission(assignment.getId(), STUDENT,
-                AssignmentFixtures.NOW, SubmissionStatus.SUBMITTED);
-        when(submissionRepository.findByAssignmentIdAndStudentId(assignment.getId(), STUDENT))
-                .thenReturn(Optional.of(submission));
-        when(gradeService.record(eq("juan"), any(GradeEntry.class))).thenReturn(aGrade());
-
-        gradingService.grade("juan", assignment.getId(), STUDENT, EIGHTEEN);
-
-        assertThat(submission.isGraded()).isTrue();
-    }
-
-    @Test
     void a_student_who_handed_nothing_in_is_graded_all_the_same() {
         Assignment assignment = givenTheWritableAssignment();
-        when(submissionRepository.findByAssignmentIdAndStudentId(assignment.getId(), STUDENT))
-                .thenReturn(Optional.empty());
         when(gradeService.record(eq("juan"), any(GradeEntry.class))).thenReturn(aGrade());
 
         GradeResponse grade = gradingService.grade("juan", assignment.getId(), STUDENT,
@@ -86,8 +72,6 @@ class AssignmentGradingServiceTest {
     @Test
     void the_grade_is_recorded_against_the_task_its_course_and_its_maximum() {
         Assignment assignment = givenTheWritableAssignment();
-        when(submissionRepository.findByAssignmentIdAndStudentId(assignment.getId(), STUDENT))
-                .thenReturn(Optional.empty());
         ArgumentCaptor<GradeEntry> entry = ArgumentCaptor.forClass(GradeEntry.class);
         when(gradeService.record(eq("juan"), entry.capture())).thenReturn(aGrade());
 
@@ -111,6 +95,34 @@ class AssignmentGradingServiceTest {
         verify(gradeService, never()).record(any(), any());
     }
 
+    @Test
+    void grading_leaves_the_submission_open_until_the_grade_is_handed_back() {
+        Assignment assignment = givenTheWritableAssignment();
+        when(gradeService.record(eq("juan"), any(GradeEntry.class))).thenReturn(aGrade());
+
+        gradingService.grade("juan", assignment.getId(), STUDENT, EIGHTEEN);
+
+        verifyNoInteractions(submissionRepository);
+    }
+
+    @Test
+    void handing_back_closes_the_submissions_of_the_students_who_got_their_grade() {
+        Assignment assignment = givenTheWritableAssignment();
+        UUID withoutGrade = UUID.randomUUID();
+        Submission submission = AssignmentFixtures.submission(assignment.getId(), STUDENT,
+                AssignmentFixtures.NOW, SubmissionStatus.SUBMITTED);
+        when(gradeService.handBack(GradeSource.ASSIGNMENT, assignment.getId(),
+                List.of(STUDENT, withoutGrade))).thenReturn(List.of(aGrade()));
+        when(submissionRepository.findByAssignmentIdAndStudentIdIn(assignment.getId(),
+                List.of(STUDENT))).thenReturn(List.of(submission));
+
+        List<GradeResponse> returned = gradingService.handBack("juan", assignment.getId(),
+                new HandBackRequest(List.of(STUDENT, withoutGrade)));
+
+        assertThat(returned).extracting(GradeResponse::studentId).containsExactly(STUDENT);
+        assertThat(submission.isGraded()).isTrue();
+    }
+
     private Assignment givenTheWritableAssignment() {
         Assignment assignment = AssignmentFixtures.assignment();
         when(assignmentService.writable("juan", assignment.getId())).thenReturn(assignment);
@@ -120,6 +132,6 @@ class AssignmentGradingServiceTest {
     private static GradeResponse aGrade() {
         return new GradeResponse(UUID.randomUUID(), GradeSource.ASSIGNMENT, UUID.randomUUID(),
                 STUDENT, COURSE, new BigDecimal("18.00"), AssignmentFixtures.MAX_SCORE,
-                "Buen trabajo", Instant.EPOCH);
+                "Buen trabajo", Instant.EPOCH, Instant.EPOCH);
     }
 }

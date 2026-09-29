@@ -17,6 +17,7 @@ public final class AssignmentConstraints {
     public static final String LATE_REQUIRED = "hay que decidir si se admiten entregas tardías";
     public static final String SCORE_REQUIRED = "la nota es obligatoria";
     public static final String SCORE_NOT_NEGATIVE = "no puede ser negativa";
+    public static final String STUDENTS_REQUIRED = "indica a qué estudiantes devolver la nota";
 
     private AssignmentConstraints() {
     }

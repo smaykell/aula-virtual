@@ -74,14 +74,16 @@ class GradeServiceTest {
     }
 
     @Test
-    void the_student_only_reads_its_own_grades() {
+    void the_student_only_reads_its_own_grades_and_only_once_handed_back() {
         when(courseService.memberOf("ana.estudiante", COURSE))
                 .thenReturn(new CourseMember(COURSE, false, STUDENT));
         when(gradeRepository.findByCourseIdAndStudentIdOrderByGradedAtDesc(COURSE, STUDENT))
-                .thenReturn(List.of(grade(new BigDecimal("14.50"))));
+                .thenReturn(List.of(returned(new BigDecimal("14.50")),
+                        grade(new BigDecimal("9.00"))));
 
         assertThat(gradeService.ofCourse("ana.estudiante", COURSE)).singleElement()
-                .satisfies(found -> assertThat(found.studentId()).isEqualTo(STUDENT));
+                .satisfies(found -> assertThat(found.score())
+                        .isEqualTo(new BigDecimal("14.50")));
         verify(gradeRepository, never()).findByCourseIdOrderByGradedAtDesc(COURSE);
     }
 
@@ -140,14 +142,39 @@ class GradeServiceTest {
     }
 
     @Test
-    void the_grades_of_an_item_come_keyed_by_student() {
+    void the_staff_sees_a_draft_grade_keyed_by_student() {
         when(gradeRepository.findBySourceTypeAndSourceIdAndStudentIdIn(GradeSource.ASSIGNMENT,
                 ASSIGNMENT, List.of(STUDENT))).thenReturn(List.of(grade(new BigDecimal("11.00"))));
 
-        Map<UUID, GradeResponse> grades = gradeService.ofStudents(GradeSource.ASSIGNMENT,
-                ASSIGNMENT, List.of(STUDENT));
+        Map<UUID, GradeResponse> grades = gradeService.visibleTo(
+                new CourseMember(COURSE, true, null), GradeSource.ASSIGNMENT, ASSIGNMENT,
+                List.of(STUDENT));
 
         assertThat(grades.get(STUDENT).score()).isEqualTo(new BigDecimal("11.00"));
+        assertThat(grades.get(STUDENT).returnedAt()).isNull();
+    }
+
+    @Test
+    void the_student_does_not_see_a_draft_grade() {
+        when(gradeRepository.findBySourceTypeAndSourceIdAndStudentIdIn(GradeSource.ASSIGNMENT,
+                ASSIGNMENT, List.of(STUDENT))).thenReturn(List.of(grade(new BigDecimal("11.00"))));
+
+        assertThat(gradeService.visibleTo(new CourseMember(COURSE, false, STUDENT),
+                GradeSource.ASSIGNMENT, ASSIGNMENT, List.of(STUDENT))).isEmpty();
+    }
+
+    @Test
+    void handing_back_keeps_the_first_moment_a_grade_was_returned() {
+        Grade draft = grade(new BigDecimal("16.00"));
+        Grade earlier = returned(new BigDecimal("12.00"));
+        Instant firstReturn = earlier.getReturnedAt();
+        when(gradeRepository.findBySourceTypeAndSourceIdAndStudentIdIn(GradeSource.ASSIGNMENT,
+                ASSIGNMENT, List.of(STUDENT))).thenReturn(List.of(draft, earlier));
+
+        gradeService.handBack(GradeSource.ASSIGNMENT, ASSIGNMENT, List.of(STUDENT));
+
+        assertThat(draft.getReturnedAt()).isEqualTo(NOW);
+        assertThat(earlier.getReturnedAt()).isEqualTo(firstReturn);
     }
 
     private void givenTheTeacherGrades() {
@@ -158,6 +185,12 @@ class GradeServiceTest {
     private static GradeEntry entry(BigDecimal score, String feedback) {
         return new GradeEntry(GradeSource.ASSIGNMENT, ASSIGNMENT, COURSE, STUDENT, MAX_SCORE,
                 score, feedback);
+    }
+
+    private static Grade returned(BigDecimal score) {
+        Grade grade = grade(score);
+        grade.handBack(NOW.minusSeconds(86400));
+        return grade;
     }
 
     private static Grade grade(BigDecimal score) {

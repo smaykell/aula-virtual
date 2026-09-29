@@ -10,10 +10,12 @@ import io.github.smaykell.aulavirtual.security.Actor;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.user.UserService;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,7 +38,10 @@ public class GradeService {
                 : gradeRepository.findByCourseIdAndStudentIdOrderByGradedAtDesc(courseId,
                         member.studentId());
 
-        return grades.stream().map(GradeResponse::from).toList();
+        return grades.stream()
+                .filter(visibleTo(member))
+                .map(GradeResponse::from)
+                .toList();
     }
 
     @Transactional
@@ -57,17 +62,33 @@ public class GradeService {
     }
 
     @Transactional(readOnly = true)
-    public Map<UUID, GradeResponse> ofStudents(GradeSource sourceType, UUID sourceId,
-            Collection<UUID> studentIds) {
+    public Map<UUID, GradeResponse> visibleTo(CourseMember member, GradeSource sourceType,
+            UUID sourceId, Collection<UUID> studentIds) {
 
         return gradeRepository.findBySourceTypeAndSourceIdAndStudentIdIn(sourceType, sourceId,
                         studentIds).stream()
+                .filter(visibleTo(member))
                 .collect(Collectors.toMap(Grade::getStudentId, GradeResponse::from));
+    }
+
+    @Transactional
+    public List<GradeResponse> handBack(GradeSource sourceType, UUID sourceId,
+            Collection<UUID> studentIds) {
+
+        Instant now = clock.instant();
+        List<Grade> grades = gradeRepository.findBySourceTypeAndSourceIdAndStudentIdIn(
+                sourceType, sourceId, studentIds);
+        grades.forEach(grade -> grade.handBack(now));
+        return grades.stream().map(GradeResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
     public boolean anyFor(GradeSource sourceType, UUID sourceId) {
         return gradeRepository.existsBySourceTypeAndSourceId(sourceType, sourceId);
+    }
+
+    private static Predicate<Grade> visibleTo(CourseMember member) {
+        return grade -> member.staff() || grade.isReturned();
     }
 
     private static void requireSomeoneElse(Actor grader, UUID studentId) {

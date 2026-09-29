@@ -47,6 +47,9 @@ public class Grade extends BaseEntity {
     @Column(name = "graded_at", nullable = false)
     private Instant gradedAt;
 
+    @Column(name = "returned_at")
+    private Instant returnedAt;
+
     private Grade(GradeSource sourceType, UUID sourceId, UUID studentId, UUID courseId) {
         this.sourceType = sourceType;
         this.sourceId = sourceId;
@@ -66,5 +69,15 @@ public class Grade extends BaseEntity {
         this.feedback = feedback == null || feedback.isBlank() ? null : feedback.trim();
         this.gradedBy = gradedBy;
         this.gradedAt = moment;
+    }
+
+    public void handBack(Instant moment) {
+        if (!isReturned()) {
+            this.returnedAt = moment;
+        }
+    }
+
+    public boolean isReturned() {
+        return returnedAt != null;
     }
 }

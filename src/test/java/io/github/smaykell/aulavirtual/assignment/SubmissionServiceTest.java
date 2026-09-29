@@ -168,7 +168,7 @@ class SubmissionServiceTest {
                 FIRST_PAGE)).thenReturn(new PageImpl<>(List.of(submission), FIRST_PAGE, 1));
         when(studentService.summariesOf(List.of(STUDENT)))
                 .thenReturn(Map.of(STUDENT, AssignmentFixtures.student(STUDENT)));
-        when(gradeService.ofStudents(eq(GradeSource.ASSIGNMENT), any(), any())).thenReturn(Map.of());
+        when(gradeService.visibleTo(any(), eq(GradeSource.ASSIGNMENT), any(), any())).thenReturn(Map.of());
 
         PageResponse<SubmissionResponse> page = submissionService.list("ana.estudiante",
                 assignment.getId(), null, FIRST_PAGE);
@@ -210,7 +210,7 @@ class SubmissionServiceTest {
 
     private void givenTheStudentAndItsGrades() {
         when(studentService.summaryOf(STUDENT)).thenReturn(AssignmentFixtures.student(STUDENT));
-        when(gradeService.ofStudents(eq(GradeSource.ASSIGNMENT), any(), any())).thenReturn(Map.of());
+        when(gradeService.visibleTo(any(), eq(GradeSource.ASSIGNMENT), any(), any())).thenReturn(Map.of());
     }
 
     private void givenTheSubmissionIsStored() {
