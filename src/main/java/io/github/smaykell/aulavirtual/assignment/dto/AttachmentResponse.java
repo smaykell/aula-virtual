@@ -8,13 +8,14 @@ public record AttachmentResponse(
         UUID id,
         AttachmentKind kind,
         String title,
+        String storageKey,
         String externalUrl,
         String contentType,
         Long size) {
 
     public static AttachmentResponse from(Attachment attachment) {
         return new AttachmentResponse(attachment.getId(), attachment.getKind(),
-                attachment.getTitle(), attachment.getExternalUrl(), attachment.getContentType(),
-                attachment.getSizeBytes());
+                attachment.getTitle(), attachment.getStorageKey(), attachment.getExternalUrl(),
+                attachment.getContentType(), attachment.getSizeBytes());
     }
 }
