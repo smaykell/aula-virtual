@@ -736,6 +736,9 @@ Backblaze B2) es cambiar esas variables, no el código.
 El despliegue completo de una demo (EC2, RDS, S3, CloudFront y SES) está explicado paso a
 paso en [`docs/deploy-aws`](docs/deploy-aws/README.md).
 
+Cómo se numeran las versiones de este repo y del front, y cómo se publica una beta con
+Git Flow: [`docs/versioning.md`](docs/versioning.md).
+
 ## Errores
 
 Todos los errores comparten el mismo cuerpo:
