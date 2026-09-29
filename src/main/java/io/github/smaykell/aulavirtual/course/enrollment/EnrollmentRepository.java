@@ -31,6 +31,14 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
             @Param("status") EnrollmentStatus status,
             @Param("courseIds") Collection<UUID> courseIds);
 
+    @Query("""
+            select e.studentId from Enrollment e
+            where e.courseId = :courseId
+              and e.status = :status
+            """)
+    List<UUID> findStudentIdsByCourseIdAndStatus(@Param("courseId") UUID courseId,
+            @Param("status") EnrollmentStatus status);
+
     Page<Enrollment> findByCourseId(UUID courseId, Pageable pageable);
 
     Page<Enrollment> findByCourseIdAndStatus(UUID courseId, EnrollmentStatus status,

@@ -5,6 +5,7 @@ import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -13,16 +14,19 @@ final class AssignmentFixtures {
     static final Instant NOW = Instant.parse("2026-04-10T09:00:00Z");
     static final Instant DUE_AT = Instant.parse("2026-04-20T23:59:00Z");
     static final BigDecimal MAX_SCORE = new BigDecimal("20.00");
+    static final UUID UNIT = UUID.randomUUID();
+    static final UUID COURSE = UUID.randomUUID();
 
     private AssignmentFixtures() {
     }
 
-    static Assignment assignment(UUID unitId) {
-        return assignment(unitId, DUE_AT, false);
+    static Assignment assignment() {
+        return assignment(DUE_AT, false);
     }
 
-    static Assignment assignment(UUID unitId, Instant dueAt, boolean allowsLate) {
-        return withId(Assignment.create(unitId, data(dueAt, allowsLate)), UUID.randomUUID());
+    static Assignment assignment(Instant dueAt, boolean allowsLate) {
+        return withId(Assignment.create(UNIT, COURSE, data(dueAt, allowsLate)),
+                UUID.randomUUID());
     }
 
     static AssignmentData data() {
@@ -30,8 +34,12 @@ final class AssignmentFixtures {
     }
 
     static AssignmentData data(Instant dueAt, boolean allowsLate) {
+        return data(dueAt, allowsLate, null);
+    }
+
+    static AssignmentData data(Instant dueAt, boolean allowsLate, UUID categoryId) {
         return new AssignmentData("Practica 1", "Resuelve los ejercicios del capitulo 2",
-                dueAt, MAX_SCORE, allowsLate, null);
+                dueAt, MAX_SCORE, allowsLate, List.of(), categoryId);
     }
 
     static Submission submission(UUID assignmentId, UUID studentId, Instant moment,
@@ -42,7 +50,7 @@ final class AssignmentFixtures {
     }
 
     static SubmissionData text(String text) {
-        return new SubmissionData(null, text);
+        return new SubmissionData(text, List.of());
     }
 
     static StudentSummary student(UUID studentId) {

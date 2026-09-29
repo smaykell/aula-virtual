@@ -1,11 +1,14 @@
 package io.github.smaykell.aulavirtual.assignment;
 
-import io.github.smaykell.aulavirtual.assignment.dto.GradeData;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentUploadRequest;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentUploadResponse;
+import io.github.smaykell.aulavirtual.assignment.dto.StudentWorkResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionResponse;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.security.Permission;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SubmissionController {
 
     private final SubmissionService submissionService;
+    private final StudentWorkService studentWorkService;
 
     @PostMapping("/assignments/{id}/$submit")
     @PreAuthorize("hasAuthority('" + Permission.Name.SUBMISSIONS_CREATE + "')")
@@ -31,6 +35,14 @@ public class SubmissionController {
             @Valid @RequestBody SubmissionData request) {
 
         return submissionService.submit(authentication.getName(), id, request);
+    }
+
+    @PostMapping("/assignments/{id}/$upload")
+    @PreAuthorize("hasAuthority('" + Permission.Name.SUBMISSIONS_CREATE + "')")
+    public AttachmentUploadResponse prepareUpload(Authentication authentication,
+            @PathVariable UUID id, @Valid @RequestBody AttachmentUploadRequest request) {
+
+        return submissionService.prepareUpload(authentication.getName(), id, request);
     }
 
     @GetMapping("/assignments/{id}/submissions")
@@ -43,11 +55,9 @@ public class SubmissionController {
         return submissionService.list(authentication.getName(), id, status, pageable);
     }
 
-    @PostMapping("/submissions/{id}/$grade")
-    @PreAuthorize("hasAuthority('" + Permission.Name.ASSIGNMENTS_UPDATE + "')")
-    public SubmissionResponse grade(Authentication authentication, @PathVariable UUID id,
-            @Valid @RequestBody GradeData request) {
-
-        return submissionService.grade(authentication.getName(), id, request);
+    @GetMapping("/assignments/{id}/work")
+    @PreAuthorize("hasAuthority('" + Permission.Name.ASSIGNMENTS_READ + "')")
+    public List<StudentWorkResponse> work(Authentication authentication, @PathVariable UUID id) {
+        return studentWorkService.of(authentication.getName(), id);
     }
 }

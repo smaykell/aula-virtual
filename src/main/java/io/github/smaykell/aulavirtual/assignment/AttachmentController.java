@@ -1,8 +1,7 @@
 package io.github.smaykell.aulavirtual.assignment;
 
-import io.github.smaykell.aulavirtual.assignment.dto.GradeResponse;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentDownloadResponse;
 import io.github.smaykell.aulavirtual.security.Permission;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,15 +12,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-public class GradeController {
+public class AttachmentController {
 
-    private final GradeService gradeService;
+    private final AttachmentDownloadService downloadService;
 
-    @GetMapping("/courses/{courseId}/grades")
+    @GetMapping("/attachments/{id}/$download")
     @PreAuthorize("hasAuthority('" + Permission.Name.ASSIGNMENTS_READ + "')")
-    public List<GradeResponse> ofCourse(Authentication authentication,
-            @PathVariable UUID courseId) {
+    public AttachmentDownloadResponse download(Authentication authentication,
+            @PathVariable UUID id) {
 
-        return gradeService.ofCourse(authentication.getName(), courseId);
+        return downloadService.download(authentication.getName(), id);
     }
 }

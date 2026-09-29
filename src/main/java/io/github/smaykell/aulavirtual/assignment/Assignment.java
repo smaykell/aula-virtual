@@ -21,6 +21,9 @@ public class Assignment extends BaseEntity {
     @Column(name = "unit_id", nullable = false, updatable = false)
     private UUID unitId;
 
+    @Column(name = "course_id", nullable = false, updatable = false)
+    private UUID courseId;
+
     @Column(name = "title", nullable = false, length = 150)
     private String title;
 
@@ -36,16 +39,17 @@ public class Assignment extends BaseEntity {
     @Column(name = "allows_late", nullable = false)
     private boolean allowsLate;
 
-    @Column(name = "attachment_key", length = 255)
-    private String attachmentKey;
+    @Column(name = "category_id")
+    private UUID categoryId;
 
-    private Assignment(UUID unitId, AssignmentData data) {
+    private Assignment(UUID unitId, UUID courseId, AssignmentData data) {
         this.unitId = unitId;
+        this.courseId = courseId;
         update(data);
     }
 
-    public static Assignment create(UUID unitId, AssignmentData data) {
-        return new Assignment(unitId, data);
+    public static Assignment create(UUID unitId, UUID courseId, AssignmentData data) {
+        return new Assignment(unitId, courseId, data);
     }
 
     public final void update(AssignmentData data) {
@@ -54,7 +58,7 @@ public class Assignment extends BaseEntity {
         this.dueAt = data.dueAt();
         this.maxScore = data.maxScore();
         this.allowsLate = data.allowsLate();
-        this.attachmentKey = trimmed(data.attachmentKey());
+        this.categoryId = data.categoryId();
     }
 
     public boolean isLate(Instant moment) {
@@ -63,10 +67,6 @@ public class Assignment extends BaseEntity {
 
     public boolean acceptsAt(Instant moment) {
         return allowsLate || !isLate(moment);
-    }
-
-    public boolean accepts(BigDecimal score) {
-        return score.signum() >= 0 && score.compareTo(maxScore) <= 0;
     }
 
     private static String trimmed(String value) {

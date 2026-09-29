@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
 
     List<Assignment> findByUnitIdOrderByDueAt(UUID unitId);
+
+    List<Assignment> findByCourseIdOrderByDueAt(UUID courseId);
 }
