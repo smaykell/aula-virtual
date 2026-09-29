@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'io.github.smaykell'
-version = '1.0.0-M1'
+version = '1.0.0-M2'
 description = 'API REST del aula virtual'
 
 java {
@@ -77,4 +77,8 @@ tasks.named('test') {
 		events 'passed', 'skipped', 'failed'
 		showStandardStreams = false
 	}
+}
+
+tasks.named('jar') {
+	enabled = false
 }
