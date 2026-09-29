@@ -277,8 +277,11 @@ funcionan sin traducción.
 | `DELETE /api/assignments/{id}` | `assignments:update` | borra la tarea y devuelve 204 |
 | `POST /api/assignments/{id}/$submit` | `submissions:create` | el estudiante entrega, o reemplaza su entrega |
 | `GET /api/assignments/{id}/submissions` | `assignments:read` | las entregas: todas para el docente, la suya para el estudiante |
-| `POST /api/submissions/{id}/$grade` | `assignments:update` | califica la entrega con nota y retroalimentación |
-| `GET /api/courses/{id}/grades` | `assignments:read` | el consolidado de notas del curso |
+| `PUT /api/assignments/{id}/grades/{studentId}` | `assignments:update` | califica al estudiante, haya entregado o no; la nota nace en borrador |
+| `POST /api/assignments/{id}/grades/$return` | `assignments:update` | devuelve las notas de `{"studentIds"}` y cierra sus entregas |
+| `GET /api/courses/{id}/grading-scheme` | `courses:read` | cómo se calcula la nota final del curso |
+| `PUT /api/courses/{id}/grading-scheme` | `courses:update` | reemplaza el método, la aprobatoria y las categorías |
+| `GET /api/courses/{id}/gradebook` | `courses:read` | el registro de notas: todo el curso al staff, su fila al estudiante |
 
 Los verbos que no encajan en el CRUD van como sub-recurso con `$`
 (`POST /api/teachers/{id}/$disable`). Así el sustantivo sigue siendo el recurso y no
@@ -571,13 +574,13 @@ administra docentes.
 
 Las tareas son el **primer módulo que no vive dentro de `course`**: `assignment`
 tiene su propio catálogo (`ASG`) y le pregunta al de cursos lo que necesita saber, que es
-poco y está en tres métodos —`UnitService.courseOf`, `CourseService.memberOf` y
-`CourseService.requireWritable`—. `memberOf` es el que sostiene todo: responde **quién
+poco —`UnitService.courseOf`, `CourseService.memberOf`, `CourseService.requireWritable` y
+`CourseService.requireActiveStudent`—. `memberOf` es el que sostiene todo: responde **quién
 eres en este curso** (staff o estudiante, y cuál), y de ahí sale sin repetir reglas que el
 docente vea todas las entregas y el estudiante solo la suya.
 
-La tarea cuelga de una unidad y lleva fecha límite, puntaje máximo y si admite entregas
-tardías. Entregar es `POST /api/assignments/{id}/$submit` con un archivo, un texto o los
+La tarea cuelga de una unidad y lleva fecha límite, puntaje máximo, si admite entregas
+tardías y, opcionalmente, la categoría del curso en la que cuenta. Entregar es `POST /api/assignments/{id}/$submit` con un archivo, un texto o los
 dos, y el estado sale solo de la fecha:
 
 | Situación | Estado de la entrega |
@@ -587,20 +590,63 @@ dos, y el estado sale solo de la fecha:
 | fuera de plazo y no las admite | se rechaza con `ASG_DEADLINE_PASSED` |
 
 Hay **una entrega por (tarea, estudiante)**: volver a entregar reemplaza la que había, no
-acumula intentos —hasta que se califica, que es cuando se cierra
+acumula intentos —hasta que se devuelve su nota, que es cuando se cierra
 (`ASG_ALREADY_GRADED`)—. Una entrega sin archivo y sin texto no vale
-(`ASG_EMPTY_SUBMISSION`).
+(`ASG_EMPTY_SUBMISSION`). Una tarea que ya tiene entregas o notas no se borra
+(`ASG_HAS_WORK`).
 
-`POST /api/submissions/{id}/$grade` recibe `{"score", "feedback"}`; una nota fuera del
-rango de la tarea responde `ASG_SCORE_OUT_OF_RANGE` con el máximo en el mensaje.
+### Calificaciones y registro de notas
 
-**La calificación es una tabla aparte**, y no por gusto: guarda `sourceType`/`sourceId` en
-vez de apuntar a la entrega, de modo que el examen —que llega en la siguiente iteración—
-se enchufa reusando `GradeService.record(...)` sin tocar el esquema. `courseId` va
-desnormalizado en la fila porque es el filtro del consolidado: `GET /api/courses/{id}/grades`
-devuelve todo el curso al docente y solo sus notas al estudiante, con una consulta y sin
-importar de dónde salió cada nota. `gradedBy` queda en null cuando la corrección sea
-automática.
+Funciona como en Google Classroom. El docente **califica a cualquier estudiante
+matriculado**, haya entregado o no: `PUT /api/assignments/{id}/grades/{studentId}` con
+`{"score", "feedback"}`. Una nota fuera de rango responde `GRB_SCORE_OUT_OF_RANGE` y
+calificarse a uno mismo, `GRB_OWN_GRADE`. **La nota nace en borrador**: el estudiante no
+la ve hasta que el docente la devuelve con `POST /api/assignments/{id}/grades/$return`
+(`{"studentIds": [...]}`, varios a la vez). Mientras sea borrador, el alumno aún puede
+reentregar.
+
+Las notas viven en su propio módulo, `gradebook` (`GRB`), porque las pondrán también los
+exámenes. Cada nota guarda el máximo con el que se calificó, así que cambiar el puntaje de
+una tarea no altera las notas ya puestas.
+
+**Cada curso define cómo se calcula su nota final** con `PUT /api/courses/{id}/grading-scheme`:
+
+```json
+{
+  "method": "WEIGHTED",
+  "passingScore": 13,
+  "categories": [
+    {"id": null, "name": "Tareas", "weight": 30},
+    {"id": null, "name": "Exámenes", "weight": 50},
+    {"id": null, "name": "Participación", "weight": 20}
+  ]
+}
+```
+
+- `WEIGHTED`: cada categoría promedia sus tareas por puntos y la final pondera esos
+  promedios. Los pesos deben sumar 100 (`GRB_WEIGHTS_DO_NOT_ADD_UP`). Una categoría
+  todavía sin notas cede su peso a las demás, y las tareas sin categoría no cuentan.
+- `TOTAL_POINTS`: la suma de lo obtenido entre la suma de lo posible. Las categorías solo
+  agrupan.
+
+El PUT **reemplaza el esquema entero**: las categorías con `id` se conservan (y pueden
+renombrarse), las que faltan se borran —sus tareas quedan sin categoría— y las que vienen
+sin `id` se crean. El orden de la lista es el orden de las categorías. Un curso que nunca
+definió su esquema usa total de puntos y aprueba con 13.
+
+`GET /api/courses/{id}/gradebook` devuelve el esquema, las columnas (las tareas, por fecha
+límite) y una fila por estudiante activo, en orden alfabético. Cada fila trae sus notas, el
+promedio de cada categoría y la nota final, **siempre en escala 0–20**:
+
+| Campo | Qué es |
+|---|---|
+| `finalGrade.score` | la nota con dos decimales (`13.20`) |
+| `finalGrade.roundedScore` | el entero de acta, redondeando `.5` hacia arriba desde esos dos decimales |
+| `finalGrade.passed` | si el entero llega a la aprobatoria del curso |
+
+El estudiante recibe solo su fila y solo con las notas devueltas; el staff ve también los
+borradores, así que la final que ve el docente puede adelantarse a la del alumno. Sin
+ninguna nota, `finalGrade` es `null`.
 
 Los archivos de tarea y de entrega todavía viajan como una `storageKey` que la API no
 comprueba: subirlos y descargarlos como el material es el siguiente paso.

@@ -87,7 +87,7 @@ depende de `common` y `config`; si dos módulos necesitan hablarse lo hacen a tr
 
 **Esa regla ya no es solo prosa**: `ModuleBoundariesTest` lee las fuentes de `src/main` y
 falla si un módulo importa el repositorio o la entidad de otro. Va acompañado de tres
-comprobaciones contra sí mismo —que el escaneo encuentra los 15 repositorios, las 15
+comprobaciones contra sí mismo —que el escaneo encuentra los 17 repositorios, las 17
 entidades y que no confunde `BaseEntity` con una— porque un test que busca en ficheros
 pasa igual de verde si deja de mirar donde debe. No arregla nada hoy: impide retroceder
 mañana. Los sub-paquetes de un módulo son el mismo módulo, así que `course/enrollment`
@@ -368,14 +368,17 @@ la misma noción de pertenencia. `assignment` ya la necesitó y le bastó con pe
 `memberOf`, que es justo la prueba de que hoy no hace falta.
 
 **Tareas y calificaciones.** `assignment` es el primero que **no** vive dentro de
-`course`: tarea, entrega y calificación tienen su propio catálogo (`ASG`) y hablan con el
-módulo de cursos por servicio, que es la regla de slices. El contrato es de tres métodos y
-conviene que no crezca: `UnitService.courseOf`, `CourseService.requireWritable` y
-`CourseService.memberOf`, que devuelve un `CourseMember(courseId, staff, studentId)` —
-**quién eres en este curso**—. Ese record es lo que evita repetir la regla de alcance en
-cada servicio nuevo: si el módulo de exámenes necesita lo mismo, pide `memberOf` y ya.
+`course`: tarea y entrega tienen su propio catálogo (`ASG`) y hablan con el módulo de
+cursos por servicio, que es la regla de slices. El contrato conviene que no crezca:
+`UnitService.courseOf`, `CourseService.requireWritable`, `CourseService.memberOf`, que
+devuelve un `CourseMember(courseId, staff, studentId)` —**quién eres en este curso**—, y
+dos que trajo el registro de notas: `requireActiveStudent` (calificar a alguien exige que
+esté matriculado) y `activeStudentsOf` (las filas del registro). `CourseMember` es lo que
+evita repetir la regla de alcance en cada servicio nuevo: si el módulo de exámenes
+necesita lo mismo, pide `memberOf` y ya.
 
-De esos tres métodos, dos están en la raíz de `course` y el tercero no: `courseOf` vive
+La tarea guarda su `courseId` desnormalizado (la unidad no cambia de curso), así que
+`courseOf` solo hace falta al crearla o al listar por unidad. Y `courseOf` vive
 en `course/unit/UnitService`, así que hoy `assignment` **importa un sub-paquete de otro
 módulo**. No incumple la regla de slices —sigue siendo un *service*, y
 `ModuleBoundariesTest` solo prohíbe repositorios y entidades ajenos—, pero significa que
@@ -386,14 +389,43 @@ hizo antes porque `UnitService` es el dueño natural de esa pregunta y con un so
 consumidor la delegación era ceremonia.
 
 Una entrega por (tarea, estudiante): reentregar reemplaza la fila, no acumula intentos, y
-se cierra al calificar. El estado (`SUBMITTED`/`LATE`) lo decide la fecha contra
-`dueAt`, no el cliente.
+se cierra cuando **se devuelve** la nota, no cuando se pone. El estado (`SUBMITTED`/`LATE`)
+lo decide la fecha contra `dueAt`, no el cliente. Una tarea con entregas o notas no se
+borra (`ASG_HAS_WORK`): borrarla se llevaría el trabajo de los alumnos.
 
-`Grade` es polimórfica a propósito (`sourceType`/`sourceId`) y con `courseId`
-desnormalizado: es lo que permite que el consolidado del curso salga de una consulta y que
-el examen se enchufe reusando `GradeService.record(...)` sin migración nueva. `gradedBy`
-nulo significa corrección automática. Nadie califica una entrega propia (`ASG_OWN_GRADE`), y la
-guarda vive en `GradeService.record` para que el examen la herede sin repetirla.
+**Registro de notas.** Las notas son de `gradebook` (`GRB`), no de `assignment`, porque
+las pondrán también los exámenes: si vivieran en `assignment`, el examen dependería de
+las tareas para calificar. Cinco cosas que no se ven en un solo fichero:
+
+- **La nota cuelga del ítem y del alumno** —única por (`sourceType`, `sourceId`,
+  `studentId`)—, **no de la entrega**: es lo que permite calificar a quien no entregó
+  (`PUT /assignments/{id}/grades/{studentId}`). Guarda `maxScore` copiado al calificar,
+  para que cambiar el puntaje de la tarea no altere notas ya puestas. El rango y «nadie se
+  califica a sí mismo» (`GRB_OWN_GRADE`) viven en `GradeService.record`, que es lo que
+  hereda el examen. `gradedBy` nulo significa corrección automática.
+- **Borrador y devolución.** La nota nace con `returnedAt` nulo y el estudiante no la ve
+  hasta `$return`. La regla de quién ve qué es una sola, `GradeService.shownTo` —el
+  staff lo ve todo, el estudiante solo lo devuelto—, y la usan tanto las entregas como el
+  registro. Por eso la nota final que ve el docente incluye sus borradores y la del
+  alumno no.
+- **`gradebook` no conoce a `assignment`**: las columnas del registro le llegan por
+  `GradeItemProvider`, igual que los perfiles le llegan a `security`. La dependencia va de
+  `assignment` hacia `gradebook`; al revés sería un ciclo de beans. **El examen solo tiene
+  que publicar su proveedor.** Una nota cuyo ítem ya no existe no cuenta.
+- **El esquema es del curso** (`grading_schemes`, `grade_categories`): método
+  `WEIGHTED` o `TOTAL_POINTS` y nota aprobatoria. Un curso sin fila usa el de
+  `GradingScheme.byDefault` (total de puntos, 13), así que no hay que sembrar nada al
+  crear un curso —y `course` no tiene que conocer a `gradebook`—. El PUT reemplaza el
+  esquema entero; por eso la unicidad del nombre de categoría es diferida, como la de
+  posición de unidades. Borrar una categoría deja sus tareas sin categoría
+  (`ON DELETE SET NULL`).
+- **El cálculo está en un solo sitio, `GradeCalculator`**, puro y probado aparte. La
+  escala es siempre 0–20 (`GradingScale`). Dentro de una categoría cada tarea pesa por sus
+  puntos; en `WEIGHTED` las categorías sin notas ceden su peso a las demás y las tareas sin
+  categoría no cuentan; en `TOTAL_POINTS` cuenta todo. La final sale con dos decimales y
+  el entero de acta se redondea **desde esos dos decimales** (`.5` hacia arriba): si se
+  redondeara desde el valor exacto, un 12.495 se mostraría 12.50 y quedaría en 12. Aprueba
+  quien tiene el entero redondeado igual o por encima de la aprobatoria.
 
 ## Tests
 
