@@ -42,6 +42,9 @@ public class Assignment extends BaseEntity {
     @Column(name = "attachment_key", length = 255)
     private String attachmentKey;
 
+    @Column(name = "category_id")
+    private UUID categoryId;
+
     private Assignment(UUID unitId, UUID courseId, AssignmentData data) {
         this.unitId = unitId;
         this.courseId = courseId;
@@ -59,6 +62,7 @@ public class Assignment extends BaseEntity {
         this.maxScore = data.maxScore();
         this.allowsLate = data.allowsLate();
         this.attachmentKey = trimmed(data.attachmentKey());
+        this.categoryId = data.categoryId();
     }
 
     public boolean isLate(Instant moment) {

@@ -154,7 +154,7 @@ class AssignmentControllerTest {
     private AssignmentResponse anAssignment() {
         return new AssignmentResponse(UUID.randomUUID(), UNIT, "Practica 1",
                 "Resuelve los ejercicios", Instant.parse("2026-04-20T23:59:00Z"),
-                new BigDecimal("20.00"), false, null, Instant.EPOCH);
+                new BigDecimal("20.00"), false, null, null, Instant.EPOCH);
     }
 
     private String assignmentBody(String maxScore) {

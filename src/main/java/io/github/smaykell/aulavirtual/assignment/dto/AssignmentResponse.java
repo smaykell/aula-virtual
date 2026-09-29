@@ -14,12 +14,14 @@ public record AssignmentResponse(
         BigDecimal maxScore,
         boolean allowsLate,
         String attachmentKey,
+        UUID categoryId,
         Instant createdAt) {
 
     public static AssignmentResponse from(Assignment assignment) {
         return new AssignmentResponse(assignment.getId(), assignment.getUnitId(),
                 assignment.getTitle(), assignment.getInstructions(), assignment.getDueAt(),
                 assignment.getMaxScore(), assignment.isAllowsLate(),
-                assignment.getAttachmentKey(), assignment.getCreatedAt());
+                assignment.getAttachmentKey(), assignment.getCategoryId(),
+                assignment.getCreatedAt());
     }
 }

@@ -9,6 +9,7 @@ import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.unit.UnitService;
 import io.github.smaykell.aulavirtual.gradebook.GradeService;
 import io.github.smaykell.aulavirtual.gradebook.GradeSource;
+import io.github.smaykell.aulavirtual.gradebook.GradingSchemeService;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class AssignmentService {
     private final UnitService unitService;
     private final CourseService courseService;
     private final GradeService gradeService;
+    private final GradingSchemeService gradingSchemeService;
 
     @Transactional(readOnly = true)
     public List<AssignmentResponse> list(String actorUsername, UUID unitId) {
@@ -43,6 +45,7 @@ public class AssignmentService {
     public AssignmentResponse create(String actorUsername, UUID unitId, AssignmentData data) {
         UUID courseId = unitService.courseOf(unitId);
         courseService.requireWritable(actorUsername, courseId);
+        requireCategoryOfTheCourse(courseId, data);
 
         return AssignmentResponse.from(
                 assignmentRepository.save(Assignment.create(unitId, courseId, data)));
@@ -53,6 +56,7 @@ public class AssignmentService {
             AssignmentData data) {
 
         Assignment assignment = writable(actorUsername, assignmentId);
+        requireCategoryOfTheCourse(assignment.getCourseId(), data);
         assignment.update(data);
         return AssignmentResponse.from(assignment);
     }
@@ -83,6 +87,12 @@ public class AssignmentService {
         Assignment assignment = existing(assignmentId);
         memberFor(actorUsername, assignment);
         return assignment;
+    }
+
+    private void requireCategoryOfTheCourse(UUID courseId, AssignmentData data) {
+        if (data.categoryId() != null) {
+            gradingSchemeService.requireCategoryIn(courseId, data.categoryId());
+        }
     }
 
     private void requireNoWork(Assignment assignment) {

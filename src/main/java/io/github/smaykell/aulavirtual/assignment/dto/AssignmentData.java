@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 public record AssignmentData(
         @NotBlank(message = AssignmentConstraints.TITLE_REQUIRED)
@@ -29,5 +30,7 @@ public record AssignmentData(
 
         @Size(max = AssignmentConstraints.STORAGE_KEY_MAX,
                 message = AssignmentConstraints.STORAGE_KEY_TOO_LONG)
-        String attachmentKey) {
+        String attachmentKey,
+
+        UUID categoryId) {
 }

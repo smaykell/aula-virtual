@@ -18,6 +18,8 @@ import io.github.smaykell.aulavirtual.course.exception.CourseOutOfReachException
 import io.github.smaykell.aulavirtual.course.unit.UnitService;
 import io.github.smaykell.aulavirtual.gradebook.GradeService;
 import io.github.smaykell.aulavirtual.gradebook.GradeSource;
+import io.github.smaykell.aulavirtual.gradebook.GradingSchemeService;
+import io.github.smaykell.aulavirtual.gradebook.exception.CategoryNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,6 +47,9 @@ class AssignmentServiceTest {
     private GradeService gradeService;
 
     @Mock
+    private GradingSchemeService gradingSchemeService;
+
+    @Mock
     private UnitService unitService;
 
     @Mock
@@ -55,7 +60,7 @@ class AssignmentServiceTest {
     @BeforeEach
     void setUp() {
         assignmentService = new AssignmentService(assignmentRepository, submissionRepository,
-                unitService, courseService, gradeService);
+                unitService, courseService, gradeService, gradingSchemeService);
     }
 
     @Test
@@ -75,6 +80,33 @@ class AssignmentServiceTest {
         assertThat(assignment.allowsLate()).isFalse();
         verify(courseService).requireWritable("juan", COURSE);
         verify(assignmentRepository).save(argThat(saved -> COURSE.equals(saved.getCourseId())));
+    }
+
+    @Test
+    void a_task_is_filed_under_a_category_of_its_own_course() {
+        UUID category = UUID.randomUUID();
+        Assignment assignment = givenTheWritableAssignment();
+
+        AssignmentResponse updated = assignmentService.update("juan", assignment.getId(),
+                AssignmentFixtures.data(AssignmentFixtures.DUE_AT, false, category));
+
+        assertThat(updated.categoryId()).isEqualTo(category);
+        verify(gradingSchemeService).requireCategoryIn(COURSE, category);
+    }
+
+    @Test
+    void a_category_of_another_course_is_rejected() {
+        UUID foreign = UUID.randomUUID();
+        when(unitService.courseOf(UNIT)).thenReturn(COURSE);
+        doThrow(new CategoryNotFoundException(foreign)).when(gradingSchemeService)
+                .requireCategoryIn(COURSE, foreign);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> assignmentService.create("juan", UNIT,
+                        AssignmentFixtures.data(AssignmentFixtures.DUE_AT, false, foreign)));
+
+        assertThat(error.getCode()).isEqualTo("GRB_CATEGORY_NOT_FOUND");
+        verify(assignmentRepository, never()).save(any(Assignment.class));
     }
 
     @Test

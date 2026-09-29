@@ -33,8 +33,12 @@ final class AssignmentFixtures {
     }
 
     static AssignmentData data(Instant dueAt, boolean allowsLate) {
+        return data(dueAt, allowsLate, null);
+    }
+
+    static AssignmentData data(Instant dueAt, boolean allowsLate, UUID categoryId) {
         return new AssignmentData("Practica 1", "Resuelve los ejercicios del capitulo 2",
-                dueAt, MAX_SCORE, allowsLate, null);
+                dueAt, MAX_SCORE, allowsLate, null, categoryId);
     }
 
     static Submission submission(UUID assignmentId, UUID studentId, Instant moment,
