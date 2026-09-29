@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.smaykell.aulavirtual.assignment.dto.StudentWorkResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionResponse;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
@@ -61,6 +62,9 @@ class SubmissionControllerTest {
     @MockitoBean
     private SubmissionService submissionService;
 
+    @MockitoBean
+    private StudentWorkService studentWorkService;
+
     @Test
     void without_a_token_handing_in_answers_401() throws Exception {
         mockMvc.perform(post("/assignments/{id}/$submit", ASSIGNMENT)
@@ -109,6 +113,20 @@ class SubmissionControllerTest {
 
         verify(submissionService).list(eq("ana"), eq(ASSIGNMENT), eq(SubmissionStatus.LATE),
                 any());
+    }
+
+    @Test
+    void the_work_of_a_task_reaches_whoever_reads_the_course() throws Exception {
+        when(studentWorkService.of("ana", ASSIGNMENT)).thenReturn(List.of(new StudentWorkResponse(
+                new StudentSummary(UUID.randomUUID(), "Ana Maria", "Quispe Rojas",
+                        "Hospital Regional", true),
+                null, null)));
+
+        mockMvc.perform(get("/assignments/{id}/work", ASSIGNMENT)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].student.lastName").value("Quispe Rojas"))
+                .andExpect(jsonPath("$[0].submission").doesNotExist());
     }
 
     private SubmissionResponse aSubmission(SubmissionStatus status) {

@@ -9,11 +9,9 @@ import io.github.smaykell.aulavirtual.gradebook.dto.GradebookRow;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradingSchemeResponse;
 import io.github.smaykell.aulavirtual.student.StudentService;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
-import java.text.Collator;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -95,11 +93,9 @@ public class GradebookService {
     }
 
     private static List<StudentSummary> alphabetically(Map<UUID, StudentSummary> students) {
-        Collator spanish = Collator.getInstance(Locale.forLanguageTag("es"));
         return students.values().stream()
                 .filter(Objects::nonNull)
-                .sorted(Comparator.comparing(StudentSummary::lastName, spanish)
-                        .thenComparing(StudentSummary::firstName, spanish))
+                .sorted(StudentSummary.ALPHABETICAL)
                 .toList();
     }
 }

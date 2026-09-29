@@ -277,6 +277,7 @@ funcionan sin traducción.
 | `DELETE /api/assignments/{id}` | `assignments:update` | borra la tarea y devuelve 204 |
 | `POST /api/assignments/{id}/$submit` | `submissions:create` | el estudiante entrega, o reemplaza su entrega |
 | `GET /api/assignments/{id}/submissions` | `assignments:read` | las entregas: todas para el docente, la suya para el estudiante |
+| `GET /api/assignments/{id}/work` | `assignments:read` | cada estudiante activo con su entrega (o ninguna) y su nota; el estudiante recibe solo la suya |
 | `PUT /api/assignments/{id}/grades/{studentId}` | `assignments:update` | califica al estudiante, haya entregado o no; la nota nace en borrador |
 | `POST /api/assignments/{id}/grades/$return` | `assignments:update` | devuelve las notas de `{"studentIds"}` y cierra sus entregas |
 | `GET /api/courses/{id}/grading-scheme` | `courses:read` | cómo se calcula la nota final del curso |

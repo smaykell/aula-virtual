@@ -1,10 +1,12 @@
 package io.github.smaykell.aulavirtual.assignment;
 
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
+import io.github.smaykell.aulavirtual.assignment.dto.StudentWorkResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionResponse;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.security.Permission;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SubmissionController {
 
     private final SubmissionService submissionService;
+    private final StudentWorkService studentWorkService;
 
     @PostMapping("/assignments/{id}/$submit")
     @PreAuthorize("hasAuthority('" + Permission.Name.SUBMISSIONS_CREATE + "')")
@@ -40,5 +43,11 @@ public class SubmissionController {
             @PageableDefault(sort = "submittedAt") Pageable pageable) {
 
         return submissionService.list(authentication.getName(), id, status, pageable);
+    }
+
+    @GetMapping("/assignments/{id}/work")
+    @PreAuthorize("hasAuthority('" + Permission.Name.ASSIGNMENTS_READ + "')")
+    public List<StudentWorkResponse> work(Authentication authentication, @PathVariable UUID id) {
+        return studentWorkService.of(authentication.getName(), id);
     }
 }
