@@ -23,6 +23,29 @@ se quiere: el secreto de desarrollo nunca puede colarse en un despliegue real.
 No hay `.env`: la configuración ajustable son variables del entorno del proceso, todas
 con un valor por defecto para local. El catálogo está en el README.
 
+## Ramas: Git Flow
+
+Desde septiembre de 2026 el repo sigue **Git Flow**. Dos ramas permanentes:
+
+- `main` — solo lo publicado. Cada commit de `main` es una versión y lleva su tag
+  (`v1.2.0`). Nunca se trabaja ni se commitea directamente en ella.
+- `develop` — la integración. Aquí confluye todo lo terminado para la próxima versión.
+
+Y tres tipos de rama temporal, que se borran al cerrarse:
+
+- `feature/<nombre>` — sale de `develop` y vuelve a `develop`. Todo trabajo nuevo, por
+  pequeño que sea, empieza aquí; el nombre en inglés y en kebab-case
+  (`feature/exam-module`).
+- `release/<versión>` — sale de `develop` cuando lo que hay está listo para publicar.
+  Solo admite ajustes de versión y correcciones; se fusiona en `main` (con tag) **y** de
+  vuelta en `develop`.
+- `hotfix/<versión>` — sale de `main` para arreglar algo publicado; se fusiona en `main`
+  (con tag) **y** en `develop`, para que el arreglo no se pierda en la siguiente versión.
+
+Las fusiones hacia `develop` y `main` son `--no-ff`, para que cada feature, release o
+hotfix quede visible como una unidad en el historial. Si al empezar una tarea se está en
+`develop` o `main`, lo primero es crear la rama que toque.
+
 ## Convenciones de código
 
 **Inglés.** Clases, métodos, variables, paquetes de módulo, nombres de test y nombres de
