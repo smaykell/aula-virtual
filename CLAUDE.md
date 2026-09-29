@@ -331,6 +331,22 @@ ven en un solo fichero:
 
 Los límites por tipo viven en `MaterialType`, no en configuración: son dominio.
 
+**Adjuntos de tareas y entregas** (`assignment/attachment`) siguen esas mismas reglas con
+tres diferencias:
+
+- Un adjunto es de una tarea **o** de una entrega: dos claves foráneas y un `CHECK
+  num_nonnulls(...) = 1`, no una columna polimórfica, para que la base guarde la integridad.
+- La lista de adjuntos **se reemplaza entera** al guardar la tarea o la entrega. Un archivo
+  que ya estaba se reconoce por su `storageKey` y no se vuelve a reclamar; lo que falta se
+  borra y su objeto se elimina tras el commit. Por eso la respuesta devuelve la clave: el
+  front la reenvía para conservar el archivo.
+- La clave del estudiante cuelga de `courses/{curso}/submissions/{estudiante}/`, así que un
+  alumno no puede entregar el archivo que subió otro. Descargar un adjunto de entrega exige
+  ser staff o ser ese estudiante (`AttachmentDownloadService`).
+
+Los formatos y el límite (50 MB, 10 adjuntos) viven en `AttachmentFiles` y en su espejo del
+front (`attachmentFile.ts`); si cambian, cambian los dos.
+
 La invitación se reparte de dos formas y solo se guarda una: el `invitation_code` del
 curso es el dato, y `Invitations` compone además la URL al responder, colgando el
 código de `app.courses.invitation-base-url` (apunta al **frontend**). Por eso cambiar de
