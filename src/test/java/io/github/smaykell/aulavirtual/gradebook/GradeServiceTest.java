@@ -3,7 +3,6 @@ package io.github.smaykell.aulavirtual.gradebook;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -19,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -58,6 +58,7 @@ class GradeServiceTest {
         Grade existing = grade(new BigDecimal("12.00"));
         when(gradeRepository.findBySourceTypeAndSourceIdAndStudentId(GradeSource.ASSIGNMENT,
                 ASSIGNMENT, STUDENT)).thenReturn(Optional.of(existing));
+        when(gradeRepository.save(existing)).thenReturn(existing);
         givenTheTeacherGrades();
 
         GradeResponse recorded = gradeService.record("juan",
@@ -67,19 +68,24 @@ class GradeServiceTest {
         assertThat(existing.getFeedback()).isEqualTo("Mejoro mucho");
         assertThat(existing.getGradedBy()).isEqualTo(TEACHER_PERSON);
         assertThat(existing.getGradedAt()).isEqualTo(NOW);
-        verify(gradeRepository, never()).save(existing);
     }
 
     @Test
-    void the_first_grade_of_a_student_keeps_the_maximum_it_was_graded_against() {
+    void a_first_grade_reaches_the_database_already_scored() {
         when(gradeRepository.findBySourceTypeAndSourceIdAndStudentId(GradeSource.ASSIGNMENT,
                 ASSIGNMENT, STUDENT)).thenReturn(Optional.empty());
-        when(gradeRepository.save(any(Grade.class))).thenAnswer(call -> call.getArgument(0));
+        List<BigDecimal> scoresWhenSaved = new ArrayList<>();
+        when(gradeRepository.save(any(Grade.class))).thenAnswer(call -> {
+            Grade saved = call.getArgument(0);
+            scoresWhenSaved.add(saved.getScore());
+            return saved;
+        });
         givenTheTeacherGrades();
 
         GradeResponse recorded = gradeService.record("juan",
                 entry(new BigDecimal("15.00"), null));
 
+        assertThat(scoresWhenSaved).containsExactly(new BigDecimal("15.00"));
         assertThat(recorded.maxScore()).isEqualTo(MAX_SCORE);
         assertThat(recorded.sourceId()).isEqualTo(ASSIGNMENT);
         assertThat(recorded.studentId()).isEqualTo(STUDENT);

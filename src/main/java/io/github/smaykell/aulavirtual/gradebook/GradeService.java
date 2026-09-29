@@ -38,11 +38,11 @@ public class GradeService {
 
         Grade grade = gradeRepository.findBySourceTypeAndSourceIdAndStudentId(entry.sourceType(),
                         entry.sourceId(), entry.studentId())
-                .orElseGet(() -> gradeRepository.save(Grade.of(entry.sourceType(),
-                        entry.sourceId(), entry.studentId(), entry.courseId())));
+                .orElseGet(() -> Grade.of(entry.sourceType(), entry.sourceId(),
+                        entry.studentId(), entry.courseId()));
         grade.record(entry.score(), entry.maxScore(), entry.feedback(), grader.personId(),
                 clock.instant());
-        return GradeResponse.from(grade);
+        return GradeResponse.from(gradeRepository.save(grade));
     }
 
     @Transactional(readOnly = true)
