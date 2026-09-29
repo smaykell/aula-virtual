@@ -132,7 +132,7 @@ class SubmissionControllerTest {
     private SubmissionResponse aSubmission(SubmissionStatus status) {
         return new SubmissionResponse(UUID.randomUUID(), ASSIGNMENT,
                 new StudentSummary(UUID.randomUUID(), "Ana Maria", "Quispe Rojas", "Hospital Regional", true),
-                null, "Mi respuesta", Instant.EPOCH, status, null);
+                "Mi respuesta", List.of(), Instant.EPOCH, status, null);
     }
 
     private String submissionBody() {

@@ -1,5 +1,11 @@
 package io.github.smaykell.aulavirtual.assignment;
 
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentFiles;
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentOwner;
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentService;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentResponse;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentUploadRequest;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentUploadResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionResponse;
 import io.github.smaykell.aulavirtual.assignment.exception.DeadlinePassedException;
@@ -32,7 +38,18 @@ public class SubmissionService {
     private final AssignmentService assignmentService;
     private final GradeService gradeService;
     private final StudentService studentService;
+    private final AttachmentService attachmentService;
     private final Clock clock;
+
+    @Transactional(readOnly = true)
+    public AttachmentUploadResponse prepareUpload(String actorUsername, UUID assignmentId,
+            AttachmentUploadRequest request) {
+
+        Assignment assignment = assignmentService.existing(assignmentId);
+        CourseMember student = studentSubmitting(actorUsername, assignment);
+        requireOpenAt(assignment, clock.instant());
+        return attachmentService.prepareUpload(prefixFor(assignment, student), request);
+    }
 
     @Transactional
     public SubmissionResponse submit(String actorUsername, UUID assignmentId,
@@ -41,18 +58,21 @@ public class SubmissionService {
         Assignment assignment = assignmentService.existing(assignmentId);
         CourseMember student = studentSubmitting(actorUsername, assignment);
         UUID studentId = student.studentId();
-        requireSomethingToHandIn(data);
-
-        Instant now = clock.instant();
-        if (!assignment.acceptsAt(now)) {
-            throw new DeadlinePassedException();
+        if (data.isEmpty()) {
+            throw new EmptySubmissionException();
         }
+        Instant now = clock.instant();
+        requireOpenAt(assignment, now);
 
-        return responseFor(student, submissionRepository
+        Submission submission = submissionRepository
                 .findByAssignmentIdAndStudentId(assignmentId, studentId)
-                .map(submission -> handInAgain(submission, data, assignment, now))
+                .map(previous -> handInAgain(previous, data, assignment, now))
                 .orElseGet(() -> submissionRepository.save(Submission.of(assignmentId, studentId,
-                        data, now, statusAt(assignment, now)))));
+                        data, now, statusAt(assignment, now))));
+        List<AttachmentResponse> attachments = attachmentService.replace(
+                AttachmentOwner.ofSubmission(submission.getId()),
+                prefixFor(assignment, student), data.attachmentsOrNone());
+        return responseFor(student, submission, attachments);
     }
 
     @Transactional(readOnly = true)
@@ -69,9 +89,13 @@ public class SubmissionService {
         Map<UUID, StudentSummary> students = studentService.summariesOf(studentIds);
         Map<UUID, GradeResponse> grades = gradeService.visibleTo(member,
                 GradeSource.ASSIGNMENT, assignmentId, studentIds);
+        Map<UUID, List<AttachmentResponse>> attachments = attachmentService.ofSubmissions(
+                submissions.getContent().stream().map(Submission::getId).toList());
 
         return PageResponse.of(submissions, submission -> SubmissionResponse.from(submission,
-                students.get(submission.getStudentId()), grades.get(submission.getStudentId())));
+                students.get(submission.getStudentId()),
+                attachments.getOrDefault(submission.getId(), List.of()),
+                grades.get(submission.getStudentId())));
     }
 
     private Submission handInAgain(Submission submission, SubmissionData data,
@@ -104,24 +128,26 @@ public class SubmissionService {
                 : submissionRepository.findByAssignmentIdAndStatus(assignmentId, status, pageable);
     }
 
-    private SubmissionResponse responseFor(CourseMember member, Submission submission) {
+    private SubmissionResponse responseFor(CourseMember member, Submission submission,
+            List<AttachmentResponse> attachments) {
+
         UUID studentId = submission.getStudentId();
         return SubmissionResponse.from(submission, studentService.summaryOf(studentId),
-                gradeService.visibleTo(member, GradeSource.ASSIGNMENT,
+                attachments, gradeService.visibleTo(member, GradeSource.ASSIGNMENT,
                         submission.getAssignmentId(), List.of(studentId)).get(studentId));
+    }
+
+    private static String prefixFor(Assignment assignment, CourseMember student) {
+        return AttachmentFiles.submissionPrefix(assignment.getCourseId(), student.studentId());
+    }
+
+    private static void requireOpenAt(Assignment assignment, Instant moment) {
+        if (!assignment.acceptsAt(moment)) {
+            throw new DeadlinePassedException();
+        }
     }
 
     private static SubmissionStatus statusAt(Assignment assignment, Instant moment) {
         return assignment.isLate(moment) ? SubmissionStatus.LATE : SubmissionStatus.SUBMITTED;
-    }
-
-    private static void requireSomethingToHandIn(SubmissionData data) {
-        if (isBlank(data.storageKey()) && isBlank(data.text())) {
-            throw new EmptySubmissionException();
-        }
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 }

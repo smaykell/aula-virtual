@@ -39,9 +39,6 @@ public class Assignment extends BaseEntity {
     @Column(name = "allows_late", nullable = false)
     private boolean allowsLate;
 
-    @Column(name = "attachment_key", length = 255)
-    private String attachmentKey;
-
     @Column(name = "category_id")
     private UUID categoryId;
 
@@ -61,7 +58,6 @@ public class Assignment extends BaseEntity {
         this.dueAt = data.dueAt();
         this.maxScore = data.maxScore();
         this.allowsLate = data.allowsLate();
-        this.attachmentKey = trimmed(data.attachmentKey());
         this.categoryId = data.categoryId();
     }
 

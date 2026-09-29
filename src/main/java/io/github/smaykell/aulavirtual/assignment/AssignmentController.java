@@ -2,6 +2,8 @@ package io.github.smaykell.aulavirtual.assignment;
 
 import io.github.smaykell.aulavirtual.assignment.dto.AssignmentData;
 import io.github.smaykell.aulavirtual.assignment.dto.AssignmentResponse;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentUploadRequest;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentUploadResponse;
 import io.github.smaykell.aulavirtual.security.Permission;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -40,6 +42,14 @@ public class AssignmentController {
             @Valid @RequestBody AssignmentData request) {
 
         return assignmentService.create(authentication.getName(), unitId, request);
+    }
+
+    @PostMapping("/units/{unitId}/assignments/$upload")
+    @PreAuthorize("hasAuthority('" + Permission.Name.ASSIGNMENTS_UPDATE + "')")
+    public AttachmentUploadResponse prepareUpload(Authentication authentication,
+            @PathVariable UUID unitId, @Valid @RequestBody AttachmentUploadRequest request) {
+
+        return assignmentService.prepareUpload(authentication.getName(), unitId, request);
     }
 
     @GetMapping("/assignments/{id}")

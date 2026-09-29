@@ -272,10 +272,13 @@ funcionan sin traducción.
 | `POST /api/enrollments/{id}/$withdraw` | `enrollments:update` | retira del curso a un estudiante matriculado |
 | `GET /api/units/{id}/assignments` | `assignments:read` | las tareas de la unidad, por fecha límite |
 | `POST /api/units/{id}/assignments` | `assignments:create` | publica una tarea y devuelve 201 |
+| `POST /api/units/{id}/assignments/$upload` | `assignments:update` | firma la subida de un adjunto del docente |
 | `GET /api/assignments/{id}` | `assignments:read` | una tarea |
 | `PUT /api/assignments/{id}` | `assignments:update` | cambia la tarea |
 | `DELETE /api/assignments/{id}` | `assignments:update` | borra la tarea y devuelve 204 |
 | `POST /api/assignments/{id}/$submit` | `submissions:create` | el estudiante entrega, o reemplaza su entrega |
+| `POST /api/assignments/{id}/$upload` | `submissions:create` | firma la subida de un adjunto de la entrega |
+| `GET /api/attachments/{id}/$download` | `assignments:read` | enlace firmado para descargar un adjunto |
 | `GET /api/assignments/{id}/submissions` | `assignments:read` | las entregas: todas para el docente, la suya para el estudiante |
 | `GET /api/assignments/{id}/work` | `assignments:read` | cada estudiante activo con su entrega (o ninguna) y su nota; el estudiante recibe solo la suya |
 | `PUT /api/assignments/{id}/grades/{studentId}` | `assignments:update` | califica al estudiante, haya entregado o no; la nota nace en borrador |
@@ -581,8 +584,9 @@ eres en este curso** (staff o estudiante, y cuál), y de ahí sale sin repetir r
 docente vea todas las entregas y el estudiante solo la suya.
 
 La tarea cuelga de una unidad y lleva fecha límite, puntaje máximo, si admite entregas
-tardías y, opcionalmente, la categoría del curso en la que cuenta. Entregar es `POST /api/assignments/{id}/$submit` con un archivo, un texto o los
-dos, y el estado sale solo de la fecha:
+tardías y, opcionalmente, la categoría del curso en la que cuenta. Entregar es
+`POST /api/assignments/{id}/$submit` con un texto, adjuntos o las dos cosas, y el estado sale
+solo de la fecha:
 
 | Situación | Estado de la entrega |
 |---|---|
@@ -649,8 +653,34 @@ El estudiante recibe solo su fila y solo con las notas devueltas; el staff ve ta
 borradores, así que la final que ve el docente puede adelantarse a la del alumno. Sin
 ninguna nota, `finalGrade` es `null`.
 
-Los archivos de tarea y de entrega todavía viajan como una `storageKey` que la API no
-comprueba: subirlos y descargarlos como el material es el siguiente paso.
+### Adjuntos de tareas y entregas
+
+El docente adjunta material a la tarea y el estudiante adjunta su trabajo a la entrega: hasta
+**10 adjuntos**, cada uno un **archivo** (`FILE`) o un **enlace** (`LINK`, `http` o `https`).
+Se aceptan PDF, Word, Excel, PowerPoint, OpenDocument, texto, imágenes JPG/PNG/WEBP y ZIP,
+de hasta **50 MB** por archivo.
+
+Un archivo se sube como el material: se pide la subida firmada
+(`POST /api/units/{id}/assignments/$upload` el docente, `POST /api/assignments/{id}/$upload`
+el estudiante, con `{"fileName", "contentType", "size"}`), se sube con `PUT` a la URL que
+devuelve y se manda su `storageKey` dentro de `attachments` al guardar la tarea o la entrega:
+
+```json
+{
+  "text": "Adjunto mi informe y el video de la práctica",
+  "attachments": [
+    {"kind": "FILE", "title": "Informe.pdf", "storageKey": "courses/…/submissions/…/informe.pdf"},
+    {"kind": "LINK", "title": "Video de la práctica", "externalUrl": "https://youtu.be/…"}
+  ]
+}
+```
+
+La lista **reemplaza** los adjuntos: lo que no viene se borra (y su archivo, tras el commit),
+un archivo que ya estaba se conserva por su `storageKey` y el orden de la lista es el orden
+de los adjuntos. La clave la genera el backend bajo la carpeta del curso —y, en una entrega,
+la del estudiante—, así que un archivo subido para otro curso u otra persona responde
+`ASG_FOREIGN_FILE`. Los adjuntos de la tarea los descarga cualquiera del curso; los de una
+entrega, el staff y el propio estudiante (`ASG_SUBMISSION_OUT_OF_REACH` para el resto).
 
 ## Almacenamiento en AWS
 

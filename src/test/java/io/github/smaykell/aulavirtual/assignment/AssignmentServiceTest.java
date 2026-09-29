@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentOwner;
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentService;
 import io.github.smaykell.aulavirtual.assignment.dto.AssignmentResponse;
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.course.CourseService;
@@ -55,12 +57,16 @@ class AssignmentServiceTest {
     @Mock
     private CourseService courseService;
 
+    @Mock
+    private AttachmentService attachmentService;
+
     private AssignmentService assignmentService;
 
     @BeforeEach
     void setUp() {
         assignmentService = new AssignmentService(assignmentRepository, submissionRepository,
-                unitService, courseService, gradeService, gradingSchemeService);
+                unitService, courseService, gradeService, gradingSchemeService,
+                attachmentService);
     }
 
     @Test
@@ -176,6 +182,7 @@ class AssignmentServiceTest {
 
         assignmentService.delete("juan", assignment.getId());
 
+        verify(attachmentService).deleteAll(AttachmentOwner.ofAssignment(assignment.getId()));
         verify(assignmentRepository).delete(assignment);
     }
 

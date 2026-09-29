@@ -1,5 +1,7 @@
 package io.github.smaykell.aulavirtual.assignment;
 
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentService;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.StudentWorkResponse;
 import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
@@ -26,6 +28,7 @@ public class StudentWorkService {
     private final CourseService courseService;
     private final StudentService studentService;
     private final GradeService gradeService;
+    private final AttachmentService attachmentService;
 
     @Transactional(readOnly = true)
     public List<StudentWorkResponse> of(String actorUsername, UUID assignmentId) {
@@ -40,11 +43,22 @@ public class StudentWorkService {
                 .collect(Collectors.toMap(Submission::getStudentId, Function.identity()));
         Map<UUID, GradeResponse> grades = gradeService.visibleTo(member, GradeSource.ASSIGNMENT,
                 assignmentId, studentIds);
+        Map<UUID, List<AttachmentResponse>> attachments = attachmentService.ofSubmissions(
+                submissions.values().stream().map(Submission::getId).toList());
 
         return studentService.summariesOf(studentIds).values().stream()
                 .sorted(StudentSummary.ALPHABETICAL)
-                .map(student -> StudentWorkResponse.of(student, submissions.get(student.id()),
+                .map(student -> workOf(student, submissions.get(student.id()), attachments,
                         grades.get(student.id())))
                 .toList();
+    }
+
+    private static StudentWorkResponse workOf(StudentSummary student, Submission submission,
+            Map<UUID, List<AttachmentResponse>> attachments, GradeResponse grade) {
+
+        List<AttachmentResponse> handedIn = submission == null
+                ? List.of()
+                : attachments.getOrDefault(submission.getId(), List.of());
+        return StudentWorkResponse.of(student, submission, handedIn, grade);
     }
 }

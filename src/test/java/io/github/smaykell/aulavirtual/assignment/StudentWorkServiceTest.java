@@ -5,6 +5,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentService;
 import io.github.smaykell.aulavirtual.assignment.dto.StudentWorkResponse;
 import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
@@ -46,12 +47,15 @@ class StudentWorkServiceTest {
     @Mock
     private GradeService gradeService;
 
+    @Mock
+    private AttachmentService attachmentService;
+
     private StudentWorkService studentWorkService;
 
     @BeforeEach
     void setUp() {
         studentWorkService = new StudentWorkService(assignmentService, submissionRepository,
-                courseService, studentService, gradeService);
+                courseService, studentService, gradeService, attachmentService);
     }
 
     @Test

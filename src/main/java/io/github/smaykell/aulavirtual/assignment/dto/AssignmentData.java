@@ -1,11 +1,13 @@
 package io.github.smaykell.aulavirtual.assignment.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record AssignmentData(
@@ -28,9 +30,13 @@ public record AssignmentData(
         @NotNull(message = AssignmentConstraints.LATE_REQUIRED)
         Boolean allowsLate,
 
-        @Size(max = AssignmentConstraints.STORAGE_KEY_MAX,
-                message = AssignmentConstraints.STORAGE_KEY_TOO_LONG)
-        String attachmentKey,
+        @Size(max = AssignmentConstraints.ATTACHMENTS_MAX,
+                message = AssignmentConstraints.ATTACHMENTS_TOO_MANY)
+        List<@Valid AttachmentData> attachments,
 
         UUID categoryId) {
+
+    public List<AttachmentData> attachmentsOrNone() {
+        return attachments == null ? List.of() : attachments;
+    }
 }

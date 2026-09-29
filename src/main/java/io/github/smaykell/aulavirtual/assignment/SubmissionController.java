@@ -1,6 +1,8 @@
 package io.github.smaykell.aulavirtual.assignment;
 
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentUploadRequest;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentUploadResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.StudentWorkResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionResponse;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
@@ -33,6 +35,14 @@ public class SubmissionController {
             @Valid @RequestBody SubmissionData request) {
 
         return submissionService.submit(authentication.getName(), id, request);
+    }
+
+    @PostMapping("/assignments/{id}/$upload")
+    @PreAuthorize("hasAuthority('" + Permission.Name.SUBMISSIONS_CREATE + "')")
+    public AttachmentUploadResponse prepareUpload(Authentication authentication,
+            @PathVariable UUID id, @Valid @RequestBody AttachmentUploadRequest request) {
+
+        return submissionService.prepareUpload(authentication.getName(), id, request);
     }
 
     @GetMapping("/assignments/{id}/submissions")

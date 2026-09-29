@@ -8,6 +8,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentFiles;
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentKind;
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentOwner;
+import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentService;
+import io.github.smaykell.aulavirtual.assignment.dto.AttachmentData;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionResponse;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
@@ -55,12 +60,31 @@ class SubmissionServiceTest {
     @Mock
     private StudentService studentService;
 
+    @Mock
+    private AttachmentService attachmentService;
+
     private SubmissionService submissionService;
 
     @BeforeEach
     void setUp() {
         submissionService = new SubmissionService(submissionRepository, assignmentService,
-                gradeService, studentService, Clock.fixed(NOW, ZoneOffset.UTC));
+                gradeService, studentService, attachmentService, Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+
+    @Test
+    void a_submission_of_only_attachments_goes_under_the_folder_of_its_student() {
+        Assignment assignment = givenTheAssignmentFor("ana.estudiante", STUDENT);
+        givenNoPreviousSubmission(assignment);
+        givenTheSubmissionIsStored();
+        givenTheStudentAndItsGrades();
+        List<AttachmentData> attachments = List.of(new AttachmentData(AttachmentKind.LINK,
+                "Mi video", null, "https://youtu.be/rcp"));
+
+        submissionService.submit("ana.estudiante", assignment.getId(),
+                new SubmissionData(null, attachments));
+
+        verify(attachmentService).replace(any(AttachmentOwner.class),
+                eq(AttachmentFiles.submissionPrefix(COURSE, STUDENT)), eq(attachments));
     }
 
     @Test

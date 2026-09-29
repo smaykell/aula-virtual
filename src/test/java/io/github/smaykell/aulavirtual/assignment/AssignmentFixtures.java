@@ -5,6 +5,7 @@ import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -38,7 +39,7 @@ final class AssignmentFixtures {
 
     static AssignmentData data(Instant dueAt, boolean allowsLate, UUID categoryId) {
         return new AssignmentData("Practica 1", "Resuelve los ejercicios del capitulo 2",
-                dueAt, MAX_SCORE, allowsLate, null, categoryId);
+                dueAt, MAX_SCORE, allowsLate, List.of(), categoryId);
     }
 
     static Submission submission(UUID assignmentId, UUID studentId, Instant moment,
@@ -49,7 +50,7 @@ final class AssignmentFixtures {
     }
 
     static SubmissionData text(String text) {
-        return new SubmissionData(null, text);
+        return new SubmissionData(text, List.of());
     }
 
     static StudentSummary student(UUID studentId) {
