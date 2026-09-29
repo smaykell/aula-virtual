@@ -115,6 +115,12 @@ public class CourseService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public List<UUID> activeStudentsOf(UUID courseId) {
+        return enrollmentRepository.findStudentIdsByCourseIdAndStatus(courseId,
+                EnrollmentStatus.ACTIVE);
+    }
+
     private Page<Course> coursesIn(CourseAccess.Scope scope, CourseStatus status,
             Pageable pageable) {
 

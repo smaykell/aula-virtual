@@ -1,8 +1,7 @@
 package io.github.smaykell.aulavirtual.gradebook;
 
-import io.github.smaykell.aulavirtual.gradebook.dto.GradeResponse;
+import io.github.smaykell.aulavirtual.gradebook.dto.GradebookResponse;
 import io.github.smaykell.aulavirtual.security.Permission;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,15 +12,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-public class GradeController {
+public class GradebookController {
 
-    private final GradeService gradeService;
+    private final GradebookService gradebookService;
 
-    @GetMapping("/courses/{courseId}/grades")
-    @PreAuthorize("hasAuthority('" + Permission.Name.ASSIGNMENTS_READ + "')")
-    public List<GradeResponse> ofCourse(Authentication authentication,
-            @PathVariable UUID courseId) {
-
-        return gradeService.ofCourse(authentication.getName(), courseId);
+    @GetMapping("/courses/{courseId}/gradebook")
+    @PreAuthorize("hasAuthority('" + Permission.Name.COURSES_READ + "')")
+    public GradebookResponse of(Authentication authentication, @PathVariable UUID courseId) {
+        return gradebookService.of(authentication.getName(), courseId);
     }
 }

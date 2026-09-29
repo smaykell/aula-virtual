@@ -61,6 +61,16 @@ class CourseServiceTest {
     }
 
     @Test
+    void the_students_of_a_course_are_those_with_an_active_enrollment() {
+        UUID courseId = UUID.randomUUID();
+        List<UUID> active = List.of(UUID.randomUUID());
+        when(enrollmentRepository.findStudentIdsByCourseIdAndStatus(courseId,
+                EnrollmentStatus.ACTIVE)).thenReturn(active);
+
+        assertThat(courseService.activeStudentsOf(courseId)).isEqualTo(active);
+    }
+
+    @Test
     void a_student_without_an_active_enrollment_is_not_part_of_the_course() {
         UUID courseId = UUID.randomUUID();
         UUID studentId = UUID.randomUUID();

@@ -16,7 +16,5 @@ public interface GradeRepository extends JpaRepository<Grade, UUID> {
 
     boolean existsBySourceTypeAndSourceId(GradeSource sourceType, UUID sourceId);
 
-    List<Grade> findByCourseIdOrderByGradedAtDesc(UUID courseId);
-
-    List<Grade> findByCourseIdAndStudentIdOrderByGradedAtDesc(UUID courseId, UUID studentId);
+    List<Grade> findByCourseIdAndStudentIdIn(UUID courseId, Collection<UUID> studentIds);
 }

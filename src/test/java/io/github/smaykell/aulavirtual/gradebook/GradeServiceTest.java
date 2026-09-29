@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
-import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradeEntry;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradeResponse;
@@ -44,47 +43,14 @@ class GradeServiceTest {
     private GradeRepository gradeRepository;
 
     @Mock
-    private CourseService courseService;
-
-    @Mock
     private UserService userService;
 
     private GradeService gradeService;
 
     @BeforeEach
     void setUp() {
-        gradeService = new GradeService(gradeRepository, courseService, userService,
+        gradeService = new GradeService(gradeRepository, userService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
-    }
-
-    @Test
-    void the_teacher_reads_the_whole_record_of_its_course() {
-        when(courseService.memberOf("juan", COURSE))
-                .thenReturn(new CourseMember(COURSE, true, null));
-        when(gradeRepository.findByCourseIdOrderByGradedAtDesc(COURSE))
-                .thenReturn(List.of(grade(new BigDecimal("18.00"))));
-
-        List<GradeResponse> grades = gradeService.ofCourse("juan", COURSE);
-
-        assertThat(grades).singleElement()
-                .satisfies(found -> assertThat(found.score())
-                        .isEqualTo(new BigDecimal("18.00")));
-        verify(gradeRepository, never())
-                .findByCourseIdAndStudentIdOrderByGradedAtDesc(COURSE, STUDENT);
-    }
-
-    @Test
-    void the_student_only_reads_its_own_grades_and_only_once_handed_back() {
-        when(courseService.memberOf("ana.estudiante", COURSE))
-                .thenReturn(new CourseMember(COURSE, false, STUDENT));
-        when(gradeRepository.findByCourseIdAndStudentIdOrderByGradedAtDesc(COURSE, STUDENT))
-                .thenReturn(List.of(returned(new BigDecimal("14.50")),
-                        grade(new BigDecimal("9.00"))));
-
-        assertThat(gradeService.ofCourse("ana.estudiante", COURSE)).singleElement()
-                .satisfies(found -> assertThat(found.score())
-                        .isEqualTo(new BigDecimal("14.50")));
-        verify(gradeRepository, never()).findByCourseIdOrderByGradedAtDesc(COURSE);
     }
 
     @Test

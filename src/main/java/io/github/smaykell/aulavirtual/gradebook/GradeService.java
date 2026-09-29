@@ -1,6 +1,5 @@
 package io.github.smaykell.aulavirtual.gradebook;
 
-import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradeEntry;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradeResponse;
@@ -26,23 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class GradeService {
 
     private final GradeRepository gradeRepository;
-    private final CourseService courseService;
     private final UserService userService;
     private final Clock clock;
-
-    @Transactional(readOnly = true)
-    public List<GradeResponse> ofCourse(String actorUsername, UUID courseId) {
-        CourseMember member = courseService.memberOf(actorUsername, courseId);
-        List<Grade> grades = member.staff()
-                ? gradeRepository.findByCourseIdOrderByGradedAtDesc(courseId)
-                : gradeRepository.findByCourseIdAndStudentIdOrderByGradedAtDesc(courseId,
-                        member.studentId());
-
-        return grades.stream()
-                .filter(visibleTo(member))
-                .map(GradeResponse::from)
-                .toList();
-    }
 
     @Transactional
     public GradeResponse record(String actorUsername, GradeEntry entry) {
@@ -67,7 +51,7 @@ public class GradeService {
 
         return gradeRepository.findBySourceTypeAndSourceIdAndStudentIdIn(sourceType, sourceId,
                         studentIds).stream()
-                .filter(visibleTo(member))
+                .filter(shownTo(member))
                 .collect(Collectors.toMap(Grade::getStudentId, GradeResponse::from));
     }
 
@@ -87,7 +71,7 @@ public class GradeService {
         return gradeRepository.existsBySourceTypeAndSourceId(sourceType, sourceId);
     }
 
-    private static Predicate<Grade> visibleTo(CourseMember member) {
+    static Predicate<Grade> shownTo(CourseMember member) {
         return grade -> member.staff() || grade.isReturned();
     }
 
