@@ -1,6 +1,6 @@
-package io.github.smaykell.aulavirtual.assignment;
+package io.github.smaykell.aulavirtual.gradebook;
 
-import io.github.smaykell.aulavirtual.assignment.dto.GradeResponse;
+import io.github.smaykell.aulavirtual.gradebook.dto.GradeResponse;
 import io.github.smaykell.aulavirtual.security.Permission;
 import java.util.List;
 import java.util.UUID;

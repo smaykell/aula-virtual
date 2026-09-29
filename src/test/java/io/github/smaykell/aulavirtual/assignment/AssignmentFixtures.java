@@ -13,16 +13,19 @@ final class AssignmentFixtures {
     static final Instant NOW = Instant.parse("2026-04-10T09:00:00Z");
     static final Instant DUE_AT = Instant.parse("2026-04-20T23:59:00Z");
     static final BigDecimal MAX_SCORE = new BigDecimal("20.00");
+    static final UUID UNIT = UUID.randomUUID();
+    static final UUID COURSE = UUID.randomUUID();
 
     private AssignmentFixtures() {
     }
 
-    static Assignment assignment(UUID unitId) {
-        return assignment(unitId, DUE_AT, false);
+    static Assignment assignment() {
+        return assignment(DUE_AT, false);
     }
 
-    static Assignment assignment(UUID unitId, Instant dueAt, boolean allowsLate) {
-        return withId(Assignment.create(unitId, data(dueAt, allowsLate)), UUID.randomUUID());
+    static Assignment assignment(Instant dueAt, boolean allowsLate) {
+        return withId(Assignment.create(UNIT, COURSE, data(dueAt, allowsLate)),
+                UUID.randomUUID());
     }
 
     static AssignmentData data() {

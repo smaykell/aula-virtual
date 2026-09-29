@@ -1,4 +1,4 @@
-package io.github.smaykell.aulavirtual.assignment;
+package io.github.smaykell.aulavirtual.gradebook;
 
 import java.util.Collection;
 import java.util.List;
@@ -8,9 +8,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface GradeRepository extends JpaRepository<Grade, UUID> {
 
-    Optional<Grade> findBySourceTypeAndSourceId(GradeSource sourceType, UUID sourceId);
+    Optional<Grade> findBySourceTypeAndSourceIdAndStudentId(GradeSource sourceType,
+            UUID sourceId, UUID studentId);
 
-    List<Grade> findBySourceTypeAndSourceIdIn(GradeSource sourceType, Collection<UUID> sourceIds);
+    List<Grade> findBySourceTypeAndSourceIdAndStudentIdIn(GradeSource sourceType, UUID sourceId,
+            Collection<UUID> studentIds);
+
+    boolean existsBySourceTypeAndSourceId(GradeSource sourceType, UUID sourceId);
 
     List<Grade> findByCourseIdOrderByGradedAtDesc(UUID courseId);
 

@@ -50,7 +50,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 class AssignmentControllerTest {
 
-    private static final UUID UNIT = UUID.randomUUID();
+    private static final UUID UNIT = AssignmentFixtures.UNIT;
 
     @Autowired
     private MockMvc mockMvc;

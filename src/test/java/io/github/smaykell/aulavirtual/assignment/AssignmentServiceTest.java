@@ -3,6 +3,7 @@ package io.github.smaykell.aulavirtual.assignment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,6 +16,8 @@ import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.exception.ArchivedCourseException;
 import io.github.smaykell.aulavirtual.course.exception.CourseOutOfReachException;
 import io.github.smaykell.aulavirtual.course.unit.UnitService;
+import io.github.smaykell.aulavirtual.gradebook.GradeService;
+import io.github.smaykell.aulavirtual.gradebook.GradeSource;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,12 +31,18 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class AssignmentServiceTest {
 
-    private static final UUID UNIT = UUID.randomUUID();
-    private static final UUID COURSE = UUID.randomUUID();
+    private static final UUID UNIT = AssignmentFixtures.UNIT;
+    private static final UUID COURSE = AssignmentFixtures.COURSE;
     private static final UUID STUDENT = UUID.randomUUID();
 
     @Mock
     private AssignmentRepository assignmentRepository;
+
+    @Mock
+    private SubmissionRepository submissionRepository;
+
+    @Mock
+    private GradeService gradeService;
 
     @Mock
     private UnitService unitService;
@@ -45,8 +54,8 @@ class AssignmentServiceTest {
 
     @BeforeEach
     void setUp() {
-        assignmentService = new AssignmentService(assignmentRepository, unitService,
-                courseService);
+        assignmentService = new AssignmentService(assignmentRepository, submissionRepository,
+                unitService, courseService, gradeService);
     }
 
     @Test
@@ -65,6 +74,7 @@ class AssignmentServiceTest {
         assertThat(assignment.maxScore()).isEqualTo(AssignmentFixtures.MAX_SCORE);
         assertThat(assignment.allowsLate()).isFalse();
         verify(courseService).requireWritable("juan", COURSE);
+        verify(assignmentRepository).save(argThat(saved -> COURSE.equals(saved.getCourseId())));
     }
 
     @Test
@@ -94,7 +104,7 @@ class AssignmentServiceTest {
 
     @Test
     void an_enrolled_student_reads_the_tasks_of_the_unit() {
-        Assignment assignment = AssignmentFixtures.assignment(UNIT);
+        Assignment assignment = AssignmentFixtures.assignment();
         when(unitService.courseOf(UNIT)).thenReturn(COURSE);
         when(courseService.memberOf("ana.estudiante", COURSE))
                 .thenReturn(new CourseMember(COURSE, false, STUDENT));
@@ -138,6 +148,30 @@ class AssignmentServiceTest {
     }
 
     @Test
+    void a_task_that_already_has_submissions_is_not_deleted() {
+        Assignment assignment = givenTheWritableAssignment();
+        when(submissionRepository.existsByAssignmentId(assignment.getId())).thenReturn(true);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> assignmentService.delete("juan", assignment.getId()));
+
+        assertThat(error.getCode()).isEqualTo("ASG_HAS_WORK");
+        verify(assignmentRepository, never()).delete(assignment);
+    }
+
+    @Test
+    void a_task_graded_without_submissions_is_not_deleted_either() {
+        Assignment assignment = givenTheWritableAssignment();
+        when(gradeService.anyFor(GradeSource.ASSIGNMENT, assignment.getId())).thenReturn(true);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> assignmentService.delete("juan", assignment.getId()));
+
+        assertThat(error.getCode()).isEqualTo("ASG_HAS_WORK");
+        verify(assignmentRepository, never()).delete(assignment);
+    }
+
+    @Test
     void an_unknown_task_is_not_found() {
         UUID assignmentId = UUID.randomUUID();
         when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.empty());
@@ -149,10 +183,9 @@ class AssignmentServiceTest {
     }
 
     private Assignment givenTheWritableAssignment() {
-        Assignment assignment = AssignmentFixtures.assignment(UNIT);
+        Assignment assignment = AssignmentFixtures.assignment();
         when(assignmentRepository.findById(assignment.getId()))
                 .thenReturn(Optional.of(assignment));
-        when(unitService.courseOf(UNIT)).thenReturn(COURSE);
         return assignment;
     }
 }

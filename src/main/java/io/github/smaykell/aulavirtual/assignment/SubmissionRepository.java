@@ -10,6 +10,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
 
     Optional<Submission> findByAssignmentIdAndStudentId(UUID assignmentId, UUID studentId);
 
+    boolean existsByAssignmentId(UUID assignmentId);
+
     Page<Submission> findByAssignmentId(UUID assignmentId, Pageable pageable);
 
     Page<Submission> findByAssignmentIdAndStatus(UUID assignmentId, SubmissionStatus status,

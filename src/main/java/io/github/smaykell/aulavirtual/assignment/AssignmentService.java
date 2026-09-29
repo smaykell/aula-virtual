@@ -2,10 +2,13 @@ package io.github.smaykell.aulavirtual.assignment;
 
 import io.github.smaykell.aulavirtual.assignment.dto.AssignmentData;
 import io.github.smaykell.aulavirtual.assignment.dto.AssignmentResponse;
+import io.github.smaykell.aulavirtual.assignment.exception.AssignmentHasWorkException;
 import io.github.smaykell.aulavirtual.assignment.exception.AssignmentNotFoundException;
 import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.unit.UnitService;
+import io.github.smaykell.aulavirtual.gradebook.GradeService;
+import io.github.smaykell.aulavirtual.gradebook.GradeSource;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
+    private final SubmissionRepository submissionRepository;
     private final UnitService unitService;
     private final CourseService courseService;
+    private final GradeService gradeService;
 
     @Transactional(readOnly = true)
     public List<AssignmentResponse> list(String actorUsername, UUID unitId) {
@@ -36,10 +41,11 @@ public class AssignmentService {
 
     @Transactional
     public AssignmentResponse create(String actorUsername, UUID unitId, AssignmentData data) {
-        courseService.requireWritable(actorUsername, unitService.courseOf(unitId));
+        UUID courseId = unitService.courseOf(unitId);
+        courseService.requireWritable(actorUsername, courseId);
 
         return AssignmentResponse.from(
-                assignmentRepository.save(Assignment.create(unitId, data)));
+                assignmentRepository.save(Assignment.create(unitId, courseId, data)));
     }
 
     @Transactional
@@ -53,21 +59,19 @@ public class AssignmentService {
 
     @Transactional
     public void delete(String actorUsername, UUID assignmentId) {
-        assignmentRepository.delete(writable(actorUsername, assignmentId));
+        Assignment assignment = writable(actorUsername, assignmentId);
+        requireNoWork(assignment);
+        assignmentRepository.delete(assignment);
     }
 
     Assignment writable(String actorUsername, UUID assignmentId) {
         Assignment assignment = existing(assignmentId);
-        courseService.requireWritable(actorUsername, courseOf(assignment));
+        courseService.requireWritable(actorUsername, assignment.getCourseId());
         return assignment;
     }
 
     CourseMember memberFor(String actorUsername, Assignment assignment) {
-        return courseService.memberOf(actorUsername, courseOf(assignment));
-    }
-
-    UUID courseOf(Assignment assignment) {
-        return unitService.courseOf(assignment.getUnitId());
+        return courseService.memberOf(actorUsername, assignment.getCourseId());
     }
 
     Assignment existing(UUID assignmentId) {
@@ -79,5 +83,12 @@ public class AssignmentService {
         Assignment assignment = existing(assignmentId);
         memberFor(actorUsername, assignment);
         return assignment;
+    }
+
+    private void requireNoWork(Assignment assignment) {
+        if (submissionRepository.existsByAssignmentId(assignment.getId())
+                || gradeService.anyFor(GradeSource.ASSIGNMENT, assignment.getId())) {
+            throw new AssignmentHasWorkException();
+        }
     }
 }

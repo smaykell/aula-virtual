@@ -6,17 +6,15 @@ import org.springframework.http.HttpStatus;
 public enum AssignmentError implements ErrorCode {
 
     NOT_FOUND(HttpStatus.NOT_FOUND, "Tarea con id %s no encontrada"),
-    SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "Entrega con id %s no encontrada"),
     ONLY_STUDENTS_SUBMIT(HttpStatus.FORBIDDEN,
             "Solo un estudiante matriculado puede entregar una tarea"),
-    SUBMISSION_OUT_OF_REACH(HttpStatus.FORBIDDEN, "Esa entrega no es tuya"),
     EMPTY_SUBMISSION(HttpStatus.BAD_REQUEST, "La entrega necesita un archivo o un texto"),
     DEADLINE_PASSED(HttpStatus.CONFLICT,
             "La fecha límite ya pasó y esta tarea no admite entregas tardías"),
     ALREADY_GRADED(HttpStatus.CONFLICT,
             "La entrega ya fue calificada y no admite cambios"),
-    SCORE_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "La nota debe estar entre 0 y %s"),
-    OWN_GRADE(HttpStatus.FORBIDDEN, "No puedes calificar tu propia entrega");
+    HAS_WORK(HttpStatus.CONFLICT,
+            "La tarea ya tiene entregas o notas y no se puede eliminar");
 
     public static final String PREFIX = "ASG";
 

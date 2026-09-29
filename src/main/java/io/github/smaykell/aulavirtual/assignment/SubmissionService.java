@@ -1,17 +1,16 @@
 package io.github.smaykell.aulavirtual.assignment;
 
-import io.github.smaykell.aulavirtual.assignment.dto.GradeData;
-import io.github.smaykell.aulavirtual.assignment.dto.GradeResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionResponse;
 import io.github.smaykell.aulavirtual.assignment.exception.DeadlinePassedException;
 import io.github.smaykell.aulavirtual.assignment.exception.EmptySubmissionException;
 import io.github.smaykell.aulavirtual.assignment.exception.OnlyStudentsSubmitException;
-import io.github.smaykell.aulavirtual.assignment.exception.ScoreOutOfRangeException;
 import io.github.smaykell.aulavirtual.assignment.exception.SubmissionAlreadyGradedException;
-import io.github.smaykell.aulavirtual.assignment.exception.SubmissionNotFoundException;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
+import io.github.smaykell.aulavirtual.gradebook.GradeService;
+import io.github.smaykell.aulavirtual.gradebook.GradeSource;
+import io.github.smaykell.aulavirtual.gradebook.dto.GradeResponse;
 import io.github.smaykell.aulavirtual.student.StudentService;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import java.time.Clock;
@@ -63,32 +62,15 @@ public class SubmissionService {
         CourseMember member = assignmentService.memberFor(actorUsername, assignment);
         Page<Submission> submissions = submissionsFor(member, assignmentId, status, pageable);
 
-        Map<UUID, StudentSummary> students = studentService.summariesOf(submissions.getContent()
-                .stream().map(Submission::getStudentId).toList());
-        Map<UUID, GradeResponse> grades = gradeService.bySource(GradeSource.ASSIGNMENT,
-                submissions.getContent().stream().map(Submission::getId).toList());
+        List<UUID> studentIds = submissions.getContent().stream()
+                .map(Submission::getStudentId)
+                .toList();
+        Map<UUID, StudentSummary> students = studentService.summariesOf(studentIds);
+        Map<UUID, GradeResponse> grades = gradeService.ofStudents(GradeSource.ASSIGNMENT,
+                assignmentId, studentIds);
 
         return PageResponse.of(submissions, submission -> SubmissionResponse.from(submission,
-                students.get(submission.getStudentId()), grades.get(submission.getId())));
-    }
-
-    @Transactional
-    public SubmissionResponse grade(String actorUsername, UUID submissionId, GradeData data) {
-        Submission submission = submissionRepository.findById(submissionId)
-                .orElseThrow(() -> new SubmissionNotFoundException(submissionId));
-        Assignment assignment = assignmentService.writable(actorUsername,
-                submission.getAssignmentId());
-        if (!assignment.accepts(data.score())) {
-            throw new ScoreOutOfRangeException(assignment.getMaxScore());
-        }
-
-        Grade grade = gradeService.record(actorUsername, GradeSource.ASSIGNMENT,
-                submission.getId(), submission.getStudentId(),
-                assignmentService.courseOf(assignment), data.score(), data.feedback());
-        submission.markGraded();
-
-        return SubmissionResponse.from(submission,
-                studentService.summaryOf(submission.getStudentId()), GradeResponse.from(grade));
+                students.get(submission.getStudentId()), grades.get(submission.getStudentId())));
     }
 
     private Submission handInAgain(Submission submission, SubmissionData data,
@@ -122,10 +104,10 @@ public class SubmissionService {
     }
 
     private SubmissionResponse responseFor(Submission submission) {
-        return SubmissionResponse.from(submission,
-                studentService.summaryOf(submission.getStudentId()),
-                gradeService.bySource(GradeSource.ASSIGNMENT, List.of(submission.getId()))
-                        .get(submission.getId()));
+        UUID studentId = submission.getStudentId();
+        return SubmissionResponse.from(submission, studentService.summaryOf(studentId),
+                gradeService.ofStudents(GradeSource.ASSIGNMENT, submission.getAssignmentId(),
+                        List.of(studentId)).get(studentId));
     }
 
     private static SubmissionStatus statusAt(Assignment assignment, Instant moment) {

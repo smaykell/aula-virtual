@@ -1,4 +1,4 @@
-package io.github.smaykell.aulavirtual.assignment;
+package io.github.smaykell.aulavirtual.gradebook;
 
 public enum GradeSource {
 

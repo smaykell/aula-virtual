@@ -1,4 +1,4 @@
-package io.github.smaykell.aulavirtual.assignment;
+package io.github.smaykell.aulavirtual.gradebook;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.github.smaykell.aulavirtual.assignment.dto.GradeResponse;
+import io.github.smaykell.aulavirtual.gradebook.dto.GradeResponse;
 import io.github.smaykell.aulavirtual.common.web.ApiErrorWriter;
 import io.github.smaykell.aulavirtual.config.ClockConfig;
 import io.github.smaykell.aulavirtual.config.CorsProperties;
@@ -79,7 +79,8 @@ class GradeControllerTest {
 
     private GradeResponse aGrade() {
         return new GradeResponse(UUID.randomUUID(), GradeSource.ASSIGNMENT, UUID.randomUUID(),
-                UUID.randomUUID(), COURSE, new BigDecimal("18.00"), "Buen trabajo",
+                UUID.randomUUID(), COURSE, new BigDecimal("18.00"), new BigDecimal("20.00"),
+                "Buen trabajo",
                 Instant.EPOCH);
     }
 

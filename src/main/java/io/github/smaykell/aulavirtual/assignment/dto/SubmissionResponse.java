@@ -2,6 +2,7 @@ package io.github.smaykell.aulavirtual.assignment.dto;
 
 import io.github.smaykell.aulavirtual.assignment.Submission;
 import io.github.smaykell.aulavirtual.assignment.SubmissionStatus;
+import io.github.smaykell.aulavirtual.gradebook.dto.GradeResponse;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import java.time.Instant;
 import java.util.UUID;

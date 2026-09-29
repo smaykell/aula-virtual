@@ -1,7 +1,7 @@
-package io.github.smaykell.aulavirtual.assignment.dto;
+package io.github.smaykell.aulavirtual.gradebook.dto;
 
-import io.github.smaykell.aulavirtual.assignment.Grade;
-import io.github.smaykell.aulavirtual.assignment.GradeSource;
+import io.github.smaykell.aulavirtual.gradebook.Grade;
+import io.github.smaykell.aulavirtual.gradebook.GradeSource;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -13,12 +13,13 @@ public record GradeResponse(
         UUID studentId,
         UUID courseId,
         BigDecimal score,
+        BigDecimal maxScore,
         String feedback,
         Instant gradedAt) {
 
     public static GradeResponse from(Grade grade) {
         return new GradeResponse(grade.getId(), grade.getSourceType(), grade.getSourceId(),
-                grade.getStudentId(), grade.getCourseId(), grade.getScore(), grade.getFeedback(),
-                grade.getGradedAt());
+                grade.getStudentId(), grade.getCourseId(), grade.getScore(), grade.getMaxScore(),
+                grade.getFeedback(), grade.getGradedAt());
     }
 }

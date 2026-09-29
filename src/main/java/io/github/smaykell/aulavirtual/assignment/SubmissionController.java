@@ -1,6 +1,5 @@
 package io.github.smaykell.aulavirtual.assignment;
 
-import io.github.smaykell.aulavirtual.assignment.dto.GradeData;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionResponse;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
@@ -41,13 +40,5 @@ public class SubmissionController {
             @PageableDefault(sort = "submittedAt") Pageable pageable) {
 
         return submissionService.list(authentication.getName(), id, status, pageable);
-    }
-
-    @PostMapping("/submissions/{id}/$grade")
-    @PreAuthorize("hasAuthority('" + Permission.Name.ASSIGNMENTS_UPDATE + "')")
-    public SubmissionResponse grade(Authentication authentication, @PathVariable UUID id,
-            @Valid @RequestBody GradeData request) {
-
-        return submissionService.grade(authentication.getName(), id, request);
     }
 }
