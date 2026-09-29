@@ -141,7 +141,7 @@ perfil por defecto, así que un `java -jar` sin `--spring.profiles.active` exige
 Para producción:
 
 ```bash
-java -jar build/libs/aula-virtual-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+java -jar build/libs/aula-virtual-*.jar --spring.profiles.active=prod
 ```
 
 ## Estructura
