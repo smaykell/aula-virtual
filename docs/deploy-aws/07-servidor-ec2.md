@@ -187,7 +187,7 @@ En **tu equipo**, desde la raíz del repo:
 
 ```powershell
 .\gradlew.bat bootJar
-aws s3 cp build\libs\aula-virtual-0.0.1-SNAPSHOT.jar s3://aula-virtual-demo-deploy-<sufijo>/aula-virtual.jar
+aws s3 cp build\libs\aula-virtual-<versión>.jar s3://aula-virtual-demo-deploy-<sufijo>/aula-virtual.jar
 ```
 
 En la **terminal del servidor**:
