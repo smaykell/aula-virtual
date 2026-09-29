@@ -5,8 +5,10 @@ import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.dto.CourseResponse;
 import io.github.smaykell.aulavirtual.course.dto.CreateCourseRequest;
 import io.github.smaykell.aulavirtual.course.dto.UpdateCourseRequest;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentRepository;
 import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
 import io.github.smaykell.aulavirtual.course.exception.InvalidCourseDatesException;
+import io.github.smaykell.aulavirtual.course.exception.StudentNotEnrolledException;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.teacher.dto.TeacherSummary;
 import java.time.LocalDate;
@@ -28,6 +30,7 @@ public class CourseService {
     private final CourseAccess courseAccess;
     private final Invitations invitations;
     private final TeacherService teacherService;
+    private final EnrollmentRepository enrollmentRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<CourseResponse> list(String actorUsername, UUID teacherId,
@@ -102,6 +105,20 @@ public class CourseService {
     @Transactional(readOnly = true)
     public void requireWritable(String actorUsername, UUID courseId) {
         courseAccess.writable(actorUsername, courseId);
+    }
+
+    @Transactional(readOnly = true)
+    public void requireActiveStudent(UUID courseId, UUID studentId) {
+        if (!enrollmentRepository.existsByCourseIdAndStudentIdAndStatus(courseId, studentId,
+                EnrollmentStatus.ACTIVE)) {
+            throw new StudentNotEnrolledException();
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> activeStudentsOf(UUID courseId) {
+        return enrollmentRepository.findStudentIdsByCourseIdAndStatus(courseId,
+                EnrollmentStatus.ACTIVE);
     }
 
     private Page<Course> coursesIn(CourseAccess.Scope scope, CourseStatus status,

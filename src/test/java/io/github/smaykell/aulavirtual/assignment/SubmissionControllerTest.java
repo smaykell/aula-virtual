@@ -10,8 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.github.smaykell.aulavirtual.assignment.dto.GradeData;
-import io.github.smaykell.aulavirtual.assignment.dto.GradeResponse;
+import io.github.smaykell.aulavirtual.assignment.dto.StudentWorkResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionData;
 import io.github.smaykell.aulavirtual.assignment.dto.SubmissionResponse;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
@@ -26,7 +25,6 @@ import io.github.smaykell.aulavirtual.security.RestAuthenticationEntryPoint;
 import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.security.SecurityConfig;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -64,6 +62,9 @@ class SubmissionControllerTest {
     @MockitoBean
     private SubmissionService submissionService;
 
+    @MockitoBean
+    private StudentWorkService studentWorkService;
+
     @Test
     void without_a_token_handing_in_answers_401() throws Exception {
         mockMvc.perform(post("/assignments/{id}/$submit", ASSIGNMENT)
@@ -77,7 +78,7 @@ class SubmissionControllerTest {
     @Test
     void the_student_hands_in_the_task() throws Exception {
         when(submissionService.submit(eq("ana"), eq(ASSIGNMENT), any(SubmissionData.class)))
-                .thenReturn(aSubmission(SubmissionStatus.SUBMITTED, null));
+                .thenReturn(aSubmission(SubmissionStatus.SUBMITTED));
 
         mockMvc.perform(post("/assignments/{id}/$submit", ASSIGNMENT)
                         .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT))
@@ -115,52 +116,23 @@ class SubmissionControllerTest {
     }
 
     @Test
-    void the_teacher_grades_a_submission_and_the_grade_travels_with_it() throws Exception {
-        UUID submissionId = UUID.randomUUID();
-        when(submissionService.grade(eq("ana"), eq(submissionId), any(GradeData.class)))
-                .thenReturn(aSubmission(SubmissionStatus.GRADED, new BigDecimal("18.00")));
+    void the_work_of_a_task_reaches_whoever_reads_the_course() throws Exception {
+        when(studentWorkService.of("ana", ASSIGNMENT)).thenReturn(List.of(new StudentWorkResponse(
+                new StudentSummary(UUID.randomUUID(), "Ana Maria", "Quispe Rojas",
+                        "Hospital Regional", true),
+                null, null)));
 
-        mockMvc.perform(post("/submissions/{id}/$grade", submissionId)
-                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"score\": 18.00, \"feedback\": \"Buen trabajo\"}"))
+        mockMvc.perform(get("/assignments/{id}/work", ASSIGNMENT)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("GRADED"))
-                .andExpect(jsonPath("$.grade.score").value(18.00));
+                .andExpect(jsonPath("$[0].student.lastName").value("Quispe Rojas"))
+                .andExpect(jsonPath("$[0].submission").doesNotExist());
     }
 
-    @Test
-    void a_student_does_not_grade_its_own_submission() throws Exception {
-        mockMvc.perform(post("/submissions/{id}/$grade", UUID.randomUUID())
-                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"score\": 20.00}"))
-                .andExpect(status().isForbidden());
-
-        verify(submissionService, never()).grade(any(), any(), any());
-    }
-
-    @Test
-    void a_negative_score_does_not_reach_the_service() throws Exception {
-        mockMvc.perform(post("/submissions/{id}/$grade", UUID.randomUUID())
-                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"score\": -1}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0].field").value("score"));
-
-        verify(submissionService, never()).grade(any(), any(), any());
-    }
-
-    private SubmissionResponse aSubmission(SubmissionStatus status, BigDecimal score) {
-        UUID id = UUID.randomUUID();
-        GradeResponse grade = score == null ? null : new GradeResponse(UUID.randomUUID(),
-                GradeSource.ASSIGNMENT, id, UUID.randomUUID(), UUID.randomUUID(), score,
-                "Buen trabajo", Instant.EPOCH);
-
-        return new SubmissionResponse(id, ASSIGNMENT,
+    private SubmissionResponse aSubmission(SubmissionStatus status) {
+        return new SubmissionResponse(UUID.randomUUID(), ASSIGNMENT,
                 new StudentSummary(UUID.randomUUID(), "Ana Maria", "Quispe Rojas", "Hospital Regional", true),
-                null, "Mi respuesta", Instant.EPOCH, status, grade);
+                "Mi respuesta", List.of(), Instant.EPOCH, status, null);
     }
 
     private String submissionBody() {

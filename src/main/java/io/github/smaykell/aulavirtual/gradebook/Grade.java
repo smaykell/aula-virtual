@@ -1,4 +1,4 @@
-package io.github.smaykell.aulavirtual.assignment;
+package io.github.smaykell.aulavirtual.gradebook;
 
 import io.github.smaykell.aulavirtual.common.domain.BaseEntity;
 import jakarta.persistence.Column;
@@ -35,6 +35,9 @@ public class Grade extends BaseEntity {
     @Column(name = "score", nullable = false, precision = 5, scale = 2)
     private BigDecimal score;
 
+    @Column(name = "max_score", nullable = false, precision = 5, scale = 2)
+    private BigDecimal maxScore;
+
     @Column(name = "feedback", length = 4000)
     private String feedback;
 
@@ -43,6 +46,9 @@ public class Grade extends BaseEntity {
 
     @Column(name = "graded_at", nullable = false)
     private Instant gradedAt;
+
+    @Column(name = "returned_at")
+    private Instant returnedAt;
 
     private Grade(GradeSource sourceType, UUID sourceId, UUID studentId, UUID courseId) {
         this.sourceType = sourceType;
@@ -55,10 +61,23 @@ public class Grade extends BaseEntity {
         return new Grade(sourceType, sourceId, studentId, courseId);
     }
 
-    public void record(BigDecimal score, String feedback, UUID gradedBy, Instant moment) {
+    public void record(BigDecimal score, BigDecimal maxScore, String feedback, UUID gradedBy,
+            Instant moment) {
+
         this.score = score;
+        this.maxScore = maxScore;
         this.feedback = feedback == null || feedback.isBlank() ? null : feedback.trim();
         this.gradedBy = gradedBy;
         this.gradedAt = moment;
+    }
+
+    public void handBack(Instant moment) {
+        if (!isReturned()) {
+            this.returnedAt = moment;
+        }
+    }
+
+    public boolean isReturned() {
+        return returnedAt != null;
     }
 }

@@ -13,6 +13,8 @@ import io.github.smaykell.aulavirtual.course.dto.CourseResponse;
 import io.github.smaykell.aulavirtual.course.dto.CreateCourseRequest;
 import io.github.smaykell.aulavirtual.course.dto.UpdateCourseRequest;
 import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentPolicy;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentRepository;
+import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import java.time.LocalDate;
 import java.util.List;
@@ -47,12 +49,38 @@ class CourseServiceTest {
     @Mock
     private TeacherService teacherService;
 
+    @Mock
+    private EnrollmentRepository enrollmentRepository;
+
     private CourseService courseService;
 
     @BeforeEach
     void setUp() {
         courseService = new CourseService(courseRepository, courseAccess, invitations,
-                teacherService);
+                teacherService, enrollmentRepository);
+    }
+
+    @Test
+    void the_students_of_a_course_are_those_with_an_active_enrollment() {
+        UUID courseId = UUID.randomUUID();
+        List<UUID> active = List.of(UUID.randomUUID());
+        when(enrollmentRepository.findStudentIdsByCourseIdAndStatus(courseId,
+                EnrollmentStatus.ACTIVE)).thenReturn(active);
+
+        assertThat(courseService.activeStudentsOf(courseId)).isEqualTo(active);
+    }
+
+    @Test
+    void a_student_without_an_active_enrollment_is_not_part_of_the_course() {
+        UUID courseId = UUID.randomUUID();
+        UUID studentId = UUID.randomUUID();
+        when(enrollmentRepository.existsByCourseIdAndStudentIdAndStatus(courseId, studentId,
+                EnrollmentStatus.ACTIVE)).thenReturn(false);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> courseService.requireActiveStudent(courseId, studentId));
+
+        assertThat(error.getCode()).isEqualTo("CRS_STUDENT_NOT_ENROLLED");
     }
 
     @Test

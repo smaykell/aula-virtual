@@ -33,8 +33,9 @@ class ModuleBoundariesTest {
     @Test
     void the_scan_finds_the_repository_of_every_module() throws IOException {
         assertThat(simpleNamesOf(repositories())).containsExactlyInAnyOrder(
-                "AdministratorRepository", "AssignmentRepository", "CourseRepository",
-                "EnrollmentRepository", "GradeRepository", "MaterialRepository",
+                "AdministratorRepository", "AssignmentRepository", "AttachmentRepository",
+                "CourseRepository", "EnrollmentRepository", "GradeCategoryRepository",
+                "GradeRepository", "GradingSchemeRepository", "MaterialRepository",
                 "NotificationRepository", "PasswordResetRepository", "PersonRepository",
                 "SettingsRepository", "StudentRepository", "SubmissionRepository",
                 "TeacherRepository", "UnitRepository", "UserRepository");
@@ -43,9 +44,9 @@ class ModuleBoundariesTest {
     @Test
     void the_scan_finds_the_entity_of_every_module() throws IOException {
         assertThat(simpleNamesOf(entities())).containsExactlyInAnyOrder(
-                "Administrator", "Assignment", "Course", "Enrollment", "Grade", "Material",
-                "Notification", "PasswordReset", "Person", "Settings", "Student", "Submission",
-                "Teacher", "Unit", "User");
+                "Administrator", "Assignment", "Attachment", "Course", "Enrollment", "Grade",
+                "GradeCategory", "GradingScheme", "Material", "Notification", "PasswordReset",
+                "Person", "Settings", "Student", "Submission", "Teacher", "Unit", "User");
     }
 
     @Test

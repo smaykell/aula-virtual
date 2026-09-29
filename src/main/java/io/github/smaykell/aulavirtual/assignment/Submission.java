@@ -25,9 +25,6 @@ public class Submission extends BaseEntity {
     @Column(name = "student_id", nullable = false, updatable = false)
     private UUID studentId;
 
-    @Column(name = "storage_key", length = 255)
-    private String storageKey;
-
     @Column(name = "text", length = 10000)
     private String text;
 
@@ -53,7 +50,6 @@ public class Submission extends BaseEntity {
     }
 
     public final void replace(SubmissionData data, Instant moment, SubmissionStatus status) {
-        this.storageKey = trimmed(data.storageKey());
         this.text = trimmed(data.text());
         this.submittedAt = moment;
         this.status = status;
