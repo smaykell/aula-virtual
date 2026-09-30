@@ -50,12 +50,15 @@ class AssignmentGradingServiceTest {
     @Mock
     private GradeService gradeService;
 
+    @Mock
+    private AssignmentNotices notices;
+
     private AssignmentGradingService gradingService;
 
     @BeforeEach
     void setUp() {
         gradingService = new AssignmentGradingService(assignmentService, submissionRepository,
-                courseService, gradeService);
+                courseService, gradeService, notices);
     }
 
     @Test
@@ -121,6 +124,7 @@ class AssignmentGradingServiceTest {
 
         assertThat(returned).extracting(GradeResponse::studentId).containsExactly(STUDENT);
         assertThat(submission.isGraded()).isTrue();
+        verify(notices).handedBack(assignment, List.of(STUDENT));
     }
 
     private Assignment givenTheWritableAssignment() {

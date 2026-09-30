@@ -73,6 +73,7 @@ variables del entorno del proceso.
 | `NOTIFICATIONS_MAX_ATTEMPTS` | `app.notifications.max-attempts` | `5` |
 | `NOTIFICATIONS_RETRY_DELAY` | `app.notifications.retry-delay` | `PT1M`, y se duplica en cada reintento |
 | `NOTIFICATIONS_FROM` | `app.notifications.from` | `aula-virtual@localhost` |
+| `NOTIFICATIONS_TIME_ZONE` | `app.notifications.time-zone` | `America/Lima`; zona en la que los correos escriben fechas y horas |
 | `SPRING_MAIL_HOST` | `spring.mail.host` | **sin declarar**: mientras falte, los correos solo se escriben en el log |
 | `SPRING_MAIL_PORT` | `spring.mail.port` | `587` |
 | `SPRING_MAIL_USERNAME` | `spring.mail.username` | vacío |
@@ -565,6 +566,23 @@ Inscribirse encola un correo; no se envía dentro de la petición. La cola es la
 `notifications`, escrita en la misma transacción que la matrícula, y un proceso
 programado la consume cada `NOTIFICATIONS_POLL_INTERVAL`. Sin `SPRING_MAIL_HOST` los
 correos solo se escriben en el log, que es lo que pasa en `dev`.
+
+Qué se avisa y a quién (`NotificationType` es la lista completa):
+
+| Hecho | Quién lo recibe |
+|---|---|
+| Cuenta creada por el enlace | el estudiante nuevo |
+| Solicitud de matrícula | el estudiante y el **docente titular**, que tiene que revisarla |
+| Matrícula activa (automática, aceptada o inscrita por el staff) | el estudiante |
+| Solicitud rechazada | el estudiante |
+| Tarea nueva | cada estudiante con matrícula activa, con la fecha de vencimiento |
+| Nota devuelta (`$return`) | cada estudiante cuya nota se devolvió |
+| Recuperar la contraseña | el dueño de la cuenta |
+
+Los avisos de matrícula salen todos de `EnrollmentNotices` y los de tareas de
+`AssignmentNotices`: un servicio dice *qué pasó* y ellos deciden a quién y con qué datos.
+Las fechas se escriben en `NOTIFICATIONS_TIME_ZONE` (`MessageDates`), porque un
+`Instant` en UTC no le dice a nadie cuándo vence su tarea.
 
 ### Estudiantes y matrícula
 

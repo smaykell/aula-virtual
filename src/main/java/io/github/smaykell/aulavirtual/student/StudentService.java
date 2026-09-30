@@ -98,6 +98,16 @@ public class StudentService {
         return StudentContact.from(personService.get(existing(studentId).getPersonId()));
     }
 
+    @Transactional(readOnly = true)
+    public List<StudentContact> contactsOf(Collection<UUID> studentIds) {
+        List<UUID> personIds = studentRepository.findAllById(studentIds).stream()
+                .map(Student::getPersonId)
+                .toList();
+        return personService.byIds(personIds).values().stream()
+                .map(StudentContact::from)
+                .toList();
+    }
+
     @Transactional
     public StudentResponse update(String actorUsername, UUID studentId,
             UpdateStudentRequest request) {

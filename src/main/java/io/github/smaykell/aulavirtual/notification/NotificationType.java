@@ -33,6 +33,36 @@ public enum NotificationType {
             para ver el material y las tareas.
             """),
 
+    ENROLLMENT_REJECTED("Tu solicitud para {courseName}", """
+            Hola {firstName}:
+
+            El docente del curso «{courseName}» no aceptó tu solicitud. Si crees que
+            es un error, consúltalo con él; puedes volver a pedirlo con el mismo
+            código de invitación.
+            """),
+
+    ENROLLMENT_TO_REVIEW("Nueva solicitud en {courseName}", """
+            Hola {firstName}:
+
+            {studentName} pidió entrar a tu curso «{courseName}». Puedes aceptarla
+            o rechazarla desde la pestaña «Matrículas» del curso.
+            """),
+
+    ASSIGNMENT_PUBLISHED("Nueva tarea en {courseName}: {assignmentTitle}", """
+            Hola {firstName}:
+
+            Hay una tarea nueva en el curso «{courseName}»: «{assignmentTitle}».
+            Vence el {dueAt}. Entra al aula virtual para ver las instrucciones.
+            """),
+
+    GRADE_RETURNED("Ya tienes la nota de {assignmentTitle}", """
+            Hola {firstName}:
+
+            El docente del curso «{courseName}» te devolvió la nota de
+            «{assignmentTitle}». Entra al aula virtual para verla junto con sus
+            comentarios.
+            """),
+
     PASSWORD_RESET("Cambia tu contraseña del aula virtual", """
             Hola {firstName}:
 

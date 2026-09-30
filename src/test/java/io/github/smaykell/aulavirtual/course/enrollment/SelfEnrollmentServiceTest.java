@@ -71,13 +71,16 @@ class SelfEnrollmentServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private EnrollmentNotices notices;
+
     private SelfEnrollmentService selfEnrollmentService;
 
     @BeforeEach
     void setUp() {
         selfEnrollmentService = new SelfEnrollmentService(courseRepository, enrollmentRepository,
                 studentService, personService, teacherService, settingsService,
-                notificationService, Clock.fixed(NOW, ZoneOffset.UTC));
+                notificationService, notices, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -108,8 +111,7 @@ class SelfEnrollmentServiceTest {
         assertThat(response.status()).isEqualTo(EnrollmentStatus.ACTIVE);
         verify(notificationService).enqueue(eq(NotificationType.ACCOUNT_CREATED),
                 eq("ana@escuela.pe"), any());
-        verify(notificationService).enqueue(eq(NotificationType.ENROLLMENT_ACTIVE),
-                eq("ana@escuela.pe"), any());
+        verify(notices).joined(any(), any(Enrollment.class));
     }
 
     @Test
@@ -123,8 +125,7 @@ class SelfEnrollmentServiceTest {
         SelfRegistrationResponse response = selfEnrollmentService.register(CODE, aRequest());
 
         assertThat(response.status()).isEqualTo(EnrollmentStatus.PENDING);
-        verify(notificationService).enqueue(eq(NotificationType.ENROLLMENT_REQUESTED),
-                eq("ana@escuela.pe"), any());
+        verify(notices).joined(any(), any(Enrollment.class));
     }
 
     @Test

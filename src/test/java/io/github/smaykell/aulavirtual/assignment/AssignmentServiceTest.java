@@ -60,13 +60,16 @@ class AssignmentServiceTest {
     @Mock
     private AttachmentService attachmentService;
 
+    @Mock
+    private AssignmentNotices notices;
+
     private AssignmentService assignmentService;
 
     @BeforeEach
     void setUp() {
         assignmentService = new AssignmentService(assignmentRepository, submissionRepository,
                 unitService, courseService, gradeService, gradingSchemeService,
-                attachmentService);
+                attachmentService, notices);
     }
 
     @Test
@@ -85,6 +88,7 @@ class AssignmentServiceTest {
         assertThat(assignment.maxScore()).isEqualTo(AssignmentFixtures.MAX_SCORE);
         assertThat(assignment.allowsLate()).isFalse();
         verify(courseService).requireWritable("juan", COURSE);
+        verify(notices).published(any(Assignment.class));
         verify(assignmentRepository).save(argThat(saved -> COURSE.equals(saved.getCourseId())));
     }
 

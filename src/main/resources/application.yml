@@ -79,6 +79,7 @@ app:
     max-attempts: ${NOTIFICATIONS_MAX_ATTEMPTS:5}
     retry-delay: ${NOTIFICATIONS_RETRY_DELAY:PT1M}
     from: ${NOTIFICATIONS_FROM:aula-virtual@localhost}
+    time-zone: ${NOTIFICATIONS_TIME_ZONE:America/Lima}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:4200,http://localhost:3000}
     allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS

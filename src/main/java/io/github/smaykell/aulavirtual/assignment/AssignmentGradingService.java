@@ -21,6 +21,7 @@ public class AssignmentGradingService {
     private final SubmissionRepository submissionRepository;
     private final CourseService courseService;
     private final GradeService gradeService;
+    private final AssignmentNotices notices;
 
     @Transactional
     public GradeResponse grade(String actorUsername, UUID assignmentId, UUID studentId,
@@ -36,13 +37,14 @@ public class AssignmentGradingService {
     public List<GradeResponse> handBack(String actorUsername, UUID assignmentId,
             HandBackRequest request) {
 
-        assignmentService.writable(actorUsername, assignmentId);
+        Assignment assignment = assignmentService.writable(actorUsername, assignmentId);
         List<GradeResponse> returned = gradeService.handBack(GradeSource.ASSIGNMENT,
                 assignmentId, request.studentIds());
 
         List<UUID> studentsReturned = returned.stream().map(GradeResponse::studentId).toList();
         submissionRepository.findByAssignmentIdAndStudentIdIn(assignmentId, studentsReturned)
                 .forEach(Submission::markGraded);
+        notices.handedBack(assignment, studentsReturned);
         return returned;
     }
 

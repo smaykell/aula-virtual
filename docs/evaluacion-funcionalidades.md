@@ -67,12 +67,17 @@ curso con notificación por correo resuelve la mayor parte del caso de uso.
 
 **Notificaciones que faltan** — P1 · S cada una
 La cola existe y añadir un tipo es barato. Faltan los avisos que más se esperan:
-- Tarea nueva publicada / material nuevo publicado.
-- Nota devuelta (`$return`).
+- ✅ Tarea nueva publicada / material nuevo publicado. **Hecho solo para tareas** en
+  `feature/missing-notifications`. El material puede publicarse en diferido
+  (`publishedAt`) y editarse u ocultarse antes: avisarlo bien pide reconciliar la cola con
+  esos cambios, así que queda fuera; el tablón de avisos cubre el caso a mano.
+- ✅ Nota devuelta (`$return`). **Hecho** en `feature/missing-notifications`.
 - Recordatorio de tarea que vence (p. ej. 24 h antes, para quien no entregó) — necesita
   un planificador, que ya hay (`SchedulingConfig`).
-- Al docente: solicitud de matrícula pendiente de revisar.
-- Matrícula rechazada (hoy el alumno no se entera).
+- ✅ Al docente: solicitud de matrícula pendiente de revisar. **Hecho** en
+  `feature/missing-notifications`, también cuando llega por el auto-registro.
+- ✅ Matrícula rechazada (hoy el alumno no se entera). **Hecho** en
+  `feature/missing-notifications`.
 
 **Notificaciones dentro de la app** — P2 · M
 Campana con no leídos. Reutilizaría los mismos hechos que la cola de correo; hay que decidir
