@@ -226,21 +226,21 @@ funcionan sin traducción.
 | `PUT /api/me` | autenticado | cambia mis datos de persona |
 | `POST /api/me/$changePassword` | autenticado | pide la contraseña actual y devuelve 204 |
 | `GET /api/persons/$byDocument` | `teachers:create` o `administrators:create` | busca una persona por documento y dice qué es ya |
-| `GET /api/administrators` | `administrators:read` | listado paginado, filtro opcional `?active=` |
+| `GET /api/administrators` | `administrators:read` | listado paginado, filtros opcionales `?active=` y `?q=` (nombre, documento o correo) |
 | `GET /api/administrators/{id}` | `administrators:read` | un administrador |
 | `POST /api/administrators` | `administrators:create` | registra un administrador y devuelve 201 |
 | `PUT /api/administrators/{id}` | `administrators:update` | cambia sus datos de persona |
 | `POST /api/administrators/{id}/$enable` | `administrators:update` | reactiva el perfil |
 | `POST /api/administrators/{id}/$disable` | `administrators:update` | desactiva el perfil |
 | `POST /api/administrators/{id}/$changePassword` | `administrators:update` | cambia su contraseña y devuelve 204 |
-| `GET /api/teachers` | `teachers:read` | listado paginado, filtro opcional `?active=` |
+| `GET /api/teachers` | `teachers:read` | listado paginado, filtros opcionales `?active=` y `?q=` (nombre, documento o correo) |
 | `GET /api/teachers/{id}` | `teachers:read` | un docente |
 | `POST /api/teachers` | `teachers:create` | registra un docente y devuelve 201 |
 | `PUT /api/teachers/{id}` | `teachers:update` | cambia los datos de persona |
 | `POST /api/teachers/{id}/$enable` | `teachers:update` | reactiva el perfil de docente |
 | `POST /api/teachers/{id}/$disable` | `teachers:update` | desactiva el perfil de docente |
 | `POST /api/teachers/{id}/$changePassword` | `teachers:update` | cambia la contraseña de su cuenta y devuelve 204 |
-| `GET /api/students` | `students:read` | listado paginado, filtro opcional `?active=` |
+| `GET /api/students` | `students:read` | listado paginado, filtros opcionales `?active=` y `?q=` (nombre, documento o correo) |
 | `GET /api/students/{id}` | `students:read` | un estudiante |
 | `POST /api/students` | `students:create` | registra un estudiante y devuelve 201 |
 | `PUT /api/students/{id}` | `students:update` | cambia sus datos de persona |
@@ -251,7 +251,7 @@ funcionan sin traducción.
 | `PUT /api/settings` | `settings:update` | solo el superadmin |
 | `GET /api/invitations/{code}` | **pública** | nombre del curso y del docente, para la pantalla de inscripción |
 | `POST /api/invitations/{code}/$register` | **pública** | el estudiante se da de alta y queda matriculado; devuelve 201 |
-| `GET /api/courses` | `courses:read` | listado paginado, filtros opcionales `?teacherId=` y `?status=` |
+| `GET /api/courses` | `courses:read` | listado paginado, filtros opcionales `?teacherId=`, `?status=` y `?q=` (nombre) |
 | `GET /api/courses/{id}` | `courses:read` | un curso |
 | `POST /api/courses` | `courses:create` | crea un curso y devuelve 201 |
 | `PUT /api/courses/{id}` | `courses:update` | cambia sus datos y su docente titular |
@@ -299,6 +299,12 @@ golpe una operación de un identificador.
 
 Rutas públicas: `/auth/login`, `/actuator/health`, `/actuator/info`,
 `/v3/api-docs/**`, `/swagger-ui/**`. Todo lo demás exige token.
+
+La búsqueda `?q=` no distingue mayúsculas ni tildes (`V20` activa la extensión
+`unaccent`) y trata `%` y `_` como texto. En docentes, estudiantes y administradores
+busca primero las personas que encajan (`PersonService.idsMatching`) y filtra el perfil
+por esos ids, para no cruzar tablas de otro módulo; con decenas de miles de personas
+convendría un índice de texto o una búsqueda que devuelva la página ya cruzada.
 
 ### Roles y permisos
 

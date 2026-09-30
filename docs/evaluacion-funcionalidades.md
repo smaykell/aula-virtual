@@ -192,7 +192,7 @@ El correo de la persona es opcional y nunca se verifica, pero es la vía de recu
 
 | Mejora | Prioridad | Esfuerzo | Nota |
 |---|---|---|---|
-| Búsqueda por texto en listados de docentes, estudiantes, admins y cursos | P1 | S | Hoy solo filtran por `active`/`status`; con cientos de alumnos no hay forma de encontrar a uno. |
+| ✅ Búsqueda por texto en listados de docentes, estudiantes, admins y cursos | P1 | S | Hoy solo filtran por `active`/`status`; con cientos de alumnos no hay forma de encontrar a uno. **Hecho** en `feature/list-search` (los dos repos, migración `V20`): `?q=` por nombre, documento o correo (cursos: nombre), sin distinguir tildes; buscador en las cuatro pantallas, guardado en la URL. |
 | Contrato público de `course` en un solo sitio | P3 | S | Mover `UnitService.courseOf` a `CourseService` al hacer exámenes (ya anotado en CLAUDE.md). |
 | Historial de entregas | P3 | M | Reentregar reemplaza la fila; se pierde qué se entregó antes y cuándo. |
 | Rotar el código de invitación | P2 | S | El código no caduca ni se rota; si se filtra, la única defensa es cerrar el auto-registro para todo el centro. |

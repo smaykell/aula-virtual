@@ -36,6 +36,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -171,13 +172,13 @@ class TeacherServiceTest {
     void the_listing_joins_each_teacher_with_its_person_and_its_username() {
         Teacher teacher = Teacher.create(PERSON);
         ReflectionTestUtils.setField(teacher, "id", UUID.randomUUID());
-        when(teacherRepository.findAll(FIRST_PAGE))
+        when(teacherRepository.findAll(any(Specification.class), eq(FIRST_PAGE)))
                 .thenReturn(new PageImpl<>(List.of(teacher), FIRST_PAGE, 1));
         when(personService.byIds(List.of(PERSON))).thenReturn(Map.of(PERSON, personResponse()));
         when(userService.usernamesByPersonId(List.of(PERSON)))
                 .thenReturn(Map.of(PERSON, "ana.docente"));
 
-        PageResponse<TeacherResponse> page = teacherService.list("ana", null, FIRST_PAGE);
+        PageResponse<TeacherResponse> page = teacherService.list("ana", null, null, FIRST_PAGE);
 
         assertThat(page.content()).singleElement().satisfies(found -> {
             assertThat(found.username()).isEqualTo("ana.docente");

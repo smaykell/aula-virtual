@@ -5,6 +5,7 @@ import io.github.smaykell.aulavirtual.administrator.dto.CreateAdministratorReque
 import io.github.smaykell.aulavirtual.administrator.dto.UpdateAdministratorRequest;
 import io.github.smaykell.aulavirtual.administrator.exception.AdministratorAlreadyRegisteredException;
 import io.github.smaykell.aulavirtual.administrator.exception.AdministratorNotFoundException;
+import io.github.smaykell.aulavirtual.common.domain.Filters;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.person.PersonService;
 import io.github.smaykell.aulavirtual.person.dto.PersonResponse;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,13 +34,14 @@ public class AdministratorService {
 
     @Transactional(readOnly = true)
     public PageResponse<AdministratorResponse> list(String actorUsername, Boolean active,
-            Pageable pageable) {
+            String search, Pageable pageable) {
 
         Actor actor = userService.requireManagerOf(actorUsername, Role.ADMIN);
-        Page<Administrator> administrators = active == null
-                ? administratorRepository.findByRoleIn(actor.manageableRoles(), pageable)
-                : administratorRepository.findByRoleInAndActive(actor.manageableRoles(), active,
-                        pageable);
+        Specification<Administrator> filter = Filters.<Administrator>among("role",
+                        actor.manageableRoles())
+                .and(Filters.equalTo("active", active))
+                .and(Filters.among("personId", search, personService::idsMatching));
+        Page<Administrator> administrators = administratorRepository.findAll(filter, pageable);
 
         List<UUID> personIds = administrators.getContent().stream()
                 .map(Administrator::getPersonId).toList();

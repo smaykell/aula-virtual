@@ -35,9 +35,10 @@ public class StudentController {
     @PreAuthorize("hasAuthority('" + Permission.Name.STUDENTS_READ + "')")
     public PageResponse<StudentResponse> list(Authentication authentication,
             @RequestParam(required = false) Boolean active,
+            @RequestParam(name = "q", required = false) String search,
             @PageableDefault(sort = "createdAt") Pageable pageable) {
 
-        return studentService.list(authentication.getName(), active, pageable);
+        return studentService.list(authentication.getName(), active, search, pageable);
     }
 
     @GetMapping("/{id}")

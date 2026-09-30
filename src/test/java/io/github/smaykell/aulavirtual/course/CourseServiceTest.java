@@ -147,7 +147,7 @@ class CourseServiceTest {
         Course course = CourseFixtures.course(TITULAR);
         when(courseAccess.listingScope("juan", null))
                 .thenReturn(new CourseAccess.Scope(TITULAR, null));
-        when(courseRepository.search(TITULAR, CourseStatus.ACTIVE, FIRST_PAGE))
+        when(courseRepository.search(TITULAR, CourseStatus.ACTIVE, "%", FIRST_PAGE))
                 .thenReturn(new PageImpl<>(List.of(course), FIRST_PAGE, 1));
         when(teacherService.summariesOf(List.of(TITULAR)))
                 .thenReturn(Map.of(TITULAR, CourseFixtures.teacher(TITULAR)));
@@ -155,7 +155,7 @@ class CourseServiceTest {
                 .thenReturn(CourseFixtures.invitation());
 
         PageResponse<CourseResponse> page = courseService.list("juan", null,
-                CourseStatus.ACTIVE, FIRST_PAGE);
+                CourseStatus.ACTIVE, null, FIRST_PAGE);
 
         assertThat(page.content()).singleElement().satisfies(found -> {
             assertThat(found.teacher().lastName()).isEqualTo("Perez Gomez");
@@ -169,7 +169,7 @@ class CourseServiceTest {
         Course attended = CourseFixtures.course(TITULAR);
         when(courseAccess.listingScope("ana", null))
                 .thenReturn(new CourseAccess.Scope(null, null));
-        when(courseRepository.search(null, null, FIRST_PAGE))
+        when(courseRepository.search(null, null, "%", FIRST_PAGE))
                 .thenReturn(new PageImpl<>(List.of(taught, attended), FIRST_PAGE, 2));
         when(teacherService.summariesOf(List.of(TITULAR, TITULAR)))
                 .thenReturn(Map.of(TITULAR, CourseFixtures.teacher(TITULAR)));
@@ -178,7 +178,7 @@ class CourseServiceTest {
         when(invitations.of(CourseFixtures.INVITATION_CODE))
                 .thenReturn(CourseFixtures.invitation());
 
-        List<CourseResponse> content = courseService.list("ana", null, null, FIRST_PAGE)
+        List<CourseResponse> content = courseService.list("ana", null, null, null, FIRST_PAGE)
                 .content();
 
         assertThat(content.get(0).staff()).isTrue();

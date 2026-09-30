@@ -67,7 +67,7 @@ class AdministratorControllerTest {
         mockMvc.perform(get("/administrators"))
                 .andExpect(status().isUnauthorized());
 
-        verify(administratorService, never()).list(any(), any(), any());
+        verify(administratorService, never()).list(any(), any(), any(), any());
     }
 
     @Test
@@ -77,12 +77,12 @@ class AdministratorControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("GEN_ACCESS_DENIED"));
 
-        verify(administratorService, never()).list(any(), any(), any());
+        verify(administratorService, never()).list(any(), any(), any(), any());
     }
 
     @Test
     void the_superadmin_lists_the_administrators() throws Exception {
-        when(administratorService.list(eq("ana"), eq(null), any()))
+        when(administratorService.list(eq("ana"), eq(null), eq(null), any()))
                 .thenReturn(new PageResponse<>(List.of(anAdministrator(true)), 0, 20, 1, 1, true,
                         true));
 

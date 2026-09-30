@@ -1,5 +1,6 @@
 package io.github.smaykell.aulavirtual.teacher;
 
+import io.github.smaykell.aulavirtual.common.domain.Filters;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.person.PersonService;
 import io.github.smaykell.aulavirtual.person.dto.PersonResponse;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,12 +36,12 @@ public class TeacherService {
 
     @Transactional(readOnly = true)
     public PageResponse<TeacherResponse> list(String actorUsername, Boolean active,
-            Pageable pageable) {
+            String search, Pageable pageable) {
 
         userService.requireManagerOf(actorUsername, Role.TEACHER);
-        Page<Teacher> teachers = active == null
-                ? teacherRepository.findAll(pageable)
-                : teacherRepository.findByActive(active, pageable);
+        Specification<Teacher> filter = Filters.<Teacher>equalTo("active", active)
+                .and(Filters.among("personId", search, personService::idsMatching));
+        Page<Teacher> teachers = teacherRepository.findAll(filter, pageable);
 
         List<UUID> personIds = teachers.getContent().stream().map(Teacher::getPersonId).toList();
         Map<UUID, PersonResponse> persons = personService.byIds(personIds);

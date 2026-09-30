@@ -69,18 +69,18 @@ class CourseControllerTest {
         mockMvc.perform(get("/courses"))
                 .andExpect(status().isUnauthorized());
 
-        verify(courseService, never()).list(any(), any(), any(), any());
+        verify(courseService, never()).list(any(), any(), any(), any(), any());
     }
 
     @Test
     void a_student_lists_courses_and_the_service_decides_which_ones() throws Exception {
-        when(courseService.list(eq("ana"), eq(null), eq(null), any()))
+        when(courseService.list(eq("ana"), eq(null), eq(null), eq(null), any()))
                 .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true, true));
 
         mockMvc.perform(get("/courses").header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
                 .andExpect(status().isOk());
 
-        verify(courseService).list(eq("ana"), eq(null), eq(null), any());
+        verify(courseService).list(eq("ana"), eq(null), eq(null), eq(null), any());
     }
 
     @Test
@@ -129,7 +129,7 @@ class CourseControllerTest {
     @Test
     void the_filters_of_the_listing_reach_the_service() throws Exception {
         UUID teacherId = UUID.randomUUID();
-        when(courseService.list(eq("ana"), eq(teacherId), eq(CourseStatus.ARCHIVED), any()))
+        when(courseService.list(eq("ana"), eq(teacherId), eq(CourseStatus.ARCHIVED), eq(null), any()))
                 .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true, true));
 
         mockMvc.perform(get("/courses")
@@ -138,7 +138,7 @@ class CourseControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN)))
                 .andExpect(status().isOk());
 
-        verify(courseService).list(eq("ana"), eq(teacherId), eq(CourseStatus.ARCHIVED), any());
+        verify(courseService).list(eq("ana"), eq(teacherId), eq(CourseStatus.ARCHIVED), eq(null), any());
     }
 
     @Test

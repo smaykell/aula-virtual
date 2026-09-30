@@ -35,9 +35,10 @@ public class AdministratorController {
     @PreAuthorize("hasAuthority('" + Permission.Name.ADMINISTRATORS_READ + "')")
     public PageResponse<AdministratorResponse> list(Authentication authentication,
             @RequestParam(required = false) Boolean active,
+            @RequestParam(name = "q", required = false) String search,
             @PageableDefault(sort = "createdAt") Pageable pageable) {
 
-        return administratorService.list(authentication.getName(), active, pageable);
+        return administratorService.list(authentication.getName(), active, search, pageable);
     }
 
     @GetMapping("/{id}")
