@@ -87,10 +87,15 @@ en la entrega es lo más útil y lo más barato de los dos.
 
 ### 2.3 Gestión académica
 
-**Matrícula por el staff** — P1 · S/M
+✅ **Matrícula por el staff** — P1 · S/M
 `enrollments:create` solo lo tiene `STUDENT`: el docente o el admin **no pueden inscribir a
 un alumno** directamente, solo esperar a que use el código. Falta
 `POST /courses/{id}/enrollments` para staff (uno o varios estudiantes existentes).
+**Hecho** en `feature/staff-enrollment` (los dos repos): el titular o quien administra
+docentes inscribe por número de documento, hasta 100 a la vez, con resultado por
+documento; botón «Inscribir estudiantes» en la pestaña Matrículas. Decidido por mí (la
+pregunta 2 de la sección 5): pueden hacerlo el docente titular y el admin, con el mismo
+permiso que aceptar solicitudes (`enrollments:update`).
 
 **Carga masiva** — P2 · M
 Importar estudiantes (y su matrícula en un curso) desde CSV/Excel, con informe de filas
