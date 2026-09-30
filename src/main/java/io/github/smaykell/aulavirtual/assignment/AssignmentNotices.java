@@ -26,6 +26,10 @@ class AssignmentNotices {
                 courseService.activeStudentsOf(assignment.getCourseId()));
     }
 
+    void dueSoon(Assignment assignment, Collection<UUID> studentIds) {
+        notify(NotificationType.ASSIGNMENT_DUE_SOON, assignment, studentIds);
+    }
+
     void handedBack(Assignment assignment, Collection<UUID> studentIds) {
         notify(NotificationType.GRADE_RETURNED, assignment, studentIds);
     }

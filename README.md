@@ -74,6 +74,8 @@ variables del entorno del proceso.
 | `NOTIFICATIONS_RETRY_DELAY` | `app.notifications.retry-delay` | `PT1M`, y se duplica en cada reintento |
 | `NOTIFICATIONS_FROM` | `app.notifications.from` | `aula-virtual@localhost` |
 | `NOTIFICATIONS_TIME_ZONE` | `app.notifications.time-zone` | `America/Lima`; zona en la que los correos escriben fechas y horas |
+| `ASSIGNMENT_REMINDER_LEAD` | `app.assignments.reminder-lead` | `PT24H` antes del vencimiento se avisa a quien no entregó |
+| `ASSIGNMENT_REMINDER_INTERVAL` | `app.assignments.reminder-interval` | `PT15M` entre dos búsquedas de tareas por recordar |
 | `SPRING_MAIL_HOST` | `spring.mail.host` | **sin declarar**: mientras falte, los correos solo se escriben en el log |
 | `SPRING_MAIL_PORT` | `spring.mail.port` | `587` |
 | `SPRING_MAIL_USERNAME` | `spring.mail.username` | vacío |
@@ -576,11 +578,18 @@ Qué se avisa y a quién (`NotificationType` es la lista completa):
 | Matrícula activa (automática, aceptada o inscrita por el staff) | el estudiante |
 | Solicitud rechazada | el estudiante |
 | Tarea nueva | cada estudiante con matrícula activa, con la fecha de vencimiento |
+| Tarea que vence pronto (`ASSIGNMENT_REMINDER_LEAD` antes) | cada estudiante activo que todavía no la entregó |
 | Nota devuelta (`$return`) | cada estudiante cuya nota se devolvió |
 | Recuperar la contraseña | el dueño de la cuenta |
 
 Los avisos de matrícula salen todos de `EnrollmentNotices` y los de tareas de
 `AssignmentNotices`: un servicio dice *qué pasó* y ellos deciden a quién y con qué datos.
+El recordatorio lo busca `AssignmentReminders` cada `ASSIGNMENT_REMINDER_INTERVAL`, y
+`assignments.reminded_at` hace que salga una sola vez por tarea; mover la fecha de
+vencimiento lo limpia para que se vuelva a avisar. Una tarea creada ya dentro de la
+ventana recibe el aviso de tarea nueva y, poco después, el recordatorio: se asume.
+Se apaga con las notificaciones (`NOTIFICATIONS_ENABLED`), como el consumidor de la cola.
+
 Las fechas se escriben en `NOTIFICATIONS_TIME_ZONE` (`MessageDates`), porque un
 `Instant` en UTC no le dice a nadie cuándo vence su tarea.
 

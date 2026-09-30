@@ -72,8 +72,10 @@ La cola existe y añadir un tipo es barato. Faltan los avisos que más se espera
   (`publishedAt`) y editarse u ocultarse antes: avisarlo bien pide reconciliar la cola con
   esos cambios, así que queda fuera; el tablón de avisos cubre el caso a mano.
 - ✅ Nota devuelta (`$return`). **Hecho** en `feature/missing-notifications`.
-- Recordatorio de tarea que vence (p. ej. 24 h antes, para quien no entregó) — necesita
-  un planificador, que ya hay (`SchedulingConfig`).
+- ✅ Recordatorio de tarea que vence (p. ej. 24 h antes, para quien no entregó) — necesita
+  un planificador, que ya hay (`SchedulingConfig`). **Hecho** en
+  `feature/assignment-reminders` (migración `V21`): 24 h antes, una vez por tarea, y de
+  nuevo si cambia la fecha.
 - ✅ Al docente: solicitud de matrícula pendiente de revisar. **Hecho** en
   `feature/missing-notifications`, también cuando llega por el auto-registro.
 - ✅ Matrícula rechazada (hoy el alumno no se entera). **Hecho** en
