@@ -110,7 +110,7 @@ depende de `common` y `config`; si dos módulos necesitan hablarse lo hacen a tr
 
 **Esa regla ya no es solo prosa**: `ModuleBoundariesTest` lee las fuentes de `src/main` y
 falla si un módulo importa el repositorio o la entidad de otro. Va acompañado de tres
-comprobaciones contra sí mismo —que el escaneo encuentra los 17 repositorios, las 17
+comprobaciones contra sí mismo —que el escaneo encuentra los 19 repositorios, las 19
 entidades y que no confunde `BaseEntity` con una— porque un test que busca en ficheros
 pasa igual de verde si deja de mirar donde debe. No arregla nada hoy: impide retroceder
 mañana. Los sub-paquetes de un módulo son el mismo módulo, así que `course/enrollment`
@@ -286,8 +286,8 @@ también unidades, material y avisos).
 
 **El catálogo de errores no se parte** aunque el paquete sí: todos viven juntos en
 `course/exception/`, porque el enum es la lista legible de todo lo que el módulo puede
-responder y repartirla en tres carpetas la haría ilegible. Los DTOs sí bajan con su
-agregado; `dto/CourseConstraints` se queda arriba porque lo validan los tres.
+responder y repartirla en varias carpetas la haría ilegible. Los DTOs sí bajan con su
+agregado; `dto/CourseConstraints` se queda arriba porque lo validan todos.
 
 Quien decide el acceso es **el docente titular**, no el rol: `CourseAccess` es la
 única pieza que lo resuelve y todos los servicios del módulo pasan por ella.
