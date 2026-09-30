@@ -270,6 +270,7 @@ funcionan sin traducción.
 | `GET /api/me/enrollments` | autenticado, solo estudiantes | mis matrículas y el estado de cada una; quien no sea estudiante activo recibe `CRS_STUDENT_REQUIRED` |
 | `GET /api/me/enrollments?code={code}` | autenticado, solo estudiantes | mi matrícula en el curso de esa invitación, o una lista vacía; la pantalla del enlace la usa para saber si ya estoy dentro antes de pedir entrar |
 | `GET /api/courses/{id}/enrollments` | `enrollments:read` | el aula del curso, filtro opcional `?status=` |
+| `POST /api/courses/{id}/enrollments` | `enrollments:update` | el staff inscribe por documento `{documentType, documentNumbers}` (hasta 100); responde un resultado por documento |
 | `POST /api/enrollments/{id}/$accept` | `enrollments:update` | acepta una solicitud pendiente |
 | `POST /api/enrollments/{id}/$reject` | `enrollments:update` | rechaza una solicitud pendiente |
 | `POST /api/enrollments/{id}/$withdraw` | `enrollments:update` | retira del curso a un estudiante matriculado |
@@ -607,6 +608,16 @@ resolver las que tenga pendientes.
 Todo lo demás del curso le está cerrado: escribir sigue siendo del titular y de quien
 administra docentes.
 
+
+El titular o quien administra docentes también puede inscribir directamente con
+`POST /api/courses/{id}/enrollments`, dando el tipo y los números de documento. Se
+busca por documento porque el docente no puede listar estudiantes. La inscripción
+nace `ACTIVE` aunque el curso sea `ON_REQUEST` —decidir es justo lo que hace el
+staff—, reutiliza la fila de quien estaba pendiente, rechazado o retirado, y avisa por
+correo como una aceptación. No es todo o nada: cada documento vuelve con su resultado
+(`ENROLLED`, `ALREADY_ENROLLED`, `NOT_A_STUDENT`, `INACTIVE_STUDENT`, `TITULAR`), para
+que una lista pegada con un error no obligue a repetirla entera. Solo inscribe a quien
+ya es estudiante: dar de alta sigue siendo cosa de quien administra estudiantes.
 ### Tareas, entregas y calificaciones
 
 Las tareas son el **primer módulo que no vive dentro de `course`**: `assignment`
