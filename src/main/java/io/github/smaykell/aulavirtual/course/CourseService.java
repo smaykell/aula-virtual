@@ -8,6 +8,7 @@ import io.github.smaykell.aulavirtual.course.dto.CreateCourseRequest;
 import io.github.smaykell.aulavirtual.course.dto.UpdateCourseRequest;
 import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentRepository;
 import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
+import io.github.smaykell.aulavirtual.course.exception.CourseNotFoundException;
 import io.github.smaykell.aulavirtual.course.exception.InvalidCourseDatesException;
 import io.github.smaykell.aulavirtual.course.exception.StudentNotEnrolledException;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
@@ -114,6 +115,13 @@ public class CourseService {
                 EnrollmentStatus.ACTIVE)) {
             throw new StudentNotEnrolledException();
         }
+    }
+
+    @Transactional(readOnly = true)
+    public String nameOf(UUID courseId) {
+        return courseRepository.findById(courseId)
+                .orElseThrow(() -> new CourseNotFoundException(courseId))
+                .getName();
     }
 
     @Transactional(readOnly = true)

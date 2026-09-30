@@ -46,6 +46,7 @@ public class SelfEnrollmentService {
     private final TeacherService teacherService;
     private final SettingsService settingsService;
     private final NotificationService notificationService;
+    private final EnrollmentNotices notices;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -122,14 +123,8 @@ public class SelfEnrollmentService {
     private void announce(Course course, PersonData person, RegisteredStudent student,
             Enrollment enrollment) {
 
-        String email = person.normalizedEmail();
-        notificationService.enqueue(NotificationType.ACCOUNT_CREATED, email,
+        notificationService.enqueue(NotificationType.ACCOUNT_CREATED, person.normalizedEmail(),
                 Map.of("firstName", person.firstName(), "username", student.username()));
-        notificationService.enqueue(
-                enrollment.isPending()
-                        ? NotificationType.ENROLLMENT_REQUESTED
-                        : NotificationType.ENROLLMENT_ACTIVE,
-                email,
-                Map.of("firstName", person.firstName(), "courseName", course.getName()));
+        notices.joined(course, enrollment);
     }
 }

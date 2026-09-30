@@ -34,6 +34,7 @@ public class AssignmentService {
     private final GradeService gradeService;
     private final GradingSchemeService gradingSchemeService;
     private final AttachmentService attachmentService;
+    private final AssignmentNotices notices;
 
     @Transactional(readOnly = true)
     public List<AssignmentResponse> list(String actorUsername, UUID unitId) {
@@ -72,6 +73,7 @@ public class AssignmentService {
 
         Assignment assignment = assignmentRepository.save(
                 Assignment.create(unitId, courseId, data));
+        notices.published(assignment);
         return AssignmentResponse.from(assignment, attachmentsFor(assignment, data));
     }
 

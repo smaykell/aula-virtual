@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -22,7 +23,8 @@ class NotificationOutboxTest {
 
     private static final Instant NOW = Instant.parse("2026-09-21T10:00:00Z");
     private static final NotificationProperties PROPERTIES = new NotificationProperties(
-            Duration.ofSeconds(30), 50, 3, Duration.ofMinutes(1), "aula@escuela.pe");
+            Duration.ofSeconds(30), 50, 3, Duration.ofMinutes(1), "aula@escuela.pe",
+            ZoneId.of("America/Lima"));
 
     @Mock
     private NotificationRepository notificationRepository;
