@@ -61,9 +61,13 @@ Grupos dentro del curso y una entrega por grupo con la misma nota para todos.
 
 ### 2.2 Comunicación
 
-**Avisos del curso (tablón)** — P1 · M
+✅ **Avisos del curso (tablón)** — P1 · M
 Hoy el docente no tiene forma de escribir a sus alumnos dentro del aula. Un anuncio por
 curso con notificación por correo resuelve la mayor parte del caso de uso.
+**Hecho** en `feature/course-announcements` (los dos repos, migración `V22`): pestaña
+«Avisos» del curso; el staff publica, edita y borra, y al publicar se envía el aviso
+completo por correo a los matriculados. Es solo de ida: sin comentarios de los alumnos
+(pregunta 4 de la sección 5, sigue abierta).
 
 **Notificaciones que faltan** — P1 · S cada una
 La cola existe y añadir un tipo es barato. Faltan los avisos que más se esperan:
