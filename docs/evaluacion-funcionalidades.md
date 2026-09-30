@@ -133,10 +133,11 @@ Propuesta por rol:
 
 ✅ **Exportar el registro de notas** — P1 · S
 CSV/Excel del gradebook del curso; es lo que se entrega como acta.
-**Hecho** en `feature/grade-export` (backend): `GET /courses/{id}/gradebook/$export`, solo
-para el staff, en CSV (UTF-8 con BOM, comas, punto decimal) con documento, notas por tarea,
-promedios por categoría, final, entero de acta y condición. Incluye los borradores, como la
-pantalla del docente. Falta el botón en el front.
+**Hecho** en `feature/grade-export` (los dos repos): `GET /courses/{id}/gradebook/$export`,
+solo para el staff, en CSV (UTF-8 con BOM, comas, punto decimal) con documento, notas por
+tarea, promedios por categoría, final, entero de acta y condición. Incluye los borradores,
+como la pantalla del docente. Botón «Exportar CSV» en Calificaciones, que guarda
+`notas-<curso>.csv`.
 
 **Progreso del alumno** — P2 · M
 Por alumno y curso: entregas hechas/pendientes, notas, material visto. «Material visto»
