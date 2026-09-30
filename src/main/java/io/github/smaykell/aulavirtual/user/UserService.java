@@ -10,6 +10,7 @@ import io.github.smaykell.aulavirtual.user.exception.AccountNotFoundException;
 import io.github.smaykell.aulavirtual.user.exception.CredentialsRequiredException;
 import io.github.smaykell.aulavirtual.user.exception.CurrentPasswordMismatchException;
 import io.github.smaykell.aulavirtual.user.exception.InactiveActorException;
+import io.github.smaykell.aulavirtual.user.exception.PasswordUnchangedException;
 import io.github.smaykell.aulavirtual.user.exception.RoleOutOfReachException;
 import io.github.smaykell.aulavirtual.user.exception.SuperAdminExclusiveException;
 import io.github.smaykell.aulavirtual.user.exception.UnknownActorException;
@@ -81,12 +82,20 @@ public class UserService {
         if (!passwordEncoder.matches(request.currentPassword(), account.getPasswordHash())) {
             throw new CurrentPasswordMismatchException();
         }
-        account.changePassword(passwordEncoder.encode(request.newPassword()));
+        if (request.newPassword().equals(request.currentPassword())) {
+            throw new PasswordUnchangedException();
+        }
+        account.choosePassword(passwordEncoder.encode(request.newPassword()));
     }
 
     @Transactional
     public void changePasswordOf(UUID personId, String rawPassword) {
-        accountOf(personId).changePassword(passwordEncoder.encode(rawPassword));
+        accountOf(personId).assignPassword(passwordEncoder.encode(rawPassword));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean mustChangePassword(String username) {
+        return accountFor(username).isMustChangePassword();
     }
 
     @Transactional(readOnly = true)

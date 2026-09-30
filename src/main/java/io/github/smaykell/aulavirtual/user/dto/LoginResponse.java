@@ -7,5 +7,6 @@ public record LoginResponse(
         String tokenType,
         long expiresIn,
         String username,
-        List<RoleAccess> roles) {
+        List<RoleAccess> roles,
+        boolean mustChangePassword) {
 }

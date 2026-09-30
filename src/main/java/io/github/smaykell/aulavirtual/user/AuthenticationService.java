@@ -54,6 +54,7 @@ public class AuthenticationService {
                 TOKEN_TYPE,
                 jwtService.tokenLifetime().toSeconds(),
                 account.getUsername(),
-                RoleAccess.of(roles));
+                RoleAccess.of(roles),
+                account.isMustChangePassword());
     }
 }

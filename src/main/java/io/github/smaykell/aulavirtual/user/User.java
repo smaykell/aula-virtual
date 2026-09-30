@@ -25,18 +25,28 @@ public class User extends BaseEntity {
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword;
+
     private User(UUID personId, String username, String passwordHash) {
         this.personId = personId;
         this.username = username;
         this.passwordHash = passwordHash;
+        this.mustChangePassword = true;
     }
 
     public static User create(UUID personId, String username, String passwordHash) {
         return new User(personId, normalizeUsername(username), passwordHash);
     }
 
-    public void changePassword(String passwordHash) {
+    public void assignPassword(String passwordHash) {
         this.passwordHash = passwordHash;
+        this.mustChangePassword = true;
+    }
+
+    public void choosePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+        this.mustChangePassword = false;
     }
 
     public static String normalizeUsername(String username) {

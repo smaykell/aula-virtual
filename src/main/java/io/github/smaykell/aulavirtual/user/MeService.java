@@ -36,6 +36,7 @@ public class MeService {
     }
 
     private MeResponse responseFor(Actor actor, PersonResponse person) {
-        return new MeResponse(actor.username(), RoleAccess.of(actor.roles()), person);
+        return new MeResponse(actor.username(), RoleAccess.of(actor.roles()), person,
+                userService.mustChangePassword(actor.username()));
     }
 }

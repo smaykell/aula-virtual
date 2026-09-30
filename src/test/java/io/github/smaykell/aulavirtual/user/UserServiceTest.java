@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -129,7 +130,7 @@ class UserServiceTest {
 
         userService.ensureAccount(PERSON, new Credentials("Nuevo.Docente", "contrasena"));
 
-        verify(userRepository).save(any(User.class));
+        verify(userRepository).save(argThat(User::isMustChangePassword));
     }
 
     @Test
@@ -205,6 +206,18 @@ class UserServiceTest {
                 new ChangeMyPasswordRequest("contrasena", "contrasena-nueva"));
 
         assertThat(account.getPasswordHash()).isEqualTo("enc:contrasena-nueva");
+        assertThat(account.isMustChangePassword()).isFalse();
+    }
+
+    @Test
+    void the_new_password_cannot_be_the_current_one() {
+        givenTheAccount("ana", PERSON);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> userService.changeOwnPassword("ana",
+                        new ChangeMyPasswordRequest("contrasena", "contrasena")));
+
+        assertThat(error.getCode()).isEqualTo("USR_PASSWORD_UNCHANGED");
     }
 
     @Test
@@ -214,6 +227,16 @@ class UserServiceTest {
         userService.changePasswordOf(PERSON, "contrasena-nueva");
 
         assertThat(account.getPasswordHash()).isEqualTo("enc:contrasena-nueva");
+    }
+
+    @Test
+    void a_password_set_by_someone_else_must_be_changed_by_its_owner() {
+        User account = givenTheAccountOfPerson(PERSON);
+        account.choosePassword("enc:elegida");
+
+        userService.changePasswordOf(PERSON, "contrasena-nueva");
+
+        assertThat(account.isMustChangePassword()).isTrue();
     }
 
     @Test

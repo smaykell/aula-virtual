@@ -103,6 +103,14 @@ class AuthenticationServiceTest {
     }
 
     @Test
+    void the_session_says_whether_the_password_must_be_changed() {
+        givenTheAccount("ana", Set.of(Role.STUDENT));
+
+        assertThat(authenticationService.login(new LoginRequest("ana", PASSWORD))
+                .mustChangePassword()).isTrue();
+    }
+
+    @Test
     void an_unknown_username_does_not_say_that_it_does_not_exist() {
         when(userRepository.findByUsername("fantasma")).thenReturn(Optional.empty());
 
