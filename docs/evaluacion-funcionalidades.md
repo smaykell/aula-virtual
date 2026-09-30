@@ -157,9 +157,14 @@ concreto del sistema.
 exista o no; entrar bien o recuperar la contraseña borra el contador. Queda en memoria:
 con varias instancias habría que llevarlo a la base.
 
-**Forzar cambio de la contraseña inicial** — P1 · S
+✅ **Forzar cambio de la contraseña inicial** — P1 · S
 La contraseña inicial es el número de documento y el correo solo *pide* cambiarla. Una
 marca `mustChangePassword` que el front respete cierra el hueco.
+**Hecho** en `feature/force-initial-password-change` (los dos repos, migración `V19`): la
+cuenta nueva y la contraseña que pone un administrador quedan marcadas; el front lleva a
+`/change-password` antes de cualquier pantalla. La nueva no puede ser igual a la actual
+(`USR_PASSWORD_UNCHANGED`). Límites: lo aplica el front, no el backend, y las cuentas
+anteriores a `V19` no quedaron marcadas.
 
 **Sesión más larga sin reducir seguridad** — P2 · M
 El JWT dura 1 h y no hay refresh token: al caducar se pierde la sesión, incluso a mitad de
