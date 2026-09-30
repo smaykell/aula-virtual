@@ -84,7 +84,7 @@ class MeControllerTest {
     @Test
     void a_person_with_two_profiles_sees_both_roles() throws Exception {
         when(meService.get("ana")).thenReturn(new MeResponse("ana",
-                RoleAccess.of(List.of(Role.ADMIN, Role.TEACHER)), person()));
+                RoleAccess.of(List.of(Role.ADMIN, Role.TEACHER)), person(), false));
 
         mockMvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN)))
                 .andExpect(status().isOk())
@@ -145,7 +145,7 @@ class MeControllerTest {
     }
 
     private MeResponse me(Role role) {
-        return new MeResponse("ana", RoleAccess.of(List.of(role)), person());
+        return new MeResponse("ana", RoleAccess.of(List.of(role)), person(), false);
     }
 
     private PersonResponse person() {

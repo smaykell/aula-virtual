@@ -15,6 +15,8 @@ public enum UserError implements ErrorCode {
     INACTIVE_ACCOUNT(HttpStatus.FORBIDDEN,
             "Tu cuenta no tiene ningún perfil activo. Contacta al administrador."),
     CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "La contraseña actual no es correcta"),
+    PASSWORD_UNCHANGED(HttpStatus.BAD_REQUEST,
+            "La contraseña nueva debe ser distinta de la actual"),
     ROLE_OUT_OF_REACH(HttpStatus.FORBIDDEN,
             "No tienes permisos para administrar a personas con ese rol"),
     CREDENTIALS_REQUIRED(HttpStatus.BAD_REQUEST,

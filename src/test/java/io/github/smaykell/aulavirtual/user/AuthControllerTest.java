@@ -62,7 +62,7 @@ class AuthControllerTest {
     void the_login_is_reachable_without_a_token() throws Exception {
         when(authenticationService.login(any(LoginRequest.class))).thenReturn(
                 new LoginResponse("un.jwt.firmado", "Bearer", 3600, "ana",
-                        RoleAccess.of(List.of(Role.ADMIN, Role.TEACHER))));
+                        RoleAccess.of(List.of(Role.ADMIN, Role.TEACHER)), false));
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

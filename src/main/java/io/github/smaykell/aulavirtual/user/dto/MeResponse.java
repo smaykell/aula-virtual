@@ -6,5 +6,6 @@ import java.util.List;
 public record MeResponse(
         String username,
         List<RoleAccess> roles,
-        PersonResponse person) {
+        PersonResponse person,
+        boolean mustChangePassword) {
 }

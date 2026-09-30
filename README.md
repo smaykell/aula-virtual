@@ -381,6 +381,15 @@ pide la contraseña actual: la cambia quien administra al docente, no él mismo.
 reglas vuelven a salir de `Role.manageableRoles()`, así que un admin no puede cambiar
 la contraseña de otro admin ni la del superadmin.
 
+Una contraseña que no eligió la persona —la inicial al crear la cuenta, que suele ser su
+documento, o la que le pone quien la administra— deja la cuenta con
+`mustChangePassword`. El login y `GET /me` lo devuelven, y el front no deja pasar de la
+pantalla de cambio hasta que la persona elige una propia por `/me/$changePassword` o por
+el enlace de recuperación; la nueva no puede ser igual a la actual
+(`USR_PASSWORD_UNCHANGED`). Lo aplica el front, no el backend: el token sigue sirviendo
+para la API, porque quien tuviera la contraseña podría cambiarla igual. Las cuentas
+anteriores a `V19` no quedaron marcadas.
+
 ### Cursos, unidades y material
 
 El curso es un agregado: sus **unidades** (las semanas o temas en que se divide) y el

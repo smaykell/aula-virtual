@@ -50,7 +50,7 @@ public class PasswordResetService {
 
         User account = userRepository.findById(reset.getUserId())
                 .orElseThrow(InvalidPasswordResetException::new);
-        account.changePassword(passwordEncoder.encode(completion.newPassword()));
+        account.choosePassword(passwordEncoder.encode(completion.newPassword()));
         loginThrottle.forget(account.getUsername());
         passwordResetRepository.findByUserIdAndUsedAtIsNull(account.getId())
                 .forEach(open -> open.use(now));
