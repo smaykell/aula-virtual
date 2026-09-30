@@ -290,6 +290,7 @@ funcionan sin traducción.
 | `GET /api/courses/{id}/grading-scheme` | `courses:read` | cómo se calcula la nota final del curso |
 | `PUT /api/courses/{id}/grading-scheme` | `courses:update` | reemplaza el método, la aprobatoria y las categorías |
 | `GET /api/courses/{id}/gradebook` | `courses:read` | el registro de notas: todo el curso al staff, su fila al estudiante |
+| `GET /api/courses/{id}/gradebook/$export` | `courses:read` | el registro de notas como acta en CSV, solo para el staff |
 
 Los verbos que no encajan en el CRUD van como sub-recurso con `$`
 (`POST /api/teachers/{id}/$disable`). Así el sustantivo sigue siendo el recurso y no
@@ -696,6 +697,15 @@ promedio de cada categoría y la nota final, **siempre en escala 0–20**:
 El estudiante recibe solo su fila y solo con las notas devueltas; el staff ve también los
 borradores, así que la final que ve el docente puede adelantarse a la del alumno. Sin
 ninguna nota, `finalGrade` es `null`.
+
+`GET /api/courses/{id}/gradebook/$export` descarga ese mismo registro como acta en CSV
+(`registro-de-notas.csv`): número, documento, apellidos y nombres, una columna por tarea
+con su nota, el promedio de cada categoría, la final con dos decimales, el entero de acta y
+la condición (`Aprobado`, `Desaprobado` o `Sin notas`). Solo lo descarga el staff
+(`GRB_EXPORT_REQUIRES_STAFF` al estudiante) y, como lo que ve en pantalla, **incluye los
+borradores**. Va en UTF-8 con BOM, separado por comas y con punto decimal, para que Excel
+lo abra con tildes; una celda que empieza por `=`, `+`, `-` o `@` sale precedida de `'`
+para que Excel no la ejecute como fórmula.
 
 ### Adjuntos de tareas y entregas
 

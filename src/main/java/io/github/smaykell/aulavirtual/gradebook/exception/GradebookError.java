@@ -12,7 +12,9 @@ public enum GradebookError implements ErrorCode {
     REPEATED_CATEGORY(HttpStatus.BAD_REQUEST, "La categoría con id %s aparece dos veces"),
     DUPLICATE_CATEGORY_NAME(HttpStatus.BAD_REQUEST, "Hay dos categorías llamadas «%s»"),
     WEIGHTS_DO_NOT_ADD_UP(HttpStatus.BAD_REQUEST,
-            "Los pesos de las categorías deben sumar 100; ahora suman %s");
+            "Los pesos de las categorías deben sumar 100; ahora suman %s"),
+    EXPORT_REQUIRES_STAFF(HttpStatus.FORBIDDEN,
+            "Solo quien dicta o administra el curso puede exportar el registro de notas");
 
     public static final String PREFIX = "GRB";
 

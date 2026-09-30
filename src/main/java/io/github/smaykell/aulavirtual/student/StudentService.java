@@ -10,6 +10,7 @@ import io.github.smaykell.aulavirtual.security.Role;
 import io.github.smaykell.aulavirtual.student.dto.CreateStudentRequest;
 import io.github.smaykell.aulavirtual.student.dto.RegisteredStudent;
 import io.github.smaykell.aulavirtual.student.dto.StudentContact;
+import io.github.smaykell.aulavirtual.student.dto.StudentDocument;
 import io.github.smaykell.aulavirtual.student.dto.StudentResponse;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import io.github.smaykell.aulavirtual.student.dto.UpdateStudentRequest;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -156,12 +158,23 @@ public class StudentService {
 
     @Transactional(readOnly = true)
     public Map<UUID, StudentSummary> summariesOf(Collection<UUID> studentIds) {
+        return byId(studentIds, StudentSummary::from);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<UUID, StudentDocument> documentsOf(Collection<UUID> studentIds) {
+        return byId(studentIds, (student, person) -> StudentDocument.from(person));
+    }
+
+    private <T> Map<UUID, T> byId(Collection<UUID> studentIds,
+            BiFunction<Student, PersonResponse, T> mapper) {
+
         List<Student> students = studentRepository.findAllById(studentIds);
         Map<UUID, PersonResponse> persons = personService.byIds(
                 students.stream().map(Student::getPersonId).toList());
 
         return students.stream().collect(Collectors.toMap(Student::getId,
-                student -> StudentSummary.from(student, persons.get(student.getPersonId()))));
+                student -> mapper.apply(student, persons.get(student.getPersonId()))));
     }
 
     private Credentials credentialsFor(UUID personId, CreateStudentRequest request) {
