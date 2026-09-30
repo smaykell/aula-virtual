@@ -6,6 +6,8 @@ prioridad propuesta y un esfuerzo estimado para discutirlos, no para darlos por 
 
 - **Prioridad**: P1 (bloquea un uso real del aula), P2 (se echa en falta pronto), P3 (mejora).
 - **Esfuerzo**: S (horas), M (1–3 días), L (una semana o más).
+- **Estado**: ✅ hecho (con la rama o el commit que lo trae). Lo que no lleva marca sigue
+  pendiente.
 
 ---
 
@@ -203,7 +205,7 @@ El correo de la persona es opcional y nunca se verifica, pero es la vía de recu
 
 | Mejora | Prioridad | Esfuerzo | Nota |
 |---|---|---|---|
-| CI también en `develop` | P1 | S | `api.yml` y `web.yml` corren en push a `main` y en PR; con Git Flow las fusiones a `develop` sin PR no se prueban en ninguno de los dos repos. |
+| ✅ CI también en `develop` | P1 | S | `api.yml` y `web.yml` corren en push a `main` y en PR; con Git Flow las fusiones a `develop` sin PR no se prueban en ninguno de los dos repos. **Hecho** en `feature/ci-on-develop` (los dos repos): push a `main` y `develop`. |
 | Pruebas end-to-end | P2 | M | Los recorridos críticos (auto-registro, entregar, calificar y devolver) se han probado a mano con Playwright; convertirlos en suite. |
 | Copias de seguridad y restauración | P1 | S | Documentar y probar backup de RDS y del bucket en la guía de despliegue. |
 | Observabilidad en prod | P3 | M | Logs estructurados con `traceId` y alarmas mínimas (5xx, cola). |
