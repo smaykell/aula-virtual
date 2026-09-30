@@ -35,9 +35,10 @@ public class CourseController {
     public PageResponse<CourseResponse> list(Authentication authentication,
             @RequestParam(required = false) UUID teacherId,
             @RequestParam(required = false) CourseStatus status,
+            @RequestParam(name = "q", required = false) String search,
             @PageableDefault(sort = "createdAt") Pageable pageable) {
 
-        return courseService.list(authentication.getName(), teacherId, status, pageable);
+        return courseService.list(authentication.getName(), teacherId, status, search, pageable);
     }
 
     @GetMapping("/{id}")

@@ -158,7 +158,7 @@ class TeacherControllerTest {
 
     @Test
     void an_admin_lists_teachers_as_a_page_response() throws Exception {
-        when(teacherService.list(eq("ana"), eq(null), any()))
+        when(teacherService.list(eq("ana"), eq(null), eq(null), any()))
                 .thenReturn(new PageResponse<>(List.of(aTeacher(true)), 0, 20, 1, 1, true, true));
 
         mockMvc.perform(get("/teachers").header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN)))
@@ -169,7 +169,7 @@ class TeacherControllerTest {
 
     @Test
     void the_active_filter_reaches_the_service() throws Exception {
-        when(teacherService.list(eq("ana"), eq(false), any()))
+        when(teacherService.list(eq("ana"), eq(false), eq(null), any()))
                 .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true, true));
 
         mockMvc.perform(get("/teachers")
@@ -177,7 +177,20 @@ class TeacherControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN)))
                 .andExpect(status().isOk());
 
-        verify(teacherService).list(eq("ana"), eq(false), any());
+        verify(teacherService).list(eq("ana"), eq(false), eq(null), any());
+    }
+
+    @Test
+    void the_search_reaches_the_service() throws Exception {
+        when(teacherService.list(eq("ana"), eq(null), eq("perez"), any()))
+                .thenReturn(new PageResponse<>(List.of(), 0, 20, 0, 0, true, true));
+
+        mockMvc.perform(get("/teachers")
+                        .param("q", "perez")
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.ADMIN)))
+                .andExpect(status().isOk());
+
+        verify(teacherService).list(eq("ana"), eq(null), eq("perez"), any());
     }
 
     @Test
@@ -280,7 +293,7 @@ class TeacherControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
                 .andExpect(status().isForbidden());
 
-        verify(teacherService, never()).list(any(), any(), any());
+        verify(teacherService, never()).list(any(), any(), any(), any());
     }
 
     private TeacherResponse aTeacher(boolean active) {

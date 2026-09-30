@@ -6,7 +6,9 @@ import io.github.smaykell.aulavirtual.person.exception.DocumentTakenException;
 import io.github.smaykell.aulavirtual.person.exception.EmailTakenException;
 import io.github.smaykell.aulavirtual.person.exception.InvalidDocumentNumberException;
 import io.github.smaykell.aulavirtual.person.exception.PersonNotFoundException;
+import io.github.smaykell.aulavirtual.common.domain.Filters;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,6 +63,11 @@ public class PersonService {
     public Map<UUID, PersonResponse> byIds(Collection<UUID> personIds) {
         return personRepository.findAllById(personIds).stream()
                 .collect(Collectors.toMap(Person::getId, PersonResponse::from));
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> idsMatching(String search) {
+        return personRepository.findIdsMatching(Filters.containing(search));
     }
 
     private Person create(PersonData data) {

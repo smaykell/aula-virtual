@@ -1,5 +1,6 @@
 package io.github.smaykell.aulavirtual.course;
 
+import io.github.smaykell.aulavirtual.common.domain.Filters;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.dto.CourseResponse;
@@ -34,10 +35,10 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public PageResponse<CourseResponse> list(String actorUsername, UUID teacherId,
-            CourseStatus status, Pageable pageable) {
+            CourseStatus status, String search, Pageable pageable) {
 
         CourseAccess.Scope scope = courseAccess.listingScope(actorUsername, teacherId);
-        Page<Course> courses = coursesIn(scope, status, pageable);
+        Page<Course> courses = coursesIn(scope, status, Filters.containing(search), pageable);
 
         List<UUID> teacherIds = courses.getContent().stream().map(Course::getTeacherId).toList();
         Map<UUID, TeacherSummary> teachers = teacherService.summariesOf(teacherIds);
@@ -122,12 +123,12 @@ public class CourseService {
     }
 
     private Page<Course> coursesIn(CourseAccess.Scope scope, CourseStatus status,
-            Pageable pageable) {
+            String namePattern, Pageable pageable) {
 
         return scope.staff()
-                ? courseRepository.search(scope.teacherId(), status, pageable)
+                ? courseRepository.search(scope.teacherId(), status, namePattern, pageable)
                 : courseRepository.searchEnrolled(scope.studentId(), EnrollmentStatus.ACTIVE,
-                        status, pageable);
+                        status, namePattern, pageable);
     }
 
     private CourseResponse responseFor(Course course) {
