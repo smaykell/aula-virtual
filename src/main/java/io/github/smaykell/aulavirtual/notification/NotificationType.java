@@ -62,6 +62,16 @@ public enum NotificationType {
             todavía no la has entregado.
             """),
 
+    ANNOUNCEMENT_PUBLISHED("{courseName}: {title}", """
+            Hola {firstName}:
+
+            Hay un aviso nuevo en el curso «{courseName}»:
+
+            {title}
+
+            {body}
+            """),
+
     GRADE_RETURNED("Ya tienes la nota de {assignmentTitle}", """
             Hola {firstName}:
 

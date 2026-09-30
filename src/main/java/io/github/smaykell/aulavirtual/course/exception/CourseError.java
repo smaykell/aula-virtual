@@ -34,6 +34,7 @@ public enum CourseError implements ErrorCode {
     ENROLLMENT_PENDING(HttpStatus.CONFLICT,
             "Ya enviaste una solicitud a este curso y sigue pendiente"),
     ENROLLMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Matrícula con id %s no encontrada"),
+    ANNOUNCEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Aviso con id %s no encontrado"),
     ENROLLMENT_NOT_PENDING(HttpStatus.CONFLICT, "Esa solicitud ya fue resuelta"),
     ENROLLMENT_NOT_ACTIVE(HttpStatus.CONFLICT, "Esa matrícula no está activa"),
     STUDENT_NOT_ENROLLED(HttpStatus.NOT_FOUND,

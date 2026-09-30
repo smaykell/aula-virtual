@@ -261,6 +261,10 @@ funcionan sin traducción.
 | `POST /api/courses/{id}/$archive` | `courses:update` | archiva el curso |
 | `POST /api/courses/{id}/$activate` | `courses:update` | devuelve el curso a activo |
 | `GET /api/courses/{id}/units` | `courses:read` | las unidades del curso, en orden y con su material |
+| `GET /api/courses/{id}/announcements` | `courses:read` | el tablón del curso, paginado y del más nuevo al más viejo |
+| `POST /api/courses/{id}/announcements` | `courses:update` | publica un aviso `{title, body}` y lo manda por correo a los matriculados |
+| `PUT /api/announcements/{id}` | `courses:update` | edita un aviso; no se vuelve a enviar |
+| `DELETE /api/announcements/{id}` | `courses:update` | borra un aviso |
 | `POST /api/courses/{id}/units` | `courses:update` | añade una unidad al final y devuelve 201 |
 | `POST /api/courses/{id}/units/$reorder` | `courses:update` | reordena las unidades del curso |
 | `GET /api/units/{id}` | `courses:read` | una unidad con su material |
@@ -578,6 +582,7 @@ Qué se avisa y a quién (`NotificationType` es la lista completa):
 | Matrícula activa (automática, aceptada o inscrita por el staff) | el estudiante |
 | Solicitud rechazada | el estudiante |
 | Tarea nueva | cada estudiante con matrícula activa, con la fecha de vencimiento |
+| Aviso en el tablón | cada estudiante con matrícula activa, con el texto completo |
 | Tarea que vence pronto (`ASSIGNMENT_REMINDER_LEAD` antes) | cada estudiante activo que todavía no la entregó |
 | Nota devuelta (`$return`) | cada estudiante cuya nota se devolvió |
 | Recuperar la contraseña | el dueño de la cuenta |

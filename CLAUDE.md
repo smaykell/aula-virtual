@@ -277,11 +277,12 @@ Dos detalles fáciles de romper:
 `JwtService` recibe el `Clock` por constructor (bean de `ClockConfig`) para que los tests
 controlen el tiempo sin un segundo constructor.
 
-**Cursos.** `course` es **un módulo con tres agregados dentro**, no tres módulos: el
+**Cursos.** `course` es **un módulo con cuatro agregados dentro**, no cuatro módulos: el
 curso en la raíz del paquete, las unidades y su material en `unit/` (`Unit` es la
-«semana» o tema — «módulo» ya significa otra cosa en este repo) y la matrícula en
-`enrollment/`. Comparten catálogo (`CRS`) y permisos (`courses:read`, `courses:create`,
-`courses:update`; el de escritura cubre también unidades y material).
+«semana» o tema — «módulo» ya significa otra cosa en este repo), la matrícula en
+`enrollment/` y el tablón de avisos en `announcement/`. Comparten catálogo (`CRS`) y
+permisos (`courses:read`, `courses:create`, `courses:update`; el de escritura cubre
+también unidades, material y avisos).
 
 **El catálogo de errores no se parte** aunque el paquete sí: todos viven juntos en
 `course/exception/`, porque el enum es la lista legible de todo lo que el módulo puede
@@ -412,7 +413,8 @@ cursos por servicio, que es la regla de slices. El contrato conviene que no crez
 `UnitService.courseOf`, `CourseService.requireWritable`, `CourseService.memberOf`, que
 devuelve un `CourseMember(courseId, staff, studentId)` —**quién eres en este curso**—, y
 dos que trajo el registro de notas: `requireActiveStudent` (calificar a alguien exige que
-esté matriculado) y `activeStudentsOf` (las filas del registro). `CourseMember` es lo que
+esté matriculado) y `activeStudentsOf` (las filas del registro). Los avisos por correo
+añadieron `nameOf`, porque el asunto lleva el nombre del curso. `CourseMember` es lo que
 evita repetir la regla de alcance en cada servicio nuevo: si el módulo de exámenes
 necesita lo mismo, pide `memberOf` y ya.
 

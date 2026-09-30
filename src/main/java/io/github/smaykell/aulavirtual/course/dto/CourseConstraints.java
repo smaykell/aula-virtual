@@ -12,6 +12,7 @@ public final class CourseConstraints {
     public static final String NAME_TOO_LONG = "no puede superar los 150 caracteres";
     public static final String DESCRIPTION_TOO_LONG = "no puede superar los 4000 caracteres";
     public static final String TITLE_REQUIRED = "el título es obligatorio";
+    public static final String ANNOUNCEMENT_BODY_REQUIRED = "el texto del aviso es obligatorio";
     public static final String START_DATE_REQUIRED = "la fecha de inicio es obligatoria";
     public static final String END_DATE_REQUIRED = "la fecha de fin es obligatoria";
     public static final String TEACHER_REQUIRED = "el docente titular es obligatorio";
