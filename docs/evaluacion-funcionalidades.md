@@ -131,8 +131,12 @@ Propuesta por rol:
 - Docente: entregas por calificar, solicitudes de matrícula pendientes.
 - Admin: contadores actuales + cursos sin actividad.
 
-**Exportar el registro de notas** — P1 · S
+✅ **Exportar el registro de notas** — P1 · S
 CSV/Excel del gradebook del curso; es lo que se entrega como acta.
+**Hecho** en `feature/grade-export` (backend): `GET /courses/{id}/gradebook/$export`, solo
+para el staff, en CSV (UTF-8 con BOM, comas, punto decimal) con documento, notas por tarea,
+promedios por categoría, final, entero de acta y condición. Incluye los borradores, como la
+pantalla del docente. Falta el botón en el front.
 
 **Progreso del alumno** — P2 · M
 Por alumno y curso: entregas hechas/pendientes, notas, material visto. «Material visto»

@@ -14,9 +14,12 @@ import io.github.smaykell.aulavirtual.gradebook.dto.GradeItem;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradebookResponse;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradebookRow;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradingSchemeResponse;
+import io.github.smaykell.aulavirtual.person.DocumentType;
 import io.github.smaykell.aulavirtual.student.StudentService;
+import io.github.smaykell.aulavirtual.student.dto.StudentDocument;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -140,6 +143,34 @@ class GradebookServiceTest {
                 () -> gradebookService.of("ajeno", COURSE));
 
         assertThat(error.getCode()).isEqualTo("CRS_OUT_OF_REACH");
+    }
+
+    @Test
+    void the_teacher_exports_every_active_student_with_their_document() {
+        givenTheTeacher();
+        when(gradeRepository.findByCourseIdAndStudentIdIn(COURSE, List.of(LUIS, ANA)))
+                .thenReturn(List.of(draft(ANA, FIRST_TASK, "16")));
+        when(studentService.documentsOf(List.of(LUIS, ANA))).thenReturn(Map.of(
+                ANA, new StudentDocument(DocumentType.DNI, "45678912"),
+                LUIS, new StudentDocument(DocumentType.DNI, "41234567")));
+
+        String csv = new String(gradebookService.export("juan", COURSE), StandardCharsets.UTF_8);
+
+        assertThat(csv.lines().skip(1).toList()).containsExactly(
+                "1,DNI,41234567,Álvarez Ruiz,Luis,,,,,Sin notas",
+                "2,DNI,45678912,Quispe Rojas,Ana,16,,16.00,16,Aprobado");
+    }
+
+    @Test
+    void a_student_cannot_export_the_gradebook() {
+        when(courseService.memberOf("ana.estudiante", COURSE))
+                .thenReturn(new CourseMember(COURSE, false, ANA));
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> gradebookService.export("ana.estudiante", COURSE));
+
+        assertThat(error.getCode()).isEqualTo("GRB_EXPORT_REQUIRES_STAFF");
+        verify(gradeRepository, never()).findByCourseIdAndStudentIdIn(COURSE, List.of(ANA));
     }
 
     private void givenTheTeacher() {

@@ -7,6 +7,7 @@ import io.github.smaykell.aulavirtual.gradebook.dto.GradeResponse;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradebookResponse;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradebookRow;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradingSchemeResponse;
+import io.github.smaykell.aulavirtual.gradebook.exception.ExportRequiresStaffException;
 import io.github.smaykell.aulavirtual.student.StudentService;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import java.time.Instant;
@@ -37,7 +38,22 @@ public class GradebookService {
 
     @Transactional(readOnly = true)
     public GradebookResponse of(String actorUsername, UUID courseId) {
+        return gradebookOf(courseService.memberOf(actorUsername, courseId));
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] export(String actorUsername, UUID courseId) {
         CourseMember member = courseService.memberOf(actorUsername, courseId);
+        if (!member.staff()) {
+            throw new ExportRequiresStaffException();
+        }
+        GradebookResponse gradebook = gradebookOf(member);
+        List<UUID> studentIds = gradebook.rows().stream().map(row -> row.student().id()).toList();
+        return new GradebookCsv(gradebook, studentService.documentsOf(studentIds)).bytes();
+    }
+
+    private GradebookResponse gradebookOf(CourseMember member) {
+        UUID courseId = member.courseId();
         GradingSchemeResponse scheme = schemeService.schemeOf(courseId);
         List<GradeItem> items = itemsOf(courseId);
         List<UUID> studentIds = member.staff()
