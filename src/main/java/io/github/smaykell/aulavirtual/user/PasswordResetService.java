@@ -28,6 +28,7 @@ public class PasswordResetService {
     private final PasswordResetTokens tokens;
     private final PasswordEncoder passwordEncoder;
     private final AccountProperties properties;
+    private final LoginThrottle loginThrottle;
     private final Clock clock;
 
     // No responde nada, exista o no la cuenta: una ruta publica que dijera "no te
@@ -50,6 +51,7 @@ public class PasswordResetService {
         User account = userRepository.findById(reset.getUserId())
                 .orElseThrow(InvalidPasswordResetException::new);
         account.changePassword(passwordEncoder.encode(completion.newPassword()));
+        loginThrottle.forget(account.getUsername());
         passwordResetRepository.findByUserIdAndUsedAtIsNull(account.getId())
                 .forEach(open -> open.use(now));
     }

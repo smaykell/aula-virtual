@@ -10,6 +10,8 @@ public enum UserError implements ErrorCode {
     INACTIVE_ACTOR(HttpStatus.FORBIDDEN,
             "Tu cuenta no tiene ningún perfil activo. Contacta al administrador."),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos"),
+    TOO_MANY_LOGIN_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS,
+            "Demasiados intentos fallidos. Espera unos minutos o recupera tu contraseña."),
     INACTIVE_ACCOUNT(HttpStatus.FORBIDDEN,
             "Tu cuenta no tiene ningún perfil activo. Contacta al administrador."),
     CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "La contraseña actual no es correcta"),

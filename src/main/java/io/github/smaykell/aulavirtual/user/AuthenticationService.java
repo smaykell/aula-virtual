@@ -24,20 +24,28 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final PersonProfiles personProfiles;
     private final JwtService jwtService;
+    private final LoginThrottle loginThrottle;
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
-        User account = userRepository.findByUsername(User.normalizeUsername(request.username()))
-                .orElseThrow(InvalidCredentialsException::new);
+        String username = User.normalizeUsername(request.username());
+        loginThrottle.ensureAllowed(username);
+        User account = userRepository.findByUsername(username)
+                .filter(candidate -> passwordEncoder.matches(request.password(),
+                        candidate.getPasswordHash()))
+                .orElseThrow(() -> rejected(username));
+        loginThrottle.forget(username);
 
-        if (!passwordEncoder.matches(request.password(), account.getPasswordHash())) {
-            throw new InvalidCredentialsException();
-        }
         Set<Role> roles = personProfiles.rolesOf(account.getPersonId());
         if (roles.isEmpty()) {
             throw new InactiveAccountException();
         }
         return sessionFor(account, roles);
+    }
+
+    private InvalidCredentialsException rejected(String username) {
+        loginThrottle.recordFailure(username);
+        return new InvalidCredentialsException();
     }
 
     private LoginResponse sessionFor(User account, Set<Role> roles) {

@@ -64,6 +64,9 @@ variables del entorno del proceso.
 | `PASSWORD_RESET_URL` | `app.accounts.password-reset-url` | `http://localhost:5173/reset-password`; apunta al **frontend** |
 | `PASSWORD_RESET_LIFETIME` | `app.accounts.password-reset-lifetime` | `PT30M` |
 | `PASSWORD_RESET_COOLDOWN` | `app.accounts.password-reset-cooldown` | `PT2M` entre dos enlaces a la misma cuenta |
+| `LOGIN_MAX_FAILURES` | `app.accounts.login-throttle.max-failures` | `5` contraseñas erróneas antes de bloquear |
+| `LOGIN_FAILURE_WINDOW` | `app.accounts.login-throttle.window` | `PT15M` en los que se suman los fallos |
+| `LOGIN_LOCKOUT` | `app.accounts.login-throttle.lockout` | `PT15M` de bloqueo |
 | `NOTIFICATIONS_ENABLED` | `app.notifications.enabled` | `true`; en `false` no se consume la cola |
 | `NOTIFICATIONS_POLL_INTERVAL` | `app.notifications.poll-interval` | `PT30S` |
 | `NOTIFICATIONS_BATCH_SIZE` | `app.notifications.batch-size` | `50` |
@@ -505,6 +508,21 @@ Si el documento o el correo ya están registrados responde `CRS_ACCOUNT_ALREADY_
 —el mismo código para los dos, para no convertir una ruta pública en un oráculo de quién
 tiene cuenta aquí—. El front no lo muestra como un error: lleva al login con la vuelta
 al enlace ya puesta, y desde ahí a recuperar la contraseña si hace falta.
+
+### Intentos de login
+
+`LOGIN_MAX_FAILURES` contraseñas erróneas dentro de `LOGIN_FAILURE_WINDOW` bloquean ese
+usuario durante `LOGIN_LOCKOUT`: el login responde 429 `USR_TOO_MANY_LOGIN_ATTEMPTS`
+aunque la contraseña sea la buena. Se cuenta por **usuario**, exista o no, para que el
+bloqueo no delate quién tiene cuenta; entrar bien o cambiar la contraseña por el enlace
+de recuperación borra el contador.
+
+Contar por usuario y no por IP es a propósito: el usuario suele ser el documento y la
+contraseña inicial también, así que lo que hay que frenar es probar muchas contraseñas
+contra una cuenta, venga de donde venga. El precio es que un tercero puede bloquear una
+cuenta ajena unos minutos; la recuperación por correo la desbloquea. El contador vive en
+memoria: con más de una instancia cada una lleva el suyo y habría que moverlo a la base
+o a Redis.
 
 ### Recuperar la contraseña
 

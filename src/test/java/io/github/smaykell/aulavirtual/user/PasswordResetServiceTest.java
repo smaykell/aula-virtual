@@ -1,6 +1,7 @@
 package io.github.smaykell.aulavirtual.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -65,6 +66,9 @@ class PasswordResetServiceTest {
 
     private final PasswordResetTokens tokens = new PasswordResetTokens();
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+    private final LoginThrottle loginThrottle = new LoginThrottle(
+            new LoginThrottleProperties(1, Duration.ofMinutes(15), Duration.ofMinutes(15)), clock);
     private PasswordResetService service;
 
     @BeforeEach
@@ -72,7 +76,7 @@ class PasswordResetServiceTest {
         service = new PasswordResetService(userRepository, passwordResetRepository,
                 personService, notificationService, tokens, passwordEncoder,
                 new AccountProperties(RESET_URL, LIFETIME, Duration.ofMinutes(2)),
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                loginThrottle, clock);
     }
 
     @Test
@@ -166,6 +170,18 @@ class PasswordResetServiceTest {
         assertThat(passwordEncoder.matches("nueva-clave", account.getPasswordHash())).isTrue();
         assertThat(reset.getUsedAt()).isEqualTo(NOW);
         assertThat(older.getUsedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void choosing_a_new_password_lifts_the_login_lockout() {
+        User account = account("12345678");
+        givenTheReset("token-bueno", NOW.plusSeconds(60));
+        when(userRepository.findById(ACCOUNT)).thenReturn(Optional.of(account));
+        loginThrottle.recordFailure(account.getUsername());
+
+        service.complete(new PasswordResetCompletion("token-bueno", "nueva-clave"));
+
+        assertDoesNotThrow(() -> loginThrottle.ensureAllowed(account.getUsername()));
     }
 
     @Test

@@ -148,10 +148,14 @@ PDF con las notas finales de un estudiante en un periodo, o constancia de matrí
 
 ### 2.6 Seguridad y cuenta
 
-**Límite de intentos de login** — P1 · S
+✅ **Límite de intentos de login** — P1 · S
 No hay limitación ni bloqueo por intentos fallidos en `/auth/login`; con usuarios
 predecibles (el documento) y contraseña inicial igual al documento es el riesgo más
 concreto del sistema.
+**Hecho** en `feature/login-throttling`: 5 fallos en 15 min bloquean ese usuario 15 min
+(429 `USR_TOO_MANY_LOGIN_ATTEMPTS`), configurable por entorno. Se cuenta por usuario,
+exista o no; entrar bien o recuperar la contraseña borra el contador. Queda en memoria:
+con varias instancias habría que llevarlo a la base.
 
 **Forzar cambio de la contraseña inicial** — P1 · S
 La contraseña inicial es el número de documento y el correo solo *pide* cambiarla. Una
