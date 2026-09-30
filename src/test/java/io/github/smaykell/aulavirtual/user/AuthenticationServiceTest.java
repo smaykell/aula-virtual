@@ -15,6 +15,7 @@ import io.github.smaykell.aulavirtual.user.dto.RoleAccess;
 import io.jsonwebtoken.Claims;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -36,6 +37,9 @@ class AuthenticationServiceTest {
     private static final Duration EXPIRATION = Duration.ofHours(1);
     private static final String PASSWORD = "contrasena";
     private static final UUID PERSON = UUID.randomUUID();
+    private static final int MAX_FAILURES = 3;
+    private static final Duration WINDOW = Duration.ofMinutes(15);
+    private static final Duration LOCKOUT = Duration.ofMinutes(10);
 
     @Mock
     private UserRepository userRepository;
@@ -45,15 +49,18 @@ class AuthenticationServiceTest {
 
     private PasswordEncoder passwordEncoder;
     private JwtService jwtService;
+    private MutableClock clock;
     private AuthenticationService authenticationService;
 
     @BeforeEach
     void setUp() {
         passwordEncoder = new BCryptPasswordEncoder();
-        jwtService = new JwtService(new JwtProperties(SECRET, ISSUER, EXPIRATION),
-                Clock.systemUTC());
+        clock = new MutableClock(Instant.parse("2026-09-30T10:00:00Z"));
+        jwtService = new JwtService(new JwtProperties(SECRET, ISSUER, EXPIRATION), clock);
+        LoginThrottle loginThrottle = new LoginThrottle(
+                new LoginThrottleProperties(MAX_FAILURES, WINDOW, LOCKOUT), clock);
         authenticationService = new AuthenticationService(userRepository, passwordEncoder,
-                personProfiles, jwtService);
+                personProfiles, jwtService, loginThrottle);
     }
 
     @Test
@@ -125,6 +132,71 @@ class AuthenticationServiceTest {
 
         assertThat(error.getCode()).isEqualTo("USR_INACTIVE_ACCOUNT");
         assertThat(error.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void too_many_wrong_passwords_lock_the_account_even_for_the_right_one() {
+        givenTheAccount("ana");
+        failTimes("ana", MAX_FAILURES);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> authenticationService.login(new LoginRequest("ana", PASSWORD)));
+
+        assertThat(error.getCode()).isEqualTo("USR_TOO_MANY_LOGIN_ATTEMPTS");
+        assertThat(error.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void an_unknown_username_is_locked_the_same_as_an_existing_one() {
+        when(userRepository.findByUsername("fantasma")).thenReturn(Optional.empty());
+        failTimes("fantasma", MAX_FAILURES);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> authenticationService.login(new LoginRequest("FANTASMA", PASSWORD)));
+
+        assertThat(error.getCode()).isEqualTo("USR_TOO_MANY_LOGIN_ATTEMPTS");
+    }
+
+    @Test
+    void the_lock_is_lifted_once_the_lockout_has_passed() {
+        givenTheAccount("ana", Set.of(Role.STUDENT));
+        failTimes("ana", MAX_FAILURES);
+
+        clock.advance(LOCKOUT);
+
+        assertThat(authenticationService.login(new LoginRequest("ana", PASSWORD)).username())
+                .isEqualTo("ana");
+    }
+
+    @Test
+    void failures_older_than_the_window_do_not_add_up() {
+        givenTheAccount("ana", Set.of(Role.STUDENT));
+        failTimes("ana", MAX_FAILURES - 1);
+
+        clock.advance(WINDOW);
+        failTimes("ana", MAX_FAILURES - 1);
+
+        assertThat(authenticationService.login(new LoginRequest("ana", PASSWORD)).username())
+                .isEqualTo("ana");
+    }
+
+    @Test
+    void a_successful_login_clears_the_previous_failures() {
+        givenTheAccount("ana", Set.of(Role.STUDENT));
+        failTimes("ana", MAX_FAILURES - 1);
+        authenticationService.login(new LoginRequest("ana", PASSWORD));
+
+        failTimes("ana", MAX_FAILURES - 1);
+
+        assertThat(authenticationService.login(new LoginRequest("ana", PASSWORD)).username())
+                .isEqualTo("ana");
+    }
+
+    private void failTimes(String username, int times) {
+        for (int attempt = 0; attempt < times; attempt++) {
+            assertThrows(ApiException.class, () -> authenticationService.login(
+                    new LoginRequest(username, "otra-contrasena")));
+        }
     }
 
     private void givenTheAccount(String username) {

@@ -89,6 +89,10 @@ app:
     password-reset-url: ${PASSWORD_RESET_URL:http://localhost:5173/reset-password}
     password-reset-lifetime: ${PASSWORD_RESET_LIFETIME:PT30M}
     password-reset-cooldown: ${PASSWORD_RESET_COOLDOWN:PT2M}
+    login-throttle:
+      max-failures: ${LOGIN_MAX_FAILURES:5}
+      window: ${LOGIN_FAILURE_WINDOW:PT15M}
+      lockout: ${LOGIN_LOCKOUT:PT15M}
   storage:
     # En blanco apunta a AWS S3; con valor, a cualquier servicio compatible (MinIO, R2...).
     endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
