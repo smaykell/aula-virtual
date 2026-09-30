@@ -42,6 +42,9 @@ public class Assignment extends BaseEntity {
     @Column(name = "category_id")
     private UUID categoryId;
 
+    @Column(name = "reminded_at")
+    private Instant remindedAt;
+
     private Assignment(UUID unitId, UUID courseId, AssignmentData data) {
         this.unitId = unitId;
         this.courseId = courseId;
@@ -55,10 +58,17 @@ public class Assignment extends BaseEntity {
     public final void update(AssignmentData data) {
         this.title = data.title().trim();
         this.instructions = trimmed(data.instructions());
+        if (!data.dueAt().equals(dueAt)) {
+            this.remindedAt = null;
+        }
         this.dueAt = data.dueAt();
         this.maxScore = data.maxScore();
         this.allowsLate = data.allowsLate();
         this.categoryId = data.categoryId();
+    }
+
+    public void markReminded(Instant moment) {
+        this.remindedAt = moment;
     }
 
     public boolean isLate(Instant moment) {

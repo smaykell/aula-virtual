@@ -55,6 +55,13 @@ public enum NotificationType {
             Vence el {dueAt}. Entra al aula virtual para ver las instrucciones.
             """),
 
+    ASSIGNMENT_DUE_SOON("Vence pronto: {assignmentTitle}", """
+            Hola {firstName}:
+
+            La tarea «{assignmentTitle}» del curso «{courseName}» vence el {dueAt} y
+            todavía no la has entregado.
+            """),
+
     GRADE_RETURNED("Ya tienes la nota de {assignmentTitle}", """
             Hola {firstName}:
 
