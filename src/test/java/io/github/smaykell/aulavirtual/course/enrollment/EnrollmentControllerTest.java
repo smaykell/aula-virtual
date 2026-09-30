@@ -16,6 +16,9 @@ import io.github.smaykell.aulavirtual.config.ClockConfig;
 import io.github.smaykell.aulavirtual.config.CorsProperties;
 import io.github.smaykell.aulavirtual.course.CourseStatus;
 import io.github.smaykell.aulavirtual.course.dto.CourseSummary;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentOutcome;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentRequest;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentResult;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.EnrollmentResponse;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.JoinCourseRequest;
 import io.github.smaykell.aulavirtual.security.JwtAuthenticationFilter;
@@ -126,6 +129,49 @@ class EnrollmentControllerTest {
     }
 
     @Test
+    void the_teacher_enrolls_students_by_document() throws Exception {
+        when(enrollmentService.enroll(eq("ana"), eq(COURSE), any(DirectEnrollmentRequest.class)))
+                .thenReturn(List.of(
+                        new DirectEnrollmentResult("45678912", DirectEnrollmentOutcome.ENROLLED,
+                                anEnrollment(EnrollmentStatus.ACTIVE)),
+                        DirectEnrollmentResult.skipped("11111111",
+                                DirectEnrollmentOutcome.NOT_A_STUDENT)));
+
+        mockMvc.perform(post("/courses/{courseId}/enrollments", COURSE)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(directBody("[\"45678912\", \"11111111\"]")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].outcome").value("ENROLLED"))
+                .andExpect(jsonPath("$[0].enrollment.status").value("ACTIVE"))
+                .andExpect(jsonPath("$[1].outcome").value("NOT_A_STUDENT"))
+                .andExpect(jsonPath("$[1].enrollment").doesNotExist());
+    }
+
+    @Test
+    void a_student_cannot_enroll_others() throws Exception {
+        mockMvc.perform(post("/courses/{courseId}/enrollments", COURSE)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(directBody("[\"45678912\"]")))
+                .andExpect(status().isForbidden());
+
+        verify(enrollmentService, never()).enroll(any(), any(), any());
+    }
+
+    @Test
+    void enrolling_without_documents_does_not_reach_the_service() throws Exception {
+        mockMvc.perform(post("/courses/{courseId}/enrollments", COURSE)
+                        .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.TEACHER))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(directBody("[]")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("documentNumbers"));
+
+        verify(enrollmentService, never()).enroll(any(), any(), any());
+    }
+
+    @Test
     void a_student_does_not_read_the_roster() throws Exception {
         mockMvc.perform(get("/courses/{courseId}/enrollments", COURSE)
                         .header(HttpHeaders.AUTHORIZATION, bearerFor(Role.STUDENT)))
@@ -188,5 +234,9 @@ class EnrollmentControllerTest {
 
     private String bearerFor(Role role) {
         return "Bearer " + jwtService.issueToken("ana", Role.grantedAuthoritiesOf(Set.of(role)));
+    }
+
+    private static String directBody(String documentNumbers) {
+        return "{\"documentType\": \"DNI\", \"documentNumbers\": " + documentNumbers + "}";
     }
 }

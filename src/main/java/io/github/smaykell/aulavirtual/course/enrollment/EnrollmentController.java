@@ -1,10 +1,13 @@
 package io.github.smaykell.aulavirtual.course.enrollment;
 
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentRequest;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentResult;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.EnrollmentResponse;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.JoinCourseRequest;
 import io.github.smaykell.aulavirtual.security.Permission;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +36,14 @@ public class EnrollmentController {
             @Valid @RequestBody JoinCourseRequest request) {
 
         return enrollmentService.join(authentication.getName(), request);
+    }
+
+    @PostMapping("/courses/{courseId}/enrollments")
+    @PreAuthorize("hasAuthority('" + Permission.Name.ENROLLMENTS_UPDATE + "')")
+    public List<DirectEnrollmentResult> enroll(Authentication authentication,
+            @PathVariable UUID courseId, @Valid @RequestBody DirectEnrollmentRequest request) {
+
+        return enrollmentService.enroll(authentication.getName(), courseId, request);
     }
 
     @GetMapping("/courses/{courseId}/enrollments")

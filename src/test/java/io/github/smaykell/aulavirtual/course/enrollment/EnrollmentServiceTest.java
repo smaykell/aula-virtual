@@ -13,12 +13,17 @@ import io.github.smaykell.aulavirtual.course.Course;
 import io.github.smaykell.aulavirtual.course.CourseAccess;
 import io.github.smaykell.aulavirtual.course.CourseFixtures;
 import io.github.smaykell.aulavirtual.course.CourseRepository;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentOutcome;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentRequest;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentResult;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.EnrollmentResponse;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.JoinCourseRequest;
 import io.github.smaykell.aulavirtual.notification.NotificationService;
 import io.github.smaykell.aulavirtual.notification.NotificationType;
+import io.github.smaykell.aulavirtual.person.DocumentType;
 import io.github.smaykell.aulavirtual.student.StudentService;
 import io.github.smaykell.aulavirtual.student.dto.StudentContact;
+import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -38,6 +43,7 @@ class EnrollmentServiceTest {
     private static final Instant NOW = Instant.parse("2026-03-10T09:00:00Z");
     private static final UUID TITULAR = UUID.randomUUID();
     private static final UUID STUDENT = UUID.randomUUID();
+    private static final UUID TITULAR_AS_STUDENT = UUID.randomUUID();
 
     @Mock
     private EnrollmentRepository enrollmentRepository;
@@ -250,6 +256,88 @@ class EnrollmentServiceTest {
         when(courseRepository.findByInvitationCode("ZZZZ9999")).thenReturn(Optional.empty());
 
         assertThat(enrollmentService.mineIn("ana.estudiante", "ZZZZ9999")).isEmpty();
+    }
+
+    @Test
+    void the_staff_enrolls_by_document_even_when_the_course_reviews_requests() {
+        Course course = givenTheWritableCourse();
+        givenTheStudentWithDocument("45678912", CourseFixtures.student(STUDENT));
+        when(enrollmentRepository.findByCourseIdAndStudentId(course.getId(), STUDENT))
+                .thenReturn(Optional.empty());
+        givenTheEnrollmentIsStored();
+        givenTheStudentCanBeReached();
+
+        List<DirectEnrollmentResult> results = enrollmentService.enroll("juan", course.getId(),
+                directRequest(" 45678912 ", "45678912"));
+
+        assertThat(results).singleElement().satisfies(result -> {
+            assertThat(result.documentNumber()).isEqualTo("45678912");
+            assertThat(result.outcome()).isEqualTo(DirectEnrollmentOutcome.ENROLLED);
+            assertThat(result.enrollment().status()).isEqualTo(EnrollmentStatus.ACTIVE);
+        });
+        verify(notificationService).enqueue(eq(NotificationType.ENROLLMENT_ACTIVE),
+                eq("ana@escuela.pe"), any());
+    }
+
+    @Test
+    void a_pending_or_withdrawn_student_is_enrolled_on_the_same_row() {
+        Course course = givenTheWritableCourse();
+        givenTheStudentWithDocument("45678912", CourseFixtures.student(STUDENT));
+        Enrollment previous = givenThePreviousEnrollment(course, EnrollmentStatus.WITHDRAWN);
+        givenTheStudentCanBeReached();
+
+        enrollmentService.enroll("juan", course.getId(), directRequest("45678912"));
+
+        assertThat(previous.getStatus()).isEqualTo(EnrollmentStatus.ACTIVE);
+        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+    }
+
+    @Test
+    void whoever_is_already_enrolled_is_reported_and_not_notified_again() {
+        Course course = givenTheWritableCourse();
+        givenTheStudentWithDocument("45678912", CourseFixtures.student(STUDENT));
+        givenThePreviousEnrollment(course, EnrollmentStatus.ACTIVE);
+
+        List<DirectEnrollmentResult> results = enrollmentService.enroll("juan", course.getId(),
+                directRequest("45678912"));
+
+        assertThat(results.get(0).outcome()).isEqualTo(DirectEnrollmentOutcome.ALREADY_ENROLLED);
+        verify(notificationService, never()).enqueue(any(), any(), any());
+    }
+
+    @Test
+    void each_document_that_cannot_be_enrolled_says_why_without_stopping_the_rest() {
+        Course course = givenTheWritableCourse();
+        when(courseAccess.titularAsStudent(course)).thenReturn(Optional.of(TITULAR_AS_STUDENT));
+        givenTheStudentWithDocument("11111111", null);
+        givenTheStudentWithDocument("22222222",
+                new StudentSummary(UUID.randomUUID(), "Luis", "Rojas", null, false));
+        givenTheStudentWithDocument("33333333",
+                new StudentSummary(TITULAR_AS_STUDENT, "Juan", "Perez", null, true));
+
+        List<DirectEnrollmentResult> results = enrollmentService.enroll("juan", course.getId(),
+                directRequest("11111111", "22222222", "33333333"));
+
+        assertThat(results).extracting(DirectEnrollmentResult::outcome).containsExactly(
+                DirectEnrollmentOutcome.NOT_A_STUDENT,
+                DirectEnrollmentOutcome.INACTIVE_STUDENT,
+                DirectEnrollmentOutcome.TITULAR);
+        verify(enrollmentRepository, never()).save(any(Enrollment.class));
+    }
+
+    private Course givenTheWritableCourse() {
+        Course course = CourseFixtures.course(TITULAR, EnrollmentPolicy.ON_REQUEST);
+        when(courseAccess.writable("juan", course.getId())).thenReturn(course);
+        return course;
+    }
+
+    private void givenTheStudentWithDocument(String documentNumber, StudentSummary student) {
+        when(studentService.findByDocument(DocumentType.DNI, documentNumber))
+                .thenReturn(Optional.ofNullable(student));
+    }
+
+    private static DirectEnrollmentRequest directRequest(String... documentNumbers) {
+        return new DirectEnrollmentRequest(DocumentType.DNI, List.of(documentNumbers));
     }
 
     private Course givenTheCourseIsJoinable(EnrollmentPolicy policy) {

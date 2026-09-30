@@ -5,6 +5,9 @@ import io.github.smaykell.aulavirtual.course.Course;
 import io.github.smaykell.aulavirtual.course.CourseAccess;
 import io.github.smaykell.aulavirtual.course.CourseRepository;
 import io.github.smaykell.aulavirtual.course.dto.CourseSummary;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentOutcome;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentRequest;
+import io.github.smaykell.aulavirtual.course.enrollment.dto.DirectEnrollmentResult;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.EnrollmentResponse;
 import io.github.smaykell.aulavirtual.course.enrollment.dto.JoinCourseRequest;
 import io.github.smaykell.aulavirtual.course.exception.AlreadyEnrolledException;
@@ -16,12 +19,14 @@ import io.github.smaykell.aulavirtual.course.exception.EnrollmentPendingExceptio
 import io.github.smaykell.aulavirtual.course.exception.InvalidInvitationException;
 import io.github.smaykell.aulavirtual.notification.NotificationService;
 import io.github.smaykell.aulavirtual.notification.NotificationType;
+import io.github.smaykell.aulavirtual.person.DocumentType;
 import io.github.smaykell.aulavirtual.student.StudentService;
 import io.github.smaykell.aulavirtual.student.dto.StudentContact;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +68,19 @@ public class EnrollmentService {
                 ? NotificationType.ENROLLMENT_REQUESTED
                 : NotificationType.ENROLLMENT_ACTIVE, studentId, course);
         return responseFor(enrollment, course);
+    }
+
+    @Transactional
+    public List<DirectEnrollmentResult> enroll(String actorUsername, UUID courseId,
+            DirectEnrollmentRequest request) {
+
+        Course course = courseAccess.writable(actorUsername, courseId);
+        Optional<UUID> titular = courseAccess.titularAsStudent(course);
+        return request.documentNumbers().stream()
+                .map(String::trim)
+                .distinct()
+                .map(number -> enrollByDocument(course, titular, request.documentType(), number))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -135,6 +153,52 @@ public class EnrollmentService {
         }
         enrollment.withdraw(clock.instant());
         return responseFor(enrollment, managed.course());
+    }
+
+    private DirectEnrollmentResult enrollByDocument(Course course, Optional<UUID> titular,
+            DocumentType documentType, String documentNumber) {
+
+        return studentService.findByDocument(documentType, documentNumber)
+                .map(student -> enrollStudent(course, titular, student, documentNumber))
+                .orElseGet(() -> DirectEnrollmentResult.skipped(documentNumber,
+                        DirectEnrollmentOutcome.NOT_A_STUDENT));
+    }
+
+    private DirectEnrollmentResult enrollStudent(Course course, Optional<UUID> titular,
+            StudentSummary student, String documentNumber) {
+
+        if (!student.active()) {
+            return DirectEnrollmentResult.skipped(documentNumber,
+                    DirectEnrollmentOutcome.INACTIVE_STUDENT);
+        }
+        if (titular.filter(student.id()::equals).isPresent()) {
+            return DirectEnrollmentResult.skipped(documentNumber, DirectEnrollmentOutcome.TITULAR);
+        }
+        Optional<Enrollment> existing =
+                enrollmentRepository.findByCourseIdAndStudentId(course.getId(), student.id());
+        if (existing.filter(Enrollment::isActive).isPresent()) {
+            return resultOf(documentNumber, DirectEnrollmentOutcome.ALREADY_ENROLLED,
+                    existing.get(), course, student);
+        }
+        Enrollment enrollment = activate(existing, course, student.id());
+        announce(NotificationType.ENROLLMENT_ACTIVE, student.id(), course);
+        return resultOf(documentNumber, DirectEnrollmentOutcome.ENROLLED, enrollment, course,
+                student);
+    }
+
+    private Enrollment activate(Optional<Enrollment> existing, Course course, UUID studentId) {
+        existing.ifPresent(enrollment ->
+                enrollment.restart(EnrollmentPolicy.AUTOMATIC, clock.instant()));
+        return existing.orElseGet(() -> enrollmentRepository.save(Enrollment.request(
+                course.getId(), studentId, EnrollmentPolicy.AUTOMATIC, clock.instant())));
+    }
+
+    private static DirectEnrollmentResult resultOf(String documentNumber,
+            DirectEnrollmentOutcome outcome, Enrollment enrollment, Course course,
+            StudentSummary student) {
+
+        return new DirectEnrollmentResult(documentNumber, outcome,
+                EnrollmentResponse.from(enrollment, CourseSummary.from(course), student));
     }
 
     private void announce(NotificationType type, UUID studentId, Course course) {

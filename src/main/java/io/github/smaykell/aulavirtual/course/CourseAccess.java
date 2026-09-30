@@ -145,9 +145,17 @@ public class CourseAccess {
                         course.getId(), studentId, EnrollmentStatus.ACTIVE));
     }
 
+    public Optional<UUID> titularAsStudent(Course course) {
+        return studentProfileOf(course.getTeacherId());
+    }
+
+    private Optional<UUID> studentProfileOf(UUID teacherId) {
+        return Optional.ofNullable(personProfiles.of(teacherService.personOf(teacherId))
+                .get(Role.STUDENT));
+    }
+
     private void requireNotEnrolled(Course course, UUID teacherId) {
-        Optional.ofNullable(personProfiles.of(teacherService.personOf(teacherId))
-                        .get(Role.STUDENT))
+        studentProfileOf(teacherId)
                 .filter(studentId -> enrollmentRepository.existsByCourseIdAndStudentIdAndStatusIn(
                         course.getId(), studentId, OPEN_ENROLLMENT))
                 .ifPresent(studentId -> {

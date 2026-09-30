@@ -28,6 +28,11 @@ public final class CourseConstraints {
     public static final String POLICY_REQUIRED =
             "hay que decidir si el curso acepta las inscripciones o las revisa";
     public static final String INVITATION_CODE_REQUIRED = "el código de invitación es obligatorio";
+    public static final int DIRECT_ENROLLMENT_MAX = 100;
+    public static final String DOCUMENT_TYPE_REQUIRED = "el tipo de documento es obligatorio";
+    public static final String DOCUMENT_NUMBERS_REQUIRED = "indica al menos un número de documento";
+    public static final String DOCUMENT_NUMBERS_TOO_MANY =
+            "se pueden inscribir como mucho 100 estudiantes a la vez";
     public static final String UNITS_REQUIRED = "el orden de las unidades es obligatorio";
 
     private CourseConstraints() {

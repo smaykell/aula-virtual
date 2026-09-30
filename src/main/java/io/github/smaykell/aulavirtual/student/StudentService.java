@@ -2,6 +2,7 @@ package io.github.smaykell.aulavirtual.student;
 
 import io.github.smaykell.aulavirtual.common.domain.Filters;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
+import io.github.smaykell.aulavirtual.person.DocumentType;
 import io.github.smaykell.aulavirtual.person.PersonService;
 import io.github.smaykell.aulavirtual.person.dto.PersonData;
 import io.github.smaykell.aulavirtual.person.dto.PersonResponse;
@@ -21,6 +22,7 @@ import io.github.smaykell.aulavirtual.user.dto.Credentials;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -135,6 +137,15 @@ public class StudentService {
         if (!existing(studentId).isActive()) {
             throw new InactiveStudentException(studentId);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<StudentSummary> findByDocument(DocumentType documentType,
+            String documentNumber) {
+
+        return personService.findByDocument(documentType, documentNumber)
+                .flatMap(person -> studentRepository.findByPersonId(person.id())
+                        .map(student -> StudentSummary.from(student, person)));
     }
 
     @Transactional(readOnly = true)
