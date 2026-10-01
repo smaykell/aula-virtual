@@ -42,8 +42,10 @@ Ya previsto en la arquitectura (`GradeItemProvider`, `GradeService.record`,
 `CourseService.memberOf`). Mínimo viable: banco de preguntas por curso (opción única,
 múltiple, verdadero/falso, respuesta corta), examen con ventana de apertura/cierre, tiempo
 límite, intentos, orden aleatorio y corrección automática (`gradedBy` nulo). Las preguntas
-abiertas quedan en borrador para el docente. Decidir antes: ¿un intento o varios (mejor
-nota / última)?, ¿se muestran las respuestas correctas al devolver?
+abiertas quedan en borrador para el docente.
+**Decidido por el usuario (2026-09-30):** todo configurable por el docente, examen a
+examen. Mostrar o no las respuestas correctas lo elige el docente. Por defecto hay **un
+solo intento**; el docente puede habilitar un segundo.
 
 **Rúbricas** — P3 · M
 Criterios con niveles y puntaje por tarea; la nota sale de la suma. Da coherencia a la
@@ -266,6 +268,8 @@ El correo de la persona es opcional y nunca se verifica, pero es la vía de recu
 - ¿Quién usará primero el aula en producción (un colegio, una academia, un instituto)?
   Cambia la prioridad de asistencia, periodos y boletas.
 - ¿El docente debe poder matricular alumnos directamente, o solo el admin?
-- ¿Exámenes con un solo intento o varios? ¿Se revelan las respuestas al devolver?
+- ~~¿Exámenes con un solo intento o varios? ¿Se revelan las respuestas al devolver?~~
+  Decidido: configurable por el docente; un intento por defecto, puede habilitar un segundo,
+  y él elige si se ven las respuestas.
 - ¿Avisos con respuesta de los alumnos (foro) o solo de ida?
 - ¿Se acepta mover el token a cookie `HttpOnly`? Implica CSRF y ajustar CORS.
