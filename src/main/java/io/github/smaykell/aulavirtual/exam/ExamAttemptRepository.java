@@ -3,6 +3,7 @@ package io.github.smaykell.aulavirtual.exam;
 import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,7 +20,8 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, UUID> 
 
     List<ExamAttempt> findByExamIdAndStudentIdOrderByNumber(UUID examId, UUID studentId);
 
-    List<ExamAttempt> findByExamIdOrderByStartedAt(UUID examId);
+    List<ExamAttempt> findByExamIdAndStudentIdInOrderByNumber(UUID examId,
+            Collection<UUID> studentIds);
 
     boolean existsByExamId(UUID examId);
 

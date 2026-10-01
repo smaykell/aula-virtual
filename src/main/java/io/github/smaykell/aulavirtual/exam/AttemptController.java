@@ -2,10 +2,8 @@ package io.github.smaykell.aulavirtual.exam;
 
 import io.github.smaykell.aulavirtual.exam.dto.AnswerData;
 import io.github.smaykell.aulavirtual.exam.dto.AttemptResponse;
-import io.github.smaykell.aulavirtual.exam.dto.AttemptSummary;
 import io.github.smaykell.aulavirtual.security.Permission;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,14 +28,6 @@ public class AttemptController {
     @PreAuthorize("hasAuthority('" + Permission.Name.ATTEMPTS_CREATE + "')")
     public AttemptResponse start(Authentication authentication, @PathVariable UUID examId) {
         return attemptService.start(authentication.getName(), examId);
-    }
-
-    @GetMapping("/exams/{examId}/attempts")
-    @PreAuthorize("hasAuthority('" + Permission.Name.EXAMS_READ + "')")
-    public List<AttemptSummary> list(Authentication authentication,
-            @PathVariable UUID examId) {
-
-        return attemptService.list(authentication.getName(), examId);
     }
 
     @GetMapping("/attempts/{id}")

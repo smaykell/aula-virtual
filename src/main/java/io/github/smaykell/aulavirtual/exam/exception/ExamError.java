@@ -40,7 +40,11 @@ public enum ExamError implements ErrorCode {
     ATTEMPT_OUT_OF_REACH(HttpStatus.FORBIDDEN, "Ese intento no es tuyo"),
     ATTEMPT_CLOSED(HttpStatus.CONFLICT, "El intento ya se entregó o se le acabó el tiempo"),
     FOREIGN_OPTION(HttpStatus.BAD_REQUEST, "La opción elegida no es de esta pregunta"),
-    ONE_OPTION_ONLY(HttpStatus.BAD_REQUEST, "Esta pregunta admite una sola opción");
+    ONE_OPTION_ONLY(HttpStatus.BAD_REQUEST, "Esta pregunta admite una sola opción"),
+    ATTEMPT_IN_PROGRESS(HttpStatus.CONFLICT,
+            "El intento sigue en curso; se puede revisar cuando se entregue"),
+    NOT_ANSWERED(HttpStatus.CONFLICT, "La pregunta quedó sin responder y vale cero"),
+    POINTS_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "La pregunta vale como mucho %s puntos");
 
     public static final String PREFIX = "EXM";
 

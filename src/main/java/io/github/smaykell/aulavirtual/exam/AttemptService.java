@@ -45,28 +45,12 @@ public class AttemptService {
 
         List<ExamAttempt> taken = attemptRepository
                 .findByExamIdAndStudentIdOrderByNumber(examId, studentId);
-        taken.forEach(attempt -> closeIfExpired(exam, attempt, now));
+        closeExpiredAmong(exam, taken);
         ExamAttempt attempt = taken.stream()
                 .filter(ExamAttempt::isInProgress)
                 .findFirst()
                 .orElseGet(() -> begin(exam, studentId, taken.size(), now));
         return paperOf(exam, attempt).disclosed(Disclosure.PAPER);
-    }
-
-    @Transactional
-    public List<AttemptSummary> list(String actorUsername, UUID examId) {
-        Exam exam = examService.existing(examId);
-        CourseMember member = examService.memberFor(actorUsername, exam);
-        Instant now = clock.instant();
-
-        List<ExamAttempt> attempts = member.staff()
-                ? attemptRepository.findByExamIdOrderByStartedAt(examId)
-                : attemptRepository.findByExamIdAndStudentIdOrderByNumber(examId,
-                        member.studentId());
-        attempts.forEach(attempt -> closeIfExpired(exam, attempt, now));
-        return attempts.stream()
-                .map(attempt -> summaryOf(attempt, disclosureFor(member, exam, attempt)))
-                .toList();
     }
 
     @Transactional
@@ -116,6 +100,18 @@ public class AttemptService {
     public void closeExpired(UUID attemptId) {
         ExamAttempt attempt = locked(attemptId);
         closeIfExpired(examService.existing(attempt.getExamId()), attempt, clock.instant());
+    }
+
+    void closeExpiredAmong(Exam exam, List<ExamAttempt> attempts) {
+        Instant now = clock.instant();
+        attempts.forEach(attempt -> closeIfExpired(exam, attempt, now));
+    }
+
+    AttemptSummary summaryFor(CourseMember member, Exam exam, ExamAttempt attempt) {
+        boolean showsScore = disclosureFor(member, exam, attempt).showsScores();
+        return new AttemptSummary(attempt.getId(), attempt.getStudentId(), attempt.getNumber(),
+                attempt.getStatus(), attempt.getStartedAt(), attempt.getDeadline(),
+                attempt.getSubmittedAt(), showsScore ? attempt.getScore() : null);
     }
 
     private ExamAttempt begin(Exam exam, UUID studentId, int taken, Instant now) {
@@ -182,7 +178,7 @@ public class AttemptService {
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
     }
 
-    private ExamAttempt locked(UUID attemptId) {
+    ExamAttempt locked(UUID attemptId) {
         return attemptRepository.findForUpdate(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
     }
@@ -208,11 +204,5 @@ public class AttemptService {
             throw new OnlyStudentsTakeException();
         }
         return member.studentId();
-    }
-
-    private static AttemptSummary summaryOf(ExamAttempt attempt, Disclosure disclosure) {
-        return new AttemptSummary(attempt.getId(), attempt.getStudentId(), attempt.getNumber(),
-                attempt.getStatus(), attempt.getStartedAt(), attempt.getDeadline(),
-                attempt.getSubmittedAt(), disclosure.showsScores() ? attempt.getScore() : null);
     }
 }

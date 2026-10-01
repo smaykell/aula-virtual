@@ -128,7 +128,7 @@ public class ExamService {
                 .orElseThrow(() -> new ExamNotFoundException(examId));
     }
 
-    private Exam writable(String actorUsername, UUID examId) {
+    Exam writable(String actorUsername, UUID examId) {
         Exam exam = existing(examId);
         courseService.requireWritable(actorUsername, exam.getCourseId());
         return exam;
