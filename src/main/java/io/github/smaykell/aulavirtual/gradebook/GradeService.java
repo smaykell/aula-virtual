@@ -68,6 +68,14 @@ public class GradeService {
         return gradeRepository.existsBySourceTypeAndSourceId(sourceType, sourceId);
     }
 
+    @Transactional(readOnly = true)
+    public boolean returnedTo(GradeSource sourceType, UUID sourceId, UUID studentId) {
+        return gradeRepository.findBySourceTypeAndSourceIdAndStudentId(sourceType, sourceId,
+                        studentId)
+                .filter(Grade::isReturned)
+                .isPresent();
+    }
+
     static Predicate<Grade> shownTo(CourseMember member) {
         return grade -> member.staff() || grade.isReturned();
     }

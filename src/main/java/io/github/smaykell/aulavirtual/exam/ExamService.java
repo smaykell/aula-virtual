@@ -7,6 +7,7 @@ import io.github.smaykell.aulavirtual.exam.dto.ExamQuestionData;
 import io.github.smaykell.aulavirtual.exam.dto.ExamQuestionResponse;
 import io.github.smaykell.aulavirtual.exam.dto.ExamQuestionsData;
 import io.github.smaykell.aulavirtual.exam.dto.ExamResponse;
+import io.github.smaykell.aulavirtual.exam.exception.ExamHasAttemptsException;
 import io.github.smaykell.aulavirtual.exam.exception.ExamHasWorkException;
 import io.github.smaykell.aulavirtual.exam.exception.ExamNotFoundException;
 import io.github.smaykell.aulavirtual.exam.exception.InvalidExamWindowException;
@@ -34,6 +35,7 @@ public class ExamService {
 
     private final ExamRepository examRepository;
     private final ExamQuestionRepository examQuestionRepository;
+    private final ExamAttemptRepository attemptRepository;
     private final QuestionService questionService;
     private final CourseService courseService;
     private final GradeService gradeService;
@@ -80,7 +82,8 @@ public class ExamService {
     @Transactional
     public void delete(String actorUsername, UUID examId) {
         Exam exam = writable(actorUsername, examId);
-        if (gradeService.anyFor(GradeSource.EXAM, examId)) {
+        if (attemptRepository.existsByExamId(examId)
+                || gradeService.anyFor(GradeSource.EXAM, examId)) {
             throw new ExamHasWorkException();
         }
         examRepository.delete(exam);
@@ -98,6 +101,9 @@ public class ExamService {
             ExamQuestionsData data) {
 
         Exam exam = writable(actorUsername, examId);
+        if (attemptRepository.existsByExamId(examId)) {
+            throw new ExamHasAttemptsException();
+        }
         List<UUID> questionIds = data.questions().stream()
                 .map(ExamQuestionData::questionId)
                 .toList();

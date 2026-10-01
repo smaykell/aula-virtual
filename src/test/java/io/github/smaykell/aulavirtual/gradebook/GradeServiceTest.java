@@ -159,6 +159,14 @@ class GradeServiceTest {
     }
 
     @Test
+    void only_a_handed_back_grade_counts_as_returned_to_the_student() {
+        when(gradeRepository.findBySourceTypeAndSourceIdAndStudentId(GradeSource.EXAM,
+                ASSIGNMENT, STUDENT)).thenReturn(Optional.of(grade(new BigDecimal("14.00"))));
+
+        assertThat(gradeService.returnedTo(GradeSource.EXAM, ASSIGNMENT, STUDENT)).isFalse();
+    }
+
+    @Test
     void handing_back_keeps_the_first_moment_a_grade_was_returned() {
         Grade draft = grade(new BigDecimal("16.00"));
         Grade earlier = returned(new BigDecimal("12.00"));

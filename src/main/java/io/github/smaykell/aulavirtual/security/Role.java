@@ -35,7 +35,7 @@ public enum Role {
             Permission.QUESTIONS_READ, Permission.QUESTIONS_UPDATE)),
     STUDENT(Set.of(Permission.COURSES_READ, Permission.ENROLLMENTS_CREATE,
             Permission.ASSIGNMENTS_READ, Permission.SUBMISSIONS_CREATE,
-            Permission.EXAMS_READ));
+            Permission.EXAMS_READ, Permission.ATTEMPTS_CREATE));
 
     private static final String AUTHORITY_PREFIX = "ROLE_";
 

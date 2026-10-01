@@ -16,6 +16,8 @@ public interface ExamQuestionRepository extends JpaRepository<ExamQuestion, UUID
 
     boolean existsByQuestionId(UUID questionId);
 
+    boolean existsByExamIdAndQuestionId(UUID examId, UUID questionId);
+
     @Modifying(flushAutomatically = true)
     @Query("delete from ExamQuestion q where q.examId = :examId")
     void deleteByExamId(@Param("examId") UUID examId);

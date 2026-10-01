@@ -24,6 +24,7 @@ public enum Permission {
     EXAMS_READ(Name.EXAMS_READ),
     EXAMS_CREATE(Name.EXAMS_CREATE),
     EXAMS_UPDATE(Name.EXAMS_UPDATE),
+    ATTEMPTS_CREATE(Name.ATTEMPTS_CREATE),
     QUESTIONS_READ(Name.QUESTIONS_READ),
     QUESTIONS_UPDATE(Name.QUESTIONS_UPDATE),
     SETTINGS_READ(Name.SETTINGS_READ),
@@ -63,6 +64,7 @@ public enum Permission {
         public static final String EXAMS_READ = "exams:read";
         public static final String EXAMS_CREATE = "exams:create";
         public static final String EXAMS_UPDATE = "exams:update";
+        public static final String ATTEMPTS_CREATE = "attempts:create";
         public static final String QUESTIONS_READ = "questions:read";
         public static final String QUESTIONS_UPDATE = "questions:update";
         public static final String SETTINGS_READ = "settings:read";

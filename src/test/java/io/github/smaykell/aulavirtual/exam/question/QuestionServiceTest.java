@@ -14,6 +14,7 @@ import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.exception.ArchivedCourseException;
+import io.github.smaykell.aulavirtual.exam.ExamAttemptRepository;
 import io.github.smaykell.aulavirtual.exam.ExamQuestionRepository;
 import io.github.smaykell.aulavirtual.exam.question.dto.OptionData;
 import io.github.smaykell.aulavirtual.exam.question.dto.OptionResponse;
@@ -46,6 +47,9 @@ class QuestionServiceTest {
     private ExamQuestionRepository examQuestionRepository;
 
     @Mock
+    private ExamAttemptRepository attemptRepository;
+
+    @Mock
     private CourseService courseService;
 
     private QuestionService questionService;
@@ -53,7 +57,7 @@ class QuestionServiceTest {
     @BeforeEach
     void setUp() {
         questionService = new QuestionService(questionRepository, optionRepository,
-                examQuestionRepository, courseService);
+                examQuestionRepository, attemptRepository, courseService);
     }
 
     @Test
@@ -180,6 +184,20 @@ class QuestionServiceTest {
 
         assertThat(bank).singleElement()
                 .satisfies(response -> assertThat(response.options()).hasSize(2));
+    }
+
+    @Test
+    void a_question_of_an_exam_already_taken_is_not_edited() {
+        Question question = stored(QuestionType.SINGLE_CHOICE);
+        when(questionRepository.findById(question.getId())).thenReturn(Optional.of(question));
+        when(attemptRepository.existsForQuestion(question.getId())).thenReturn(true);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> questionService.update("ana", question.getId(),
+                        choice(QuestionType.SINGLE_CHOICE, false, true)));
+
+        assertThat(error.getCode()).isEqualTo("EXM_QUESTION_LOCKED");
+        verify(optionRepository, never()).deleteByQuestionId(any());
     }
 
     @Test

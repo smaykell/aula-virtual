@@ -49,6 +49,9 @@ class ExamServiceTest {
     private ExamQuestionRepository examQuestionRepository;
 
     @Mock
+    private ExamAttemptRepository attemptRepository;
+
+    @Mock
     private QuestionService questionService;
 
     @Mock
@@ -64,7 +67,8 @@ class ExamServiceTest {
 
     @BeforeEach
     void setUp() {
-        examService = new ExamService(examRepository, examQuestionRepository, questionService,
+        examService = new ExamService(examRepository, examQuestionRepository, attemptRepository,
+                questionService,
                 courseService, gradeService, gradingSchemeService);
     }
 
@@ -160,6 +164,31 @@ class ExamServiceTest {
 
         verify(examQuestionRepository, never()).deleteByExamId(any());
         assertThat(exam.getMaxScore()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void the_questions_of_an_exam_already_taken_stay_as_they_are() {
+        Exam exam = givenTheExam();
+        when(attemptRepository.existsByExamId(exam.getId())).thenReturn(true);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> examService.replaceQuestions("ana", exam.getId(), new ExamQuestionsData(
+                        List.of(new ExamQuestionData(UUID.randomUUID(), BigDecimal.ONE)))));
+
+        assertThat(error.getCode()).isEqualTo("EXM_HAS_ATTEMPTS");
+        verify(examQuestionRepository, never()).deleteByExamId(any());
+    }
+
+    @Test
+    void an_exam_with_attempts_is_not_deleted() {
+        Exam exam = givenTheExam();
+        when(attemptRepository.existsByExamId(exam.getId())).thenReturn(true);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> examService.delete("ana", exam.getId()));
+
+        assertThat(error.getCode()).isEqualTo("EXM_HAS_WORK");
+        verify(examRepository, never()).delete(any());
     }
 
     @Test

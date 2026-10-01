@@ -6,6 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -82,6 +83,22 @@ public class Exam extends BaseEntity {
 
     public void scoreOutOf(BigDecimal maxScore) {
         this.maxScore = maxScore;
+    }
+
+    public boolean hasQuestions() {
+        return maxScore.signum() > 0;
+    }
+
+    public boolean isOpenAt(Instant moment) {
+        return !moment.isBefore(opensAt) && moment.isBefore(closesAt);
+    }
+
+    public Instant deadlineFor(Instant start) {
+        if (timeLimitMinutes == null) {
+            return closesAt;
+        }
+        Instant timeUp = start.plus(Duration.ofMinutes(timeLimitMinutes));
+        return timeUp.isBefore(closesAt) ? timeUp : closesAt;
     }
 
     private static String trimmed(String value) {

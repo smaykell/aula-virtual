@@ -2,8 +2,10 @@ package io.github.smaykell.aulavirtual.exam.question;
 
 import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.exam.AnswerKey;
+import io.github.smaykell.aulavirtual.exam.ExamAttemptRepository;
 import io.github.smaykell.aulavirtual.exam.ExamQuestionRepository;
 import io.github.smaykell.aulavirtual.exam.exception.QuestionInUseException;
+import io.github.smaykell.aulavirtual.exam.exception.QuestionLockedException;
 import io.github.smaykell.aulavirtual.exam.exception.QuestionNotFoundException;
 import io.github.smaykell.aulavirtual.exam.question.dto.OptionData;
 import io.github.smaykell.aulavirtual.exam.question.dto.QuestionData;
@@ -27,6 +29,7 @@ public class QuestionService {
     private final QuestionRepository questionRepository;
     private final QuestionOptionRepository optionRepository;
     private final ExamQuestionRepository examQuestionRepository;
+    private final ExamAttemptRepository attemptRepository;
     private final CourseService courseService;
 
     @Transactional(readOnly = true)
@@ -55,6 +58,9 @@ public class QuestionService {
     @Transactional
     public QuestionResponse update(String actorUsername, UUID questionId, QuestionData data) {
         Question question = writable(actorUsername, questionId);
+        if (attemptRepository.existsForQuestion(questionId)) {
+            throw new QuestionLockedException();
+        }
         List<OptionData> options = QuestionShape.optionsFor(data);
 
         question.update(data);

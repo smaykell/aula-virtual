@@ -40,6 +40,8 @@ public final class ExamConstraints {
     public static final String QUESTION_REQUIRED = "indica la pregunta";
     public static final String POINTS_REQUIRED = "el puntaje de la pregunta es obligatorio";
     public static final String POINTS_POSITIVE = "debe ser mayor que cero";
+    public static final int ANSWER_TEXT_MAX = 4000;
+    public static final String ANSWER_TEXT_TOO_LONG = "no puede superar los 4000 caracteres";
 
     private ExamConstraints() {
     }

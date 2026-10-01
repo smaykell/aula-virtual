@@ -58,7 +58,7 @@ class RoleTest {
     void a_student_only_carries_what_it_reads_and_its_own_enrollment() {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.STUDENT)))
                 .containsExactlyInAnyOrder("ROLE_STUDENT", "courses:read", "enrollments:create",
-                        "assignments:read", "submissions:create", "exams:read");
+                        "assignments:read", "submissions:create", "exams:read", "attempts:create");
     }
 
     @Test
