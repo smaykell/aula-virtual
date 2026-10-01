@@ -110,7 +110,7 @@ depende de `common` y `config`; si dos módulos necesitan hablarse lo hacen a tr
 
 **Esa regla ya no es solo prosa**: `ModuleBoundariesTest` lee las fuentes de `src/main` y
 falla si un módulo importa el repositorio o la entidad de otro. Va acompañado de tres
-comprobaciones contra sí mismo —que el escaneo encuentra los 19 repositorios, las 19
+comprobaciones contra sí mismo —que el escaneo encuentra los 25 repositorios, las 25
 entidades y que no confunde `BaseEntity` con una— porque un test que busca en ficheros
 pasa igual de verde si deja de mirar donde debe. No arregla nada hoy: impide retroceder
 mañana. Los sub-paquetes de un módulo son el mismo módulo, así que `course/enrollment`
@@ -414,24 +414,20 @@ la misma noción de pertenencia. `assignment` ya la necesitó y le bastó con pe
 **Tareas y calificaciones.** `assignment` es el primero que **no** vive dentro de
 `course`: tarea y entrega tienen su propio catálogo (`ASG`) y hablan con el módulo de
 cursos por servicio, que es la regla de slices. El contrato conviene que no crezca:
-`UnitService.courseOf`, `CourseService.requireWritable`, `CourseService.memberOf`, que
+`CourseService.courseOf`, `CourseService.requireWritable`, `CourseService.memberOf`, que
 devuelve un `CourseMember(courseId, staff, studentId)` —**quién eres en este curso**—, y
 dos que trajo el registro de notas: `requireActiveStudent` (calificar a alguien exige que
 esté matriculado) y `activeStudentsOf` (las filas del registro). Los avisos por correo
 añadieron `nameOf`, porque el asunto lleva el nombre del curso. `CourseMember` es lo que
-evita repetir la regla de alcance en cada servicio nuevo: si el módulo de exámenes
-necesita lo mismo, pide `memberOf` y ya.
+evita repetir la regla de alcance en cada servicio nuevo: el módulo de exámenes
+necesitó lo mismo y le bastó con pedir `memberOf`.
 
 La tarea guarda su `courseId` desnormalizado (la unidad no cambia de curso), así que
-`courseOf` solo hace falta al crearla o al listar por unidad. Y `courseOf` vive
-en `course/unit/UnitService`, así que hoy `assignment` **importa un sub-paquete de otro
-módulo**. No incumple la regla de slices —sigue siendo un *service*, y
-`ModuleBoundariesTest` solo prohíbe repositorios y entidades ajenos—, pero significa que
-la superficie pública de `course` no está toda en un sitio. Si al añadir el módulo de
-exámenes ese contrato crece, el momento de arreglarlo es ese: mover `courseOf` a
-`CourseService` como delegación, y que **desde fuera solo se vea `CourseService`**. No se
-hizo antes porque `UnitService` es el dueño natural de esa pregunta y con un solo
-consumidor la delegación era ceremonia.
+`courseOf` solo hace falta al crearla o al listar por unidad. `courseOf` es de
+`UnitService`, que es su dueño natural, pero **desde fuera se pide a `CourseService`**,
+que delega: cuando el examen se convirtió en el segundo consumidor, la superficie pública
+de `course` pasó a estar toda en un sitio y nadie fuera del módulo importa
+`course/unit`. Un módulo nuevo que necesite algo de `course` lo pide a `CourseService`.
 
 Una entrega por (tarea, estudiante): reentregar reemplaza la fila, no acumula intentos, y
 se cierra cuando **se devuelve** la nota, no cuando se pone. El estado (`SUBMITTED`/`LATE`)
@@ -455,8 +451,9 @@ las tareas para calificar. Cinco cosas que no se ven en un solo fichero:
   alumno no.
 - **`gradebook` no conoce a `assignment`**: las columnas del registro le llegan por
   `GradeItemProvider`, igual que los perfiles le llegan a `security`. La dependencia va de
-  `assignment` hacia `gradebook`; al revés sería un ciclo de beans. **El examen solo tiene
-  que publicar su proveedor.** Una nota cuyo ítem ya no existe no cuenta.
+  `assignment` hacia `gradebook`; al revés sería un ciclo de beans. El examen publica el
+  suyo (`ExamGradeItems`) y no hubo que tocar `gradebook` para enchufarlo. Una nota cuyo
+  ítem ya no existe no cuenta.
 - **El esquema es del curso** (`grading_schemes`, `grade_categories`): método
   `WEIGHTED` o `TOTAL_POINTS` y nota aprobatoria. Un curso sin fila usa el de
   `GradingScheme.byDefault` (total de puntos, 13), así que no hay que sembrar nada al
@@ -471,6 +468,47 @@ las tareas para calificar. Cinco cosas que no se ven en un solo fichero:
   el entero de acta se redondea **desde esos dos decimales** (`.5` hacia arriba): si se
   redondeara desde el valor exacto, un 12.495 se mostraría 12.50 y quedaría en 12. Aprueba
   quien tiene el entero redondeado igual o por encima de la aprobatoria.
+
+**Exámenes.** `exam` (`EXM`) es el segundo módulo de evaluación y el primero que califica
+solo. Cuelga de una unidad como la tarea y guarda su curso por la misma razón. El banco de
+preguntas vive en `exam/question` y es del curso, no del examen: el examen elige preguntas
+del banco y les pone su propio puntaje (`exam_questions`), y su `maxScore` es la suma,
+recalculada en un solo sitio al reemplazar la lista. Seis cosas que no se ven en un solo
+fichero:
+
+- **Verdadero o falso es una opción única con dos opciones** que genera el backend
+  (`QuestionShape`). Así corregir es siempre lo mismo, el conjunto marcado contra el
+  correcto, y la opción múltiple es todo o nada. La respuesta corta **la corrige siempre el
+  docente**: el intento queda en `PENDING_REVIEW` hasta que la puntúa. Comparar texto daría
+  falsos negativos por tildes o sinónimos. Una pregunta sin responder vale cero y no espera
+  a nadie, sea del tipo que sea.
+- **El plazo lo fija el servidor al empezar**: `min(inicio + tiempo límite, cierre)`. Quien
+  empieza tarde tiene menos tiempo, no más. Una respuesta después del plazo se rechaza
+  (`EXM_ATTEMPT_CLOSED`) y el intento vencido se cierra con lo guardado de dos formas: al
+  leerlo y desde `ExpiredAttemptsSchedule`, que barre los vencidos para que la nota llegue
+  al registro aunque nadie abra nada. Las escrituras sobre un intento lo bloquean
+  (`findForUpdate`), para que entregar y barrer no se pisen.
+- **La semilla del intento fija el orden aleatorio** de preguntas y opciones: recargar la
+  página no baraja otra vez y no hace falta guardar el orden.
+- **Cuenta la nota más alta.** La nota es una sola por (examen, alumno) y se recalcula como
+  el máximo de los intentos `GRADED` cada vez que uno lo es (`ExamGrading`). La corrección
+  automática la registra con `GradeService.recordAutomatic` (`gradedBy` nulo); la que
+  cierra el docente al puntuar, con `record` en su nombre. El segundo intento solo existe
+  si el examen lo habilita para todos, y no se puede empezar con la nota ya devuelta.
+- **Qué ve el alumno lo decide `Disclosure`, en un solo sitio**
+  (`AttemptService.disclosureFor`): durante el intento, la hoja sin claves; entregado y sin
+  devolver, nada —ni preguntas ni puntaje—; devuelta la nota, sus puntos por pregunta y,
+  si el docente lo eligió (`showsAnswers`), las respuestas correctas. Es la misma regla de
+  borrador y devolución de las tareas, para que la clave no se filtre mientras otros aún
+  rinden.
+- **Lo que ya se rindió no se cambia**: con intentos, la lista de preguntas del examen
+  queda fija (`EXM_HAS_ATTEMPTS`) y sus preguntas del banco no se editan
+  (`EXM_QUESTION_LOCKED`). Una pregunta que usa algún examen no se borra
+  (`EXM_QUESTION_IN_USE`) y un examen con intentos o notas tampoco (`EXM_HAS_WORK`).
+
+El banco y las preguntas de un examen con sus respuestas son solo del staff, y eso lo
+dicen dos cosas: el permiso (`questions:read`, que el estudiante no tiene) y
+`AnswerKey.requireReadableBy`, para el admin que es alumno de ese curso.
 
 ## Tests
 

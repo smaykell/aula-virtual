@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.smaykell.aulavirtual.administrator.exception.AdministratorError;
 import io.github.smaykell.aulavirtual.assignment.exception.AssignmentError;
 import io.github.smaykell.aulavirtual.course.exception.CourseError;
+import io.github.smaykell.aulavirtual.exam.exception.ExamError;
 import io.github.smaykell.aulavirtual.gradebook.exception.GradebookError;
 import io.github.smaykell.aulavirtual.person.exception.PersonError;
 import io.github.smaykell.aulavirtual.settings.exception.SettingsError;
@@ -34,7 +35,7 @@ class ErrorCatalogueTest {
                 .containsExactlyInAnyOrder(CommonError.class, PersonError.class, UserError.class,
                         TeacherError.class, AdministratorError.class, CourseError.class,
                         StudentError.class, AssignmentError.class, SettingsError.class,
-                        GradebookError.class);
+                        GradebookError.class, ExamError.class);
     }
 
     @Test

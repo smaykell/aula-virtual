@@ -14,6 +14,7 @@ import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
 import io.github.smaykell.aulavirtual.course.exception.CourseNotFoundException;
 import io.github.smaykell.aulavirtual.course.exception.InvalidCourseDatesException;
 import io.github.smaykell.aulavirtual.course.exception.StudentNotEnrolledException;
+import io.github.smaykell.aulavirtual.course.unit.UnitService;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.teacher.dto.TeacherSummary;
 import java.time.Instant;
@@ -42,6 +43,7 @@ public class CourseService {
     private final TeacherService teacherService;
     private final EnrollmentRepository enrollmentRepository;
     private final AnnouncementRepository announcementRepository;
+    private final UnitService unitService;
 
     @Transactional(readOnly = true)
     public PageResponse<CourseResponse> list(String actorUsername, UUID teacherId,
@@ -111,6 +113,11 @@ public class CourseService {
     public CourseMember memberOf(String actorUsername, UUID courseId) {
         CourseAccess.Reader reader = courseAccess.readable(actorUsername, courseId);
         return new CourseMember(courseId, reader.staff(), reader.studentId());
+    }
+
+    @Transactional(readOnly = true)
+    public UUID courseOf(UUID unitId) {
+        return unitService.courseOf(unitId);
     }
 
     @Transactional(readOnly = true)

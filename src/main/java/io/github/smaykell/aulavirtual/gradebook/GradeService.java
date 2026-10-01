@@ -30,19 +30,16 @@ public class GradeService {
 
     @Transactional
     public GradeResponse record(String actorUsername, GradeEntry entry) {
-        if (!entry.withinRange()) {
-            throw new ScoreOutOfRangeException(entry.maxScore());
-        }
+        requireWithinRange(entry);
         Actor grader = userService.actor(actorUsername);
         requireSomeoneElse(grader, entry.studentId());
+        return save(entry, grader.personId());
+    }
 
-        Grade grade = gradeRepository.findBySourceTypeAndSourceIdAndStudentId(entry.sourceType(),
-                        entry.sourceId(), entry.studentId())
-                .orElseGet(() -> Grade.of(entry.sourceType(), entry.sourceId(),
-                        entry.studentId(), entry.courseId()));
-        grade.record(entry.score(), entry.maxScore(), entry.feedback(), grader.personId(),
-                clock.instant());
-        return GradeResponse.from(gradeRepository.save(grade));
+    @Transactional
+    public GradeResponse recordAutomatic(GradeEntry entry) {
+        requireWithinRange(entry);
+        return save(entry, null);
     }
 
     @Transactional(readOnly = true)
@@ -71,8 +68,32 @@ public class GradeService {
         return gradeRepository.existsBySourceTypeAndSourceId(sourceType, sourceId);
     }
 
+    @Transactional(readOnly = true)
+    public boolean returnedTo(GradeSource sourceType, UUID sourceId, UUID studentId) {
+        return gradeRepository.findBySourceTypeAndSourceIdAndStudentId(sourceType, sourceId,
+                        studentId)
+                .filter(Grade::isReturned)
+                .isPresent();
+    }
+
     static Predicate<Grade> shownTo(CourseMember member) {
         return grade -> member.staff() || grade.isReturned();
+    }
+
+    private GradeResponse save(GradeEntry entry, UUID gradedBy) {
+        Grade grade = gradeRepository.findBySourceTypeAndSourceIdAndStudentId(entry.sourceType(),
+                        entry.sourceId(), entry.studentId())
+                .orElseGet(() -> Grade.of(entry.sourceType(), entry.sourceId(),
+                        entry.studentId(), entry.courseId()));
+        grade.record(entry.score(), entry.maxScore(), entry.feedback(), gradedBy,
+                clock.instant());
+        return GradeResponse.from(gradeRepository.save(grade));
+    }
+
+    private static void requireWithinRange(GradeEntry entry) {
+        if (!entry.withinRange()) {
+            throw new ScoreOutOfRangeException(entry.maxScore());
+        }
     }
 
     private static void requireSomeoneElse(Actor grader, UUID studentId) {

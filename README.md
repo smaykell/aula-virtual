@@ -76,6 +76,8 @@ variables del entorno del proceso.
 | `NOTIFICATIONS_TIME_ZONE` | `app.notifications.time-zone` | `America/Lima`; zona en la que los correos escriben fechas y horas |
 | `ASSIGNMENT_REMINDER_LEAD` | `app.assignments.reminder-lead` | `PT24H` antes del vencimiento se avisa a quien no entregó |
 | `ASSIGNMENT_REMINDER_INTERVAL` | `app.assignments.reminder-interval` | `PT15M` entre dos búsquedas de tareas por recordar |
+| `EXAM_SWEEP_ENABLED` | `app.exams.sweep-enabled` | `true`; cierra y califica los intentos de examen vencidos |
+| `EXAM_SWEEP_INTERVAL` | `app.exams.sweep-interval` | `PT1M` entre dos barridos de intentos vencidos |
 | `SPRING_MAIL_HOST` | `spring.mail.host` | **sin declarar**: mientras falte, los correos solo se escriben en el log |
 | `SPRING_MAIL_PORT` | `spring.mail.port` | `587` |
 | `SPRING_MAIL_USERNAME` | `spring.mail.username` | vacío |
@@ -299,6 +301,25 @@ funcionan sin traducción.
 | `PUT /api/courses/{id}/grading-scheme` | `courses:update` | reemplaza el método, la aprobatoria y las categorías |
 | `GET /api/courses/{id}/gradebook` | `courses:read` | el registro de notas: todo el curso al staff, su fila al estudiante |
 | `GET /api/courses/{id}/gradebook/$export` | `courses:read` | el registro de notas como acta en CSV, solo para el staff |
+| `GET /api/courses/{id}/questions` | `questions:read` | el banco de preguntas del curso, con sus respuestas |
+| `POST /api/courses/{id}/questions` | `questions:update` | añade una pregunta al banco y devuelve 201 |
+| `GET /api/questions/{id}` | `questions:read` | una pregunta del banco |
+| `PUT /api/questions/{id}` | `questions:update` | cambia la pregunta y reemplaza sus opciones |
+| `DELETE /api/questions/{id}` | `questions:update` | la borra si ningún examen la usa y devuelve 204 |
+| `GET /api/units/{id}/exams` | `exams:read` | los exámenes de la unidad, por hora de apertura |
+| `POST /api/units/{id}/exams` | `exams:create` | programa un examen y devuelve 201 |
+| `GET /api/exams/{id}` | `exams:read` | un examen, sin sus preguntas |
+| `PUT /api/exams/{id}` | `exams:update` | cambia ventana, tiempo, intentos y opciones del examen |
+| `DELETE /api/exams/{id}` | `exams:update` | lo borra si no tiene intentos ni notas y devuelve 204 |
+| `GET /api/exams/{id}/questions` | `questions:read` | las preguntas del examen con su puntaje y sus respuestas |
+| `PUT /api/exams/{id}/questions` | `exams:update` | reemplaza la lista de `{"questionId", "points"}` mientras nadie lo haya rendido |
+| `POST /api/exams/{id}/attempts` | `attempts:create` | empieza un intento, o devuelve el que está en curso |
+| `GET /api/attempts/{id}` | `exams:read` | un intento; qué trae depende de quién pregunta y de si la nota se devolvió |
+| `PUT /api/attempts/{id}/answers/{questionId}` | `attempts:create` | guarda una respuesta (`{"selectedOptionIds"}` o `{"text"}`) y devuelve 204 |
+| `POST /api/attempts/{id}/$submit` | `attempts:create` | entrega el intento |
+| `GET /api/exams/{id}/results` | `exams:read` | cada estudiante activo con sus intentos y su nota; el estudiante recibe solo la suya |
+| `PUT /api/attempts/{id}/answers/{questionId}/score` | `exams:update` | puntúa una respuesta (`{"points", "feedback"}`) |
+| `POST /api/exams/{id}/grades/$return` | `exams:update` | devuelve las notas de `{"studentIds"}` |
 
 Los verbos que no encajan en el CRUD van como sub-recurso con `$`
 (`POST /api/teachers/{id}/$disable`). Así el sustantivo sigue siendo el recurso y no
@@ -324,10 +345,10 @@ activo, y sus permisos son la unión de los de esos roles.
 
 | Rol | Permisos | Administra a |
 |---|---|---|
-| `SUPER_ADMIN` | `administrators:`, `teachers:`, `students:`, `courses:`, `enrollments:read`, `enrollments:update` y `assignments:` | `ADMIN`, `TEACHER`, `STUDENT` |
-| `ADMIN` | `teachers:`, `students:`, `courses:`, `enrollments:read`, `enrollments:update` y `assignments:` | `TEACHER`, `STUDENT` |
-| `TEACHER` | `courses:`, `enrollments:read`, `enrollments:update` y `assignments:` | — |
-| `STUDENT` | `courses:read`, `enrollments:create`, `assignments:read` y `submissions:create` | — |
+| `SUPER_ADMIN` | `administrators:`, `teachers:`, `students:`, `courses:`, `enrollments:read`, `enrollments:update`, `assignments:`, `exams:` y `questions:` | `ADMIN`, `TEACHER`, `STUDENT` |
+| `ADMIN` | `teachers:`, `students:`, `courses:`, `enrollments:read`, `enrollments:update`, `assignments:`, `exams:` y `questions:` | `TEACHER`, `STUDENT` |
+| `TEACHER` | `courses:`, `enrollments:read`, `enrollments:update`, `assignments:`, `exams:` y `questions:` | — |
+| `STUDENT` | `courses:read`, `enrollments:create`, `assignments:read`, `submissions:create`, `exams:read` y `attempts:create` | — |
 
 `Role.manageableRoles()` es la única fuente de la última columna, y de ella salen
 dos reglas: un admin no puede tocar a otro admin, y nadie —tampoco el superadmin—
@@ -740,6 +761,52 @@ borradores**. Va en UTF-8 con BOM, separado por comas y con punto decimal, para 
 lo abra con tildes; una celda que empieza por `=`, `+`, `-` o `@` sale precedida de `'`
 para que Excel no la ejecute como fórmula.
 
+### Exámenes
+
+El docente arma un **banco de preguntas por curso** (`POST /api/courses/{id}/questions`)
+de cuatro tipos:
+
+| `type` | Qué lleva | Cómo se corrige |
+|---|---|---|
+| `SINGLE_CHOICE` | de 2 a 10 `options`, exactamente una con `correct: true` | sola |
+| `MULTIPLE_CHOICE` | de 2 a 10 `options`, al menos una correcta | sola, todo o nada |
+| `TRUE_FALSE` | `statementIsTrue`; las opciones `Verdadero`/`Falso` las crea el backend | sola |
+| `SHORT_ANSWER` | ninguna opción; `modelAnswer` opcional como referencia | la puntúa el docente |
+
+Luego programa el examen en una unidad (`POST /api/units/{id}/exams`) con su **hora de
+apertura y de cierre** (las dos obligatorias), un tiempo límite opcional en minutos, uno o
+dos intentos para todos, orden aleatorio de preguntas y de opciones, y si las respuestas
+correctas se muestran al devolver la nota. Las preguntas se eligen del banco con un
+puntaje propio en este examen (`PUT /api/exams/{id}/questions`); el puntaje máximo del
+examen es la suma. Un examen con preguntas es una columna más del registro de notas, con
+su hora de cierre como fecha.
+
+El estudiante **empieza** con `POST /api/exams/{id}/attempts` dentro de la ventana y
+recibe la hoja: las preguntas en su orden, sin respuestas, y su `deadline`, que es el
+inicio más el tiempo límite **pero nunca después del cierre**. Quien empieza diez
+minutos antes de cerrar tiene diez minutos. Volver a llamar devuelve el mismo intento,
+con lo que ya guardó y en el mismo orden. Cada respuesta se guarda por separado
+(`PUT /api/attempts/{id}/answers/{questionId}`), así que se puede guardar a medida que se
+responde, y `POST /api/attempts/{id}/$submit` lo entrega. Si se acaba el tiempo, el
+intento se cierra solo con lo guardado.
+
+| Estado | Cuándo |
+|---|---|
+| `IN_PROGRESS` | desde que empieza hasta que lo entrega o vence su plazo |
+| `PENDING_REVIEW` | entregado con alguna respuesta corta escrita, a la espera del docente |
+| `GRADED` | todo corregido; su puntaje cuenta para la nota |
+
+El docente ve a todos los matriculados con sus intentos y su nota en
+`GET /api/exams/{id}/results`, abre un intento con `GET /api/attempts/{id}` y puntúa las
+respuestas cortas con `PUT /api/attempts/{id}/answers/{questionId}/score`. Con dos
+intentos **cuenta la nota más alta**. Como en las tareas, la nota nace en borrador y se
+devuelve con `POST /api/exams/{id}/grades/$return`. Hasta entonces el estudiante no ve ni
+su puntaje ni las preguntas. Después ve sus puntos por pregunta y, si el examen lo indica,
+las respuestas correctas. Una nota devuelta cierra la puerta al segundo intento.
+
+Una vez que alguien rindió el examen, su lista de preguntas ya no cambia y esas preguntas
+tampoco se editan en el banco.
+
 ### Adjuntos de tareas y entregas
 
 El docente adjunta material a la tarea y el estudiante adjunta su trabajo a la entrega: hasta
@@ -877,6 +944,9 @@ HTTP y su mensaje; ese enum es el catálogo. Hay uno global y uno por módulo:
 | `StudentError` | `STD` | `student/exception` |
 | `CourseError` | `CRS` | `course/exception` |
 | `AssignmentError` | `ASG` | `assignment/exception` |
+| `SettingsError` | `SET` | `settings/exception` |
+| `GradebookError` | `GRB` | `gradebook/exception` |
+| `ExamError` | `EXM` | `exam/exception` |
 
 El código no se escribe a mano: `ErrorCode.code()` lo compone como
 `prefijo + "_" + nombre de la constante`, de modo que `UserError.USERNAME_TAKEN` es

@@ -41,7 +41,8 @@ class RoleTest {
                         "teachers:update", "students:read", "students:create", "students:update",
                         "courses:read", "courses:create", "courses:update", "enrollments:read",
                         "enrollments:update", "assignments:read", "assignments:create",
-                        "assignments:update", "settings:read");
+                        "assignments:update", "exams:read", "exams:create", "exams:update", "questions:read", "questions:update",
+                        "settings:read");
     }
 
     @Test
@@ -49,14 +50,15 @@ class RoleTest {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.TEACHER)))
                 .containsExactlyInAnyOrder("ROLE_TEACHER", "courses:read", "courses:create",
                         "courses:update", "enrollments:read", "enrollments:update",
-                        "assignments:read", "assignments:create", "assignments:update");
+                        "assignments:read", "assignments:create", "assignments:update",
+                        "exams:read", "exams:create", "exams:update", "questions:read", "questions:update");
     }
 
     @Test
     void a_student_only_carries_what_it_reads_and_its_own_enrollment() {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.STUDENT)))
                 .containsExactlyInAnyOrder("ROLE_STUDENT", "courses:read", "enrollments:create",
-                        "assignments:read", "submissions:create");
+                        "assignments:read", "submissions:create", "exams:read", "attempts:create");
     }
 
     @Test
@@ -66,7 +68,8 @@ class RoleTest {
                         "teachers:create", "teachers:update", "students:read", "students:create",
                         "students:update", "courses:read", "courses:create", "courses:update",
                         "enrollments:read", "enrollments:update", "assignments:read",
-                        "assignments:create", "assignments:update", "settings:read");
+                        "assignments:create", "assignments:update", "exams:read", "exams:create", "exams:update", "questions:read",
+                        "questions:update", "settings:read");
     }
 
     @Test

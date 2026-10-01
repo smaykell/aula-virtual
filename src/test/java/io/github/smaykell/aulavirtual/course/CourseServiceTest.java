@@ -16,6 +16,7 @@ import io.github.smaykell.aulavirtual.course.dto.UpdateCourseRequest;
 import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentPolicy;
 import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentRepository;
 import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
+import io.github.smaykell.aulavirtual.course.unit.UnitService;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import java.time.LocalDate;
 import java.util.List;
@@ -56,12 +57,15 @@ class CourseServiceTest {
     @Mock
     private AnnouncementRepository announcementRepository;
 
+    @Mock
+    private UnitService unitService;
+
     private CourseService courseService;
 
     @BeforeEach
     void setUp() {
         courseService = new CourseService(courseRepository, courseAccess, invitations,
-                teacherService, enrollmentRepository, announcementRepository);
+                teacherService, enrollmentRepository, announcementRepository, unitService);
     }
 
     @Test

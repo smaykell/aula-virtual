@@ -34,20 +34,24 @@ class ModuleBoundariesTest {
     void the_scan_finds_the_repository_of_every_module() throws IOException {
         assertThat(simpleNamesOf(repositories())).containsExactlyInAnyOrder(
                 "AdministratorRepository", "AnnouncementRepository", "AssignmentRepository",
-                "AttachmentRepository",
-                "CourseRepository", "EnrollmentRepository", "GradeCategoryRepository",
+                "AttachmentRepository", "AttemptAnswerRepository", "CourseRepository",
+                "EnrollmentRepository", "ExamAttemptRepository", "ExamQuestionRepository",
+                "ExamRepository", "GradeCategoryRepository",
                 "GradeRepository", "GradingSchemeRepository", "MaterialRepository",
                 "NotificationRepository", "PasswordResetRepository", "PersonRepository",
-                "SettingsRepository", "StudentRepository", "SubmissionRepository",
-                "TeacherRepository", "UnitRepository", "UserRepository");
+                "QuestionOptionRepository", "QuestionRepository", "SettingsRepository",
+                "StudentRepository", "SubmissionRepository", "TeacherRepository",
+                "UnitRepository", "UserRepository");
     }
 
     @Test
     void the_scan_finds_the_entity_of_every_module() throws IOException {
         assertThat(simpleNamesOf(entities())).containsExactlyInAnyOrder(
-                "Administrator", "Announcement", "Assignment", "Attachment", "Course", "Enrollment", "Grade",
-                "GradeCategory", "GradingScheme", "Material", "Notification", "PasswordReset",
-                "Person", "Settings", "Student", "Submission", "Teacher", "Unit", "User");
+                "Administrator", "Announcement", "Assignment", "Attachment", "AttemptAnswer",
+                "Course", "Enrollment", "Exam", "ExamAttempt", "ExamQuestion", "Grade",
+                "GradeCategory", "GradingScheme",
+                "Material", "Notification", "PasswordReset", "Person", "Question",
+                "QuestionOption", "Settings", "Student", "Submission", "Teacher", "Unit", "User");
     }
 
     @Test

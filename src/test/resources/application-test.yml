@@ -19,6 +19,9 @@ app:
     # Apagado en los tests: el contexto completo no debe arrancar un hilo que
     # sondee la base y siga vivo cuando el contexto ya se ha cerrado.
     enabled: false
+  exams:
+    # Por la misma razon: sin barrido de intentos vencidos durante los tests.
+    sweep-enabled: false
   security:
     jwt:
       # Secreto fijo para que los tests sean reproducibles. No sale de src/test.

@@ -17,7 +17,6 @@ import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.exception.ArchivedCourseException;
 import io.github.smaykell.aulavirtual.course.exception.CourseOutOfReachException;
-import io.github.smaykell.aulavirtual.course.unit.UnitService;
 import io.github.smaykell.aulavirtual.gradebook.GradeService;
 import io.github.smaykell.aulavirtual.gradebook.GradeSource;
 import io.github.smaykell.aulavirtual.gradebook.GradingSchemeService;
@@ -52,9 +51,6 @@ class AssignmentServiceTest {
     private GradingSchemeService gradingSchemeService;
 
     @Mock
-    private UnitService unitService;
-
-    @Mock
     private CourseService courseService;
 
     @Mock
@@ -68,13 +64,13 @@ class AssignmentServiceTest {
     @BeforeEach
     void setUp() {
         assignmentService = new AssignmentService(assignmentRepository, submissionRepository,
-                unitService, courseService, gradeService, gradingSchemeService,
+                courseService, gradeService, gradingSchemeService,
                 attachmentService, notices);
     }
 
     @Test
     void the_teacher_publishes_a_task_in_a_unit_of_its_course() {
-        when(unitService.courseOf(UNIT)).thenReturn(COURSE);
+        when(courseService.courseOf(UNIT)).thenReturn(COURSE);
         when(assignmentRepository.save(any(Assignment.class))).thenAnswer(call -> {
             Assignment assignment = call.getArgument(0);
             ReflectionTestUtils.setField(assignment, "id", UUID.randomUUID());
@@ -107,7 +103,7 @@ class AssignmentServiceTest {
     @Test
     void a_category_of_another_course_is_rejected() {
         UUID foreign = UUID.randomUUID();
-        when(unitService.courseOf(UNIT)).thenReturn(COURSE);
+        when(courseService.courseOf(UNIT)).thenReturn(COURSE);
         doThrow(new CategoryNotFoundException(foreign)).when(gradingSchemeService)
                 .requireCategoryIn(COURSE, foreign);
 
@@ -121,7 +117,7 @@ class AssignmentServiceTest {
 
     @Test
     void whoever_does_not_write_the_course_does_not_publish_tasks_in_it() {
-        when(unitService.courseOf(UNIT)).thenReturn(COURSE);
+        when(courseService.courseOf(UNIT)).thenReturn(COURSE);
         doThrow(new CourseOutOfReachException()).when(courseService)
                 .requireWritable("otro", COURSE);
 
@@ -134,7 +130,7 @@ class AssignmentServiceTest {
 
     @Test
     void an_archived_course_does_not_take_new_tasks() {
-        when(unitService.courseOf(UNIT)).thenReturn(COURSE);
+        when(courseService.courseOf(UNIT)).thenReturn(COURSE);
         doThrow(new ArchivedCourseException()).when(courseService)
                 .requireWritable("juan", COURSE);
 
@@ -147,7 +143,7 @@ class AssignmentServiceTest {
     @Test
     void an_enrolled_student_reads_the_tasks_of_the_unit() {
         Assignment assignment = AssignmentFixtures.assignment();
-        when(unitService.courseOf(UNIT)).thenReturn(COURSE);
+        when(courseService.courseOf(UNIT)).thenReturn(COURSE);
         when(courseService.memberOf("ana.estudiante", COURSE))
                 .thenReturn(new CourseMember(COURSE, false, STUDENT));
         when(assignmentRepository.findByUnitIdOrderByDueAt(UNIT))
@@ -159,7 +155,7 @@ class AssignmentServiceTest {
 
     @Test
     void someone_outside_the_course_does_not_read_its_tasks() {
-        when(unitService.courseOf(UNIT)).thenReturn(COURSE);
+        when(courseService.courseOf(UNIT)).thenReturn(COURSE);
         when(courseService.memberOf("ajeno", COURSE))
                 .thenThrow(new CourseOutOfReachException());
 
