@@ -54,8 +54,11 @@ Grupos dentro del curso y una entrega por grupo con la misma nota para todos.
 
 **Pendientes ya anotados en la rama de notas** (sin decidir):
 - Tarea sin nota o sin fecha límite.
-- Vista «trabajo de los alumnos» con **todos** los matriculados y su estado (entregado,
-  tarde, sin entregar), no solo quienes entregaron.
+- ✅ Vista «trabajo de los alumnos» con **todos** los matriculados y su estado (entregado,
+  tarde, sin entregar), no solo quienes entregaron. **Ya existía** al escribir este
+  documento (`c4960ba`, `StudentWorkCard`): la nota de la que salió estaba desfasada. Se
+  le añadió en `feature/student-work-filter` un filtro con recuento (Todos, Por
+  devolver, Sin entregar, Devueltas).
 - Reabrir una entrega ya devuelta.
 - Periodos o bimestres dentro del curso (nota por periodo y final).
 
@@ -135,12 +138,17 @@ Vencimientos de tareas y exámenes de todos mis cursos en una vista; exportable 
 
 ### 2.4 Seguimiento y reportes
 
-**Panel de inicio útil** — P1 · M
+✅ **Panel de inicio útil** — P1 · M
 `DashboardPage` solo muestra contadores de administración; para el estudiante está vacío.
 Propuesta por rol:
 - Estudiante: próximas entregas, notas recién devueltas, cursos con novedades.
 - Docente: entregas por calificar, solicitudes de matrícula pendientes.
 - Admin: contadores actuales + cursos sin actividad.
+**Hecho** en `feature/dashboard` (los dos repos): `GET /me/dashboard`, módulo `dashboard`
+que solo compone servicios. Estudiante: entregas pendientes (incluidas las vencidas que
+aún admiten entrega tardía), notas devueltas y avisos de los últimos 14 días. Docente
+titular: entregas por devolver por tarea y solicitudes pendientes por curso. Lo del admin
+queda como estaba: «cursos sin actividad» necesita definir qué es actividad.
 
 ✅ **Exportar el registro de notas** — P1 · S
 CSV/Excel del gradebook del curso; es lo que se entrega como acta.

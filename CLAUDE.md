@@ -260,6 +260,10 @@ solo para estudiantes: quien no lo sea recibe `CRS_STUDENT_REQUIRED` desde
 cosas — partiría la regla entre la anotación y el servicio, y cambiaría un código de
 error que el front sabe leer por un 403 genérico. No hay ningún permiso que encaje:
 `enrollments:read` es de admin y docente, justo de quien **no** usa este endpoint.
+`/me/dashboard` (módulo `dashboard`) sigue la misma regla: devuelve la parte de estudiante
+y la de docente según los perfiles del actor, y nada a quien no tiene ninguno de los dos.
+Es el único módulo que solo compone: no tiene entidades ni repositorios, solo pide a
+`CourseService`, `AssignmentService` y `GradebookService`.
 Lo mismo vale para `/invitations/*`, por la razón opuesta: son **públicas**, y quien
 todavía no tiene cuenta no tiene ninguna authority que exigirle. Así que al auditar la
 superficie de la API, los `@PreAuthorize` la describen entera **salvo `/me/*` y

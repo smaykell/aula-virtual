@@ -226,6 +226,7 @@ funcionan sin traducción.
 | `POST /api/auth/password-reset` | público | recibe `{"identifier"}` (usuario o correo) y responde 202 siempre |
 | `POST /api/auth/password-reset/$complete` | público | recibe `{"token", "newPassword"}` y devuelve 204 |
 | `GET /api/me` | autenticado | mis datos, mis roles y mis permisos |
+| `GET /api/me/dashboard` | autenticado | mi panel de inicio: como estudiante, entregas pendientes, notas devueltas y avisos de los últimos 14 días; como docente titular, entregas por devolver y solicitudes por revisar en mis cursos activos |
 | `PUT /api/me` | autenticado | cambia mis datos de persona |
 | `POST /api/me/$changePassword` | autenticado | pide la contraseña actual y devuelve 204 |
 | `GET /api/persons/$byDocument` | `teachers:create` o `administrators:create` | busca una persona por documento y dice qué es ya |
