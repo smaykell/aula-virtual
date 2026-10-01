@@ -45,7 +45,10 @@ límite, intentos, orden aleatorio y corrección automática (`gradedBy` nulo). 
 abiertas quedan en borrador para el docente.
 **Decidido por el usuario (2026-09-30):** todo configurable por el docente, examen a
 examen. Mostrar o no las respuestas correctas lo elige el docente. Por defecto hay **un
-solo intento**; el docente puede habilitar un segundo.
+solo intento**; el docente puede habilitar un segundo **para todo el examen** (no por
+estudiante). Con dos intentos cuenta **la nota más alta**. Si el docente decide mostrar
+las respuestas correctas, el estudiante las ve **al devolverse la nota**, como en las
+tareas, para que no se filtren mientras otros aún rinden.
 
 **Rúbricas** — P3 · M
 Criterios con niveles y puntaje por tarea; la nota sale de la suma. Da coherencia a la
@@ -269,7 +272,8 @@ El correo de la persona es opcional y nunca se verifica, pero es la vía de recu
   Cambia la prioridad de asistencia, periodos y boletas.
 - ¿El docente debe poder matricular alumnos directamente, o solo el admin?
 - ~~¿Exámenes con un solo intento o varios? ¿Se revelan las respuestas al devolver?~~
-  Decidido: configurable por el docente; un intento por defecto, puede habilitar un segundo,
-  y él elige si se ven las respuestas.
+  Decidido: configurable por el docente, examen a examen; un intento por defecto y puede
+  habilitar un segundo para todos; cuenta la nota más alta; las respuestas, si el docente
+  las muestra, se ven al devolver la nota.
 - ¿Avisos con respuesta de los alumnos (foro) o solo de ida?
 - ¿Se acepta mover el token a cookie `HttpOnly`? Implica CSRF y ajustar CORS.
