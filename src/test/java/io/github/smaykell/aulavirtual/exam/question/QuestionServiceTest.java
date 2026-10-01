@@ -14,6 +14,7 @@ import io.github.smaykell.aulavirtual.common.exception.ApiException;
 import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.exception.ArchivedCourseException;
+import io.github.smaykell.aulavirtual.exam.ExamQuestionRepository;
 import io.github.smaykell.aulavirtual.exam.question.dto.OptionData;
 import io.github.smaykell.aulavirtual.exam.question.dto.OptionResponse;
 import io.github.smaykell.aulavirtual.exam.question.dto.QuestionData;
@@ -42,6 +43,9 @@ class QuestionServiceTest {
     private QuestionOptionRepository optionRepository;
 
     @Mock
+    private ExamQuestionRepository examQuestionRepository;
+
+    @Mock
     private CourseService courseService;
 
     private QuestionService questionService;
@@ -49,7 +53,7 @@ class QuestionServiceTest {
     @BeforeEach
     void setUp() {
         questionService = new QuestionService(questionRepository, optionRepository,
-                courseService);
+                examQuestionRepository, courseService);
     }
 
     @Test
@@ -156,7 +160,7 @@ class QuestionServiceTest {
         ApiException error = assertThrows(ApiException.class,
                 () -> questionService.list("luis", COURSE));
 
-        assertThat(error.getCode()).isEqualTo("EXM_BANK_REQUIRES_STAFF");
+        assertThat(error.getCode()).isEqualTo("EXM_ANSWERS_REQUIRE_STAFF");
         verify(questionRepository, never()).findByCourseIdOrderByCreatedAt(any());
     }
 
@@ -176,6 +180,35 @@ class QuestionServiceTest {
 
         assertThat(bank).singleElement()
                 .satisfies(response -> assertThat(response.options()).hasSize(2));
+    }
+
+    @Test
+    void a_question_used_by_an_exam_is_not_deleted() {
+        Question question = stored(QuestionType.SINGLE_CHOICE);
+        when(questionRepository.findById(question.getId())).thenReturn(Optional.of(question));
+        when(examQuestionRepository.existsByQuestionId(question.getId())).thenReturn(true);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> questionService.delete("ana", question.getId()));
+
+        assertThat(error.getCode()).isEqualTo("EXM_QUESTION_IN_USE");
+        verify(questionRepository, never()).delete(any());
+    }
+
+    @Test
+    void a_question_of_another_course_is_not_in_the_bank() {
+        UUID own = UUID.randomUUID();
+        UUID foreign = UUID.randomUUID();
+        Question question = stored(QuestionType.SINGLE_CHOICE);
+        ReflectionTestUtils.setField(question, "id", own);
+        when(questionRepository.findByCourseIdAndIdIn(COURSE, List.of(own, foreign)))
+                .thenReturn(List.of(question));
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> questionService.requireInBank(COURSE, List.of(own, foreign)));
+
+        assertThat(error.getCode()).isEqualTo("EXM_QUESTION_NOT_FOUND");
+        assertThat(error.getMessage()).contains(foreign.toString());
     }
 
     private void assertRejected(QuestionData data, String code) {

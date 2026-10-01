@@ -1,8 +1,9 @@
 package io.github.smaykell.aulavirtual.exam.question;
 
 import io.github.smaykell.aulavirtual.course.CourseService;
-import io.github.smaykell.aulavirtual.course.dto.CourseMember;
-import io.github.smaykell.aulavirtual.exam.exception.BankRequiresStaffException;
+import io.github.smaykell.aulavirtual.exam.AnswerKey;
+import io.github.smaykell.aulavirtual.exam.ExamQuestionRepository;
+import io.github.smaykell.aulavirtual.exam.exception.QuestionInUseException;
 import io.github.smaykell.aulavirtual.exam.exception.QuestionNotFoundException;
 import io.github.smaykell.aulavirtual.exam.question.dto.OptionData;
 import io.github.smaykell.aulavirtual.exam.question.dto.QuestionData;
@@ -11,7 +12,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,26 +26,21 @@ public class QuestionService {
 
     private final QuestionRepository questionRepository;
     private final QuestionOptionRepository optionRepository;
+    private final ExamQuestionRepository examQuestionRepository;
     private final CourseService courseService;
 
     @Transactional(readOnly = true)
     public List<QuestionResponse> list(String actorUsername, UUID courseId) {
-        requireStaff(courseService.memberOf(actorUsername, courseId));
-
-        List<Question> questions = questionRepository.findByCourseIdOrderByCreatedAt(courseId);
-        Map<UUID, List<QuestionOption>> options = optionsOf(
-                questions.stream().map(Question::getId).toList());
-        return questions.stream()
-                .map(question -> QuestionResponse.from(question,
-                        options.getOrDefault(question.getId(), List.of())))
-                .toList();
+        AnswerKey.requireReadableBy(courseService.memberOf(actorUsername, courseId));
+        return responsesOf(questionRepository.findByCourseIdOrderByCreatedAt(courseId));
     }
 
     @Transactional(readOnly = true)
     public QuestionResponse get(String actorUsername, UUID questionId) {
         Question question = existing(questionId);
-        requireStaff(courseService.memberOf(actorUsername, question.getCourseId()));
-        return responseOf(question);
+        AnswerKey.requireReadableBy(courseService.memberOf(actorUsername,
+                question.getCourseId()));
+        return responsesOf(List.of(question)).getFirst();
     }
 
     @Transactional
@@ -66,15 +64,45 @@ public class QuestionService {
 
     @Transactional
     public void delete(String actorUsername, UUID questionId) {
-        questionRepository.delete(writable(actorUsername, questionId));
+        Question question = writable(actorUsername, questionId);
+        if (examQuestionRepository.existsByQuestionId(questionId)) {
+            throw new QuestionInUseException();
+        }
+        questionRepository.delete(question);
     }
 
-    Map<UUID, List<QuestionOption>> optionsOf(Collection<UUID> questionIds) {
-        if (questionIds.isEmpty()) {
-            return Map.of();
+    @Transactional(readOnly = true)
+    public void requireInBank(UUID courseId, Collection<UUID> questionIds) {
+        Set<UUID> inBank = questionRepository.findByCourseIdAndIdIn(courseId, questionIds)
+                .stream()
+                .map(Question::getId)
+                .collect(Collectors.toSet());
+        questionIds.stream()
+                .filter(id -> !inBank.contains(id))
+                .findFirst()
+                .ifPresent(id -> {
+                    throw new QuestionNotFoundException(id);
+                });
+    }
+
+    @Transactional(readOnly = true)
+    public Map<UUID, QuestionResponse> byId(Collection<UUID> questionIds) {
+        return responsesOf(questionRepository.findAllById(questionIds)).stream()
+                .collect(Collectors.toMap(QuestionResponse::id, Function.identity()));
+    }
+
+    private List<QuestionResponse> responsesOf(List<Question> questions) {
+        if (questions.isEmpty()) {
+            return List.of();
         }
-        return optionRepository.findByQuestionIdInOrderByPosition(questionIds).stream()
+        Map<UUID, List<QuestionOption>> options = optionRepository
+                .findByQuestionIdInOrderByPosition(questions.stream().map(Question::getId).toList())
+                .stream()
                 .collect(Collectors.groupingBy(QuestionOption::getQuestionId));
+        return questions.stream()
+                .map(question -> QuestionResponse.from(question,
+                        options.getOrDefault(question.getId(), List.of())))
+                .toList();
     }
 
     private Question writable(String actorUsername, UUID questionId) {
@@ -88,22 +116,11 @@ public class QuestionService {
                 .orElseThrow(() -> new QuestionNotFoundException(questionId));
     }
 
-    private QuestionResponse responseOf(Question question) {
-        return QuestionResponse.from(question,
-                optionsOf(List.of(question.getId())).getOrDefault(question.getId(), List.of()));
-    }
-
     private List<QuestionOption> place(Question question, List<OptionData> options) {
         List<QuestionOption> placed = new ArrayList<>();
         for (int index = 0; index < options.size(); index++) {
             placed.add(QuestionOption.of(question.getId(), index + 1, options.get(index)));
         }
         return optionRepository.saveAll(placed);
-    }
-
-    private static void requireStaff(CourseMember member) {
-        if (!member.staff()) {
-            throw new BankRequiresStaffException();
-        }
     }
 }
