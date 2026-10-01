@@ -38,6 +38,7 @@ class ModuleBoundariesTest {
                 "CourseRepository", "EnrollmentRepository", "GradeCategoryRepository",
                 "GradeRepository", "GradingSchemeRepository", "MaterialRepository",
                 "NotificationRepository", "PasswordResetRepository", "PersonRepository",
+                "QuestionOptionRepository", "QuestionRepository",
                 "SettingsRepository", "StudentRepository", "SubmissionRepository",
                 "TeacherRepository", "UnitRepository", "UserRepository");
     }
@@ -47,7 +48,8 @@ class ModuleBoundariesTest {
         assertThat(simpleNamesOf(entities())).containsExactlyInAnyOrder(
                 "Administrator", "Announcement", "Assignment", "Attachment", "Course", "Enrollment", "Grade",
                 "GradeCategory", "GradingScheme", "Material", "Notification", "PasswordReset",
-                "Person", "Settings", "Student", "Submission", "Teacher", "Unit", "User");
+                "Person", "Question", "QuestionOption", "Settings", "Student", "Submission",
+                "Teacher", "Unit", "User");
     }
 
     @Test

@@ -41,7 +41,8 @@ class RoleTest {
                         "teachers:update", "students:read", "students:create", "students:update",
                         "courses:read", "courses:create", "courses:update", "enrollments:read",
                         "enrollments:update", "assignments:read", "assignments:create",
-                        "assignments:update", "settings:read");
+                        "assignments:update", "questions:read", "questions:update",
+                        "settings:read");
     }
 
     @Test
@@ -49,7 +50,8 @@ class RoleTest {
         assertThat(Role.grantedAuthoritiesOf(Set.of(Role.TEACHER)))
                 .containsExactlyInAnyOrder("ROLE_TEACHER", "courses:read", "courses:create",
                         "courses:update", "enrollments:read", "enrollments:update",
-                        "assignments:read", "assignments:create", "assignments:update");
+                        "assignments:read", "assignments:create", "assignments:update",
+                        "questions:read", "questions:update");
     }
 
     @Test
@@ -66,7 +68,8 @@ class RoleTest {
                         "teachers:create", "teachers:update", "students:read", "students:create",
                         "students:update", "courses:read", "courses:create", "courses:update",
                         "enrollments:read", "enrollments:update", "assignments:read",
-                        "assignments:create", "assignments:update", "settings:read");
+                        "assignments:create", "assignments:update", "questions:read",
+                        "questions:update", "settings:read");
     }
 
     @Test
