@@ -1,5 +1,6 @@
 package io.github.smaykell.aulavirtual.course.enrollment;
 
+import io.github.smaykell.aulavirtual.course.dto.CourseCount;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,16 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID> {
               and e.status = :status
             """)
     List<UUID> findStudentIdsByCourseIdAndStatus(@Param("courseId") UUID courseId,
+            @Param("status") EnrollmentStatus status);
+
+    @Query("""
+            select new io.github.smaykell.aulavirtual.course.dto.CourseCount(e.courseId, count(e))
+            from Enrollment e
+            where e.courseId in :courseIds
+              and e.status = :status
+            group by e.courseId
+            """)
+    List<CourseCount> countByCourse(@Param("courseIds") Collection<UUID> courseIds,
             @Param("status") EnrollmentStatus status);
 
     Page<Enrollment> findByCourseId(UUID courseId, Pageable pageable);

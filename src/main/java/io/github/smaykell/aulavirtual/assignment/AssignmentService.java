@@ -3,11 +3,13 @@ package io.github.smaykell.aulavirtual.assignment;
 import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentFiles;
 import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentOwner;
 import io.github.smaykell.aulavirtual.assignment.attachment.AttachmentService;
+import io.github.smaykell.aulavirtual.assignment.dto.AssignmentBacklog;
 import io.github.smaykell.aulavirtual.assignment.dto.AssignmentData;
 import io.github.smaykell.aulavirtual.assignment.dto.AssignmentResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.AttachmentResponse;
 import io.github.smaykell.aulavirtual.assignment.dto.AttachmentUploadRequest;
 import io.github.smaykell.aulavirtual.assignment.dto.AttachmentUploadResponse;
+import io.github.smaykell.aulavirtual.assignment.dto.UpcomingAssignment;
 import io.github.smaykell.aulavirtual.assignment.exception.AssignmentHasWorkException;
 import io.github.smaykell.aulavirtual.assignment.exception.AssignmentNotFoundException;
 import io.github.smaykell.aulavirtual.course.CourseService;
@@ -16,10 +18,13 @@ import io.github.smaykell.aulavirtual.course.unit.UnitService;
 import io.github.smaykell.aulavirtual.gradebook.GradeService;
 import io.github.smaykell.aulavirtual.gradebook.GradeSource;
 import io.github.smaykell.aulavirtual.gradebook.GradingSchemeService;
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -93,6 +98,28 @@ public class AssignmentService {
         requireNoWork(assignment);
         attachmentService.deleteAll(ownerOf(assignment));
         assignmentRepository.delete(assignment);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UpcomingAssignment> pendingFor(UUID studentId, Collection<UUID> courseIds,
+            Instant now, Instant lateSince, int limit) {
+
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        return assignmentRepository
+                .findPendingFor(studentId, courseIds, now, lateSince, Limit.of(limit))
+                .stream()
+                .map(UpcomingAssignment::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AssignmentBacklog> backlogIn(Collection<UUID> courseIds) {
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        return submissionRepository.findBacklogIn(courseIds, SubmissionStatus.GRADED);
     }
 
     Assignment writable(String actorUsername, UUID assignmentId) {

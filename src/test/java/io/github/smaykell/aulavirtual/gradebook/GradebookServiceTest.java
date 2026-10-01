@@ -11,6 +11,7 @@ import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.exception.CourseOutOfReachException;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradeItem;
+import io.github.smaykell.aulavirtual.gradebook.dto.ReturnedGrade;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradebookResponse;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradebookRow;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradingSchemeResponse;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Limit;
 
 @ExtendWith(MockitoExtension.class)
 class GradebookServiceTest {
@@ -181,6 +183,23 @@ class GradebookServiceTest {
         when(studentService.summariesOf(List.of(LUIS, ANA))).thenReturn(Map.of(
                 ANA, student(ANA, "Ana", "Quispe Rojas"),
                 LUIS, student(LUIS, "Luis", "Álvarez Ruiz")));
+    }
+
+    @Test
+    void the_recent_grades_carry_the_title_of_their_item_and_skip_the_vanished_ones() {
+        Grade kept = returned(ANA, FIRST_TASK, "18.00");
+        Grade orphan = returned(ANA, item("Borrada", NOW), "11.00");
+        Instant since = NOW.minusSeconds(3600);
+        when(gradeRepository.findByStudentIdAndReturnedAtAfterOrderByReturnedAtDesc(ANA, since,
+                Limit.of(5))).thenReturn(List.of(kept, orphan));
+
+        List<ReturnedGrade> recent = gradebookService.returnedTo(ANA, since, 5);
+
+        assertThat(recent).singleElement().satisfies(grade -> {
+            assertThat(grade.title()).isEqualTo("Practica 1");
+            assertThat(grade.score()).isEqualByComparingTo("18.00");
+            assertThat(grade.courseId()).isEqualTo(COURSE);
+        });
     }
 
     private static Grade draft(UUID studentId, GradeItem item, String score) {

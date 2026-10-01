@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
 import io.github.smaykell.aulavirtual.common.exception.ApiException;
+import io.github.smaykell.aulavirtual.course.announcement.AnnouncementRepository;
 import io.github.smaykell.aulavirtual.course.dto.CourseResponse;
 import io.github.smaykell.aulavirtual.course.dto.CreateCourseRequest;
 import io.github.smaykell.aulavirtual.course.dto.UpdateCourseRequest;
@@ -52,12 +53,15 @@ class CourseServiceTest {
     @Mock
     private EnrollmentRepository enrollmentRepository;
 
+    @Mock
+    private AnnouncementRepository announcementRepository;
+
     private CourseService courseService;
 
     @BeforeEach
     void setUp() {
         courseService = new CourseService(courseRepository, courseAccess, invitations,
-                teacherService, enrollmentRepository);
+                teacherService, enrollmentRepository, announcementRepository);
     }
 
     @Test

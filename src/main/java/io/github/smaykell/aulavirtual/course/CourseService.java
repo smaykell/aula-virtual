@@ -2,6 +2,9 @@ package io.github.smaykell.aulavirtual.course;
 
 import io.github.smaykell.aulavirtual.common.domain.Filters;
 import io.github.smaykell.aulavirtual.common.dto.PageResponse;
+import io.github.smaykell.aulavirtual.course.announcement.AnnouncementRepository;
+import io.github.smaykell.aulavirtual.course.announcement.dto.AnnouncementSummary;
+import io.github.smaykell.aulavirtual.course.dto.CourseCount;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
 import io.github.smaykell.aulavirtual.course.dto.CourseResponse;
 import io.github.smaykell.aulavirtual.course.dto.CreateCourseRequest;
@@ -13,12 +16,17 @@ import io.github.smaykell.aulavirtual.course.exception.InvalidCourseDatesExcepti
 import io.github.smaykell.aulavirtual.course.exception.StudentNotEnrolledException;
 import io.github.smaykell.aulavirtual.teacher.TeacherService;
 import io.github.smaykell.aulavirtual.teacher.dto.TeacherSummary;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,6 +41,7 @@ public class CourseService {
     private final Invitations invitations;
     private final TeacherService teacherService;
     private final EnrollmentRepository enrollmentRepository;
+    private final AnnouncementRepository announcementRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<CourseResponse> list(String actorUsername, UUID teacherId,
@@ -125,9 +134,48 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
+    public Map<UUID, String> openCoursesAttendedBy(UUID studentId) {
+        return namesOf(courseRepository.findAttendedBy(studentId, EnrollmentStatus.ACTIVE,
+                CourseStatus.ACTIVE));
+    }
+
+    @Transactional(readOnly = true)
+    public Map<UUID, String> openCoursesTaughtBy(UUID teacherId) {
+        return namesOf(courseRepository.findByTeacherIdAndStatus(teacherId, CourseStatus.ACTIVE));
+    }
+
+    @Transactional(readOnly = true)
+    public List<CourseCount> pendingEnrollmentsIn(Collection<UUID> courseIds) {
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        return enrollmentRepository.countByCourse(courseIds, EnrollmentStatus.PENDING);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AnnouncementSummary> announcementsSince(Collection<UUID> courseIds,
+            Instant since, int limit) {
+
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        return announcementRepository
+                .findByCourseIdInAndCreatedAtAfterOrderByCreatedAtDesc(courseIds, since,
+                        Limit.of(limit))
+                .stream()
+                .map(AnnouncementSummary::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<UUID> activeStudentsOf(UUID courseId) {
         return enrollmentRepository.findStudentIdsByCourseIdAndStatus(courseId,
                 EnrollmentStatus.ACTIVE);
+    }
+
+    private static Map<UUID, String> namesOf(List<Course> courses) {
+        return courses.stream().collect(Collectors.toMap(Course::getId, Course::getName,
+                (first, second) -> first, LinkedHashMap::new));
     }
 
     private Page<Course> coursesIn(CourseAccess.Scope scope, CourseStatus status,
