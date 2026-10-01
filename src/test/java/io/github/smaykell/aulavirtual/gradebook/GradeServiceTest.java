@@ -114,6 +114,29 @@ class GradeServiceTest {
     }
 
     @Test
+    void an_automatic_grade_has_no_grader_and_asks_nobody_who_is_grading() {
+        Grade existing = grade(new BigDecimal("12.00"));
+        when(gradeRepository.findBySourceTypeAndSourceIdAndStudentId(GradeSource.ASSIGNMENT,
+                ASSIGNMENT, STUDENT)).thenReturn(Optional.of(existing));
+        when(gradeRepository.save(existing)).thenReturn(existing);
+
+        gradeService.recordAutomatic(entry(new BigDecimal("18.00"), null));
+
+        assertThat(existing.getGradedBy()).isNull();
+        assertThat(existing.getScore()).isEqualTo(new BigDecimal("18.00"));
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void an_automatic_grade_over_the_maximum_is_rejected_too() {
+        ApiException error = assertThrows(ApiException.class,
+                () -> gradeService.recordAutomatic(entry(new BigDecimal("21.00"), null)));
+
+        assertThat(error.getCode()).isEqualTo("GRB_SCORE_OUT_OF_RANGE");
+        verifyNoInteractions(gradeRepository);
+    }
+
+    @Test
     void the_staff_sees_a_draft_grade_keyed_by_student() {
         when(gradeRepository.findBySourceTypeAndSourceIdAndStudentIdIn(GradeSource.ASSIGNMENT,
                 ASSIGNMENT, List.of(STUDENT))).thenReturn(List.of(grade(new BigDecimal("11.00"))));
