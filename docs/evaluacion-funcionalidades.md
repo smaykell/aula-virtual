@@ -22,6 +22,7 @@ prioridad propuesta y un esfuerzo estimado para discutirlos, no para darlos por 
 | Matrícula | Automática o por solicitud, aceptar/rechazar/retirar, auto-registro con cuenta nueva por enlace (conmutable por el centro) | `course/enrollment` |
 | Tareas y entregas | Tareas por unidad con fecha, puntaje, tardías y categoría; entrega con texto y hasta 10 adjuntos; estado SUBMITTED/LATE | `assignment` |
 | Calificaciones | Nota por ítem y alumno con retroalimentación, borrador y devolución, esquema ponderado o por puntos, escala 0–20, nota final y aprobado | `gradebook` |
+| Exámenes | Banco de preguntas por curso (opción única, múltiple, V/F, respuesta corta), ventana y tiempo límite, 1 o 2 intentos, orden aleatorio, corrección automática y revisión de respuestas cortas | `exam` |
 | Configuración | Origen del usuario de un estudiante nuevo, ventana de auto-registro | `settings` |
 | Notificaciones | Cola transaccional por correo: cuenta creada, matrícula solicitada/activa, reset de contraseña | `notification` |
 | Operación | Perfiles dev/test/prod, Flyway, actuator, OpenAPI, CI de GitHub Actions, guía de despliegue en AWS | `config`, `docs/deploy-aws` |
@@ -37,7 +38,7 @@ el aula ya sirve para publicar material y tareas y poner notas, pero no para *co
 
 ### 2.1 Evaluación
 
-**Exámenes / cuestionarios** — P1 · L
+✅ **Exámenes / cuestionarios** — P1 · L
 Ya previsto en la arquitectura (`GradeItemProvider`, `GradeService.record`,
 `CourseService.memberOf`). Mínimo viable: banco de preguntas por curso (opción única,
 múltiple, verdadero/falso, respuesta corta), examen con ventana de apertura/cierre, tiempo
@@ -49,6 +50,16 @@ solo intento**; el docente puede habilitar un segundo **para todo el examen** (n
 estudiante). Con dos intentos cuenta **la nota más alta**. Si el docente decide mostrar
 las respuestas correctas, el estudiante las ve **al devolverse la nota**, como en las
 tareas, para que no se filtren mientras otros aún rinden.
+**Hecho el backend** en `feature/exam-module` (migraciones `V23`–`V25`): banco de
+preguntas por curso, examen por unidad con hora de apertura y de cierre, tiempo límite
+contado desde que el alumno empieza (sin pasar del cierre), uno o dos intentos, orden
+aleatorio de preguntas y opciones, corrección automática y nota más alta en el registro.
+Dos decisiones que el documento no tomaba, propuestas y aceptadas: la respuesta corta la
+corrige **siempre** el docente (el intento queda «por revisar») y la opción múltiple es
+**todo o nada**. De paso, `courseOf` pasó a `CourseService`. **Falta el frontend.** Quedó
+fuera a propósito: el correo de nota devuelta para exámenes (su plantilla habla de
+tareas), poner nota a mano a quien no rindió, ampliar el tiempo a un alumno concreto y
+los exámenes próximos en el panel de inicio.
 
 **Rúbricas** — P3 · M
 Criterios con niveles y puntaje por tarea; la nota sale de la suma. Da coherencia a la
@@ -262,7 +273,8 @@ El correo de la persona es opcional y nunca se verifica, pero es la vía de recu
 2. **Comunicación** — avisos del curso y las notificaciones que faltan (tarea nueva, nota
    devuelta, recordatorio, solicitud pendiente).
 3. **Panel de inicio por rol** y vista «trabajo de los alumnos» con todos los matriculados.
-4. **Exámenes**, que es el siguiente módulo grande y ya tiene el terreno preparado.
+4. ✅ **Exámenes**, que es el siguiente módulo grande y ya tiene el terreno preparado
+   (backend en `feature/exam-module`; falta el frontend).
 5. **Gestión académica** — carga masiva, duplicar curso, co-docentes, asistencia.
 6. Lo demás (rúbricas, foros, grupos, calendario, reportes PDF) según demanda real.
 
