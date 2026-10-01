@@ -7,6 +7,7 @@ import io.github.smaykell.aulavirtual.gradebook.dto.GradeResponse;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradebookResponse;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradebookRow;
 import io.github.smaykell.aulavirtual.gradebook.dto.GradingSchemeResponse;
+import io.github.smaykell.aulavirtual.gradebook.dto.ReturnedGrade;
 import io.github.smaykell.aulavirtual.gradebook.exception.ExportRequiresStaffException;
 import io.github.smaykell.aulavirtual.student.StudentService;
 import io.github.smaykell.aulavirtual.student.dto.StudentSummary;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,6 +68,25 @@ public class GradebookService {
                         scheme, items))
                 .toList();
         return new GradebookResponse(scheme, items, rows);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReturnedGrade> returnedTo(UUID studentId, Instant since, int limit) {
+        List<Grade> grades = gradeRepository
+                .findByStudentIdAndReturnedAtAfterOrderByReturnedAtDesc(studentId, since,
+                        Limit.of(limit));
+        Map<UUID, String> titles = grades.stream()
+                .map(Grade::getCourseId)
+                .distinct()
+                .flatMap(courseId -> itemsOf(courseId).stream())
+                .collect(Collectors.toMap(GradeItem::sourceId, GradeItem::title));
+
+        return grades.stream()
+                .filter(grade -> titles.containsKey(grade.getSourceId()))
+                .map(grade -> new ReturnedGrade(grade.getSourceType(), grade.getSourceId(),
+                        grade.getCourseId(), titles.get(grade.getSourceId()), grade.getScore(),
+                        grade.getMaxScore(), grade.getReturnedAt()))
+                .toList();
     }
 
     private List<GradeItem> itemsOf(UUID courseId) {

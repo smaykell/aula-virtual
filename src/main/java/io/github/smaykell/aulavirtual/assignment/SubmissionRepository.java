@@ -1,5 +1,6 @@
 package io.github.smaykell.aulavirtual.assignment;
 
+import io.github.smaykell.aulavirtual.assignment.dto.AssignmentBacklog;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,19 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
             Collection<UUID> studentIds);
 
     boolean existsByAssignmentId(UUID assignmentId);
+
+    @Query("""
+            select new io.github.smaykell.aulavirtual.assignment.dto.AssignmentBacklog(
+                a.id, a.courseId, a.title, a.dueAt, count(s))
+            from Submission s
+            join Assignment a on a.id = s.assignmentId
+            where a.courseId in :courseIds
+              and s.status <> :closed
+            group by a.id, a.courseId, a.title, a.dueAt
+            order by a.dueAt
+            """)
+    List<AssignmentBacklog> findBacklogIn(@Param("courseIds") Collection<UUID> courseIds,
+            @Param("closed") SubmissionStatus closed);
 
     @Query("select s.studentId from Submission s where s.assignmentId = :assignmentId")
     Set<UUID> findStudentIdsByAssignmentId(@Param("assignmentId") UUID assignmentId);

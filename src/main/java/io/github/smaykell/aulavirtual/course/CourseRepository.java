@@ -1,6 +1,7 @@
 package io.github.smaykell.aulavirtual.course;
 
 import io.github.smaykell.aulavirtual.course.enrollment.EnrollmentStatus;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -44,6 +45,19 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
             @Param("enrollmentStatus") EnrollmentStatus enrollmentStatus,
             @Param("status") CourseStatus status, @Param("name") String namePattern,
             Pageable pageable);
+
+    @Query("""
+            select c from Course c
+            join Enrollment e on e.courseId = c.id
+            where e.studentId = :studentId
+              and e.status = :enrollmentStatus
+              and c.status = :status
+            """)
+    List<Course> findAttendedBy(@Param("studentId") UUID studentId,
+            @Param("enrollmentStatus") EnrollmentStatus enrollmentStatus,
+            @Param("status") CourseStatus status);
+
+    List<Course> findByTeacherIdAndStatus(UUID teacherId, CourseStatus status);
 
     Optional<Course> findByInvitationCode(String invitationCode);
 
