@@ -14,7 +14,6 @@ import io.github.smaykell.aulavirtual.assignment.exception.AssignmentHasWorkExce
 import io.github.smaykell.aulavirtual.assignment.exception.AssignmentNotFoundException;
 import io.github.smaykell.aulavirtual.course.CourseService;
 import io.github.smaykell.aulavirtual.course.dto.CourseMember;
-import io.github.smaykell.aulavirtual.course.unit.UnitService;
 import io.github.smaykell.aulavirtual.gradebook.GradeService;
 import io.github.smaykell.aulavirtual.gradebook.GradeSource;
 import io.github.smaykell.aulavirtual.gradebook.GradingSchemeService;
@@ -34,7 +33,6 @@ public class AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
     private final SubmissionRepository submissionRepository;
-    private final UnitService unitService;
     private final CourseService courseService;
     private final GradeService gradeService;
     private final GradingSchemeService gradingSchemeService;
@@ -43,7 +41,7 @@ public class AssignmentService {
 
     @Transactional(readOnly = true)
     public List<AssignmentResponse> list(String actorUsername, UUID unitId) {
-        courseService.memberOf(actorUsername, unitService.courseOf(unitId));
+        courseService.memberOf(actorUsername, courseService.courseOf(unitId));
 
         List<Assignment> assignments = assignmentRepository.findByUnitIdOrderByDueAt(unitId);
         Map<UUID, List<AttachmentResponse>> attachments = attachmentService.ofAssignments(
@@ -64,7 +62,7 @@ public class AssignmentService {
     public AttachmentUploadResponse prepareUpload(String actorUsername, UUID unitId,
             AttachmentUploadRequest request) {
 
-        UUID courseId = unitService.courseOf(unitId);
+        UUID courseId = courseService.courseOf(unitId);
         courseService.requireWritable(actorUsername, courseId);
         return attachmentService.prepareUpload(AttachmentFiles.assignmentPrefix(courseId),
                 request);
@@ -72,7 +70,7 @@ public class AssignmentService {
 
     @Transactional
     public AssignmentResponse create(String actorUsername, UUID unitId, AssignmentData data) {
-        UUID courseId = unitService.courseOf(unitId);
+        UUID courseId = courseService.courseOf(unitId);
         courseService.requireWritable(actorUsername, courseId);
         requireCategoryOfTheCourse(courseId, data);
 
